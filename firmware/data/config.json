@@ -1,0 +1,21 @@
+{
+   "lat": 52.37,
+   "lon": 4.90,
+   "wifi": {
+      "ssid": "YOUR_WIFI_SSID",
+      "password": "YOUR_WIFI_PASSWORD"
+   },
+   "weatherDebug": false,
+   "wd_am": [7, 2],
+   "wd_pm": [17, 2],
+   "we_am": [10, 3],
+   "we_pm": [13, 4],
+   "previewHr": 17,
+   "thresholds": {
+      "maxRainMm": 2.0,
+      "maxWindKmh": 45,
+      "minTempC": 5,
+      "warnWindKmh": 25
+   },
+   "ssidLocations": []
+}

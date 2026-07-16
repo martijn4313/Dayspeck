@@ -1,0 +1,555 @@
+// MotoWeather Bedside Display — Display Rendering Implementation
+// Composite rendering engine for SSD1306 128x64 OLED
+
+#include "display.h"
+#include "bitmaps.h"
+#include "weather.h"
+
+// Rain animation state
+static RainDrop rainDrops[MAX_RAIN_DROPS];
+static Splash splashes[MAX_SPLASHES];
+static float currentRainIntensity = 5.0f;  // Track current rain intensity
+static int currentWindSpeed = 0;  // Track current wind speed
+
+
+
+// Helper: draw vertical line
+static void drawVLine(Adafruit_SSD1306 &display, int x, int y, int h) {
+    for (int i = 0; i < h; i++) {
+        display.drawPixel(x, y + i, SSD1306_WHITE);
+    }
+}
+
+// Helper: draw filled circle using Bresenham
+static void drawFilledCircle(Adafruit_SSD1306 &display, int cx, int cy, int r) {
+    for (int y = -r; y <= r; y++) {
+        for (int x = -r; x <= r; x++) {
+            if (x*x + y*y <= r*r) {
+                display.drawPixel(cx + x, cy + y, SSD1306_WHITE);
+            }
+        }
+    }
+}
+
+#ifdef DISPLAY_STATUS_DEBUG
+void drawDebugStatus(Adafruit_SSD1306 &display, const char* message) {
+    display.fillRect(0, 20, 128, 24, SSD1306_BLACK);
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextWrap(false);
+    
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(message, 0, 0, &x1, &y1, &w, &h);
+    
+    display.setCursor((128 - w) / 2, 26);
+    display.print(message);
+    display.display();
+}
+#endif
+
+// Giant badge — triple-ring border with check/warn/X
+void drawGiantBadge(Adafruit_SSD1306 &display, char type) {
+    int cx = 32, cy = 32;
+    
+    // Draw three concentric circles for thick border ring
+    for (int r = 28; r >= 26; r--) {
+        // Draw circle using points
+        for (int angle = 0; angle < 360; angle += 2) {
+            float rad = angle * 3.14159 / 180.0;
+            int x = cx + (int)(r * cos(rad));
+            int y = cy + (int)(r * sin(rad));
+            display.drawPixel(x, y, SSD1306_WHITE);
+        }
+    }
+    
+    // Draw the badge symbol inside based on type
+    if (type == BADGE_CHECK) {
+        // Thick checkmark: two thick lines forming a checkmark
+        // First line: top-left to center
+        for (int i = 0; i < 6; i++) {
+            display.drawPixel(cx - 14 + i, cy - 6 + i/2, SSD1306_WHITE);
+            display.drawPixel(cx - 14 + i + 1, cy - 6 + i/2, SSD1306_WHITE);
+        }
+        // Second line: center to bottom-right
+        for (int i = 0; i < 10; i++) {
+            display.drawPixel(cx - 6 + i, cy - 2 + i, SSD1306_WHITE);
+            display.drawPixel(cx - 6 + i, cy - 1 + i, SSD1306_WHITE);
+        }
+    } else if (type == BADGE_WARN) {
+        // Thick exclamation: vertical bar + bottom dot
+        // Vertical bar (center)
+        drawVLine(display, cx - 1, cy - 14, 20);
+        drawVLine(display, cx, cy - 14, 20);
+        drawVLine(display, cx + 1, cy - 14, 20);
+        // Bottom dot
+        drawFilledCircle(display, cx, cy + 10, 3);
+    } else if (type == BADGE_X) {
+        // Two diagonal lines crossing at centre
+        // Top-left to bottom-right
+        for (int i = -12; i <= 12; i++) {
+            display.drawPixel(cx + i, cy + i, SSD1306_WHITE);
+            display.drawPixel(cx + i + 1, cy + i, SSD1306_WHITE);
+            display.drawPixel(cx + i, cy + i + 1, SSD1306_WHITE);
+        }
+        // Top-right to bottom-left
+        for (int i = -12; i <= 12; i++) {
+            display.drawPixel(cx + i, cy - i, SSD1306_WHITE);
+            display.drawPixel(cx + i - 1, cy - i, SSD1306_WHITE);
+            display.drawPixel(cx + i, cy - i + 1, SSD1306_WHITE);
+        }
+    }
+}
+
+// Night overlay — streetlight glow + random stars
+// Using seed for deterministic but random-looking stars
+void applyNightOverlay(Adafruit_SSD1306 &display) {
+    // Seed-based pseudo-random using simple hash
+    unsigned int seed = 12345; // Fixed seed for deterministic stars
+    
+    // Draw 3-5 single white pixels randomly in sky region (x: 64-127, y: 0-11)
+    for (int i = 0; i < 5; i++) {
+        seed = seed * 1103515245 + 12345; // LCG
+        int starX = 64 + (seed % 64);
+        seed = seed * 1103515245 + 12345;
+        int starY = seed % 12;
+        if (i < 4) { // Only 4 stars
+            display.drawPixel(starX, starY, SSD1306_WHITE);
+        }
+    }
+    
+    // Draw 2x2 filled white rectangle at streetlight position
+    display.drawPixel(STREETLIGHT_BX, STREETLIGHT_BY, SSD1306_WHITE);
+    display.drawPixel(STREETLIGHT_BX + 1, STREETLIGHT_BY, SSD1306_WHITE);
+    display.drawPixel(STREETLIGHT_BX, STREETLIGHT_BY + 1, SSD1306_WHITE);
+    display.drawPixel(STREETLIGHT_BX + 1, STREETLIGHT_BY + 1, SSD1306_WHITE);
+}
+
+// Procedural rain — diagonal line loop
+void drawProceduralRain(Adafruit_SSD1306 &display, int intensity) {
+    int numLines;
+    if (intensity == 1) numLines = 3;
+    else if (intensity == 2) numLines = 6;
+    else numLines = 10;
+    
+    // Draw diagonal lines spread across x: 64-127, y: 0-27
+    for (int i = 0; i < numLines; i++) {
+        int startX = 64 + (i * 127 / numLines);
+        int startY = (i * 27 / numLines);
+        display.drawLine(startX, startY, startX - 2, startY + 4, SSD1306_WHITE);
+    }
+}
+
+// Procedural snow — scattered pixels + roof line
+void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
+    // Scatter intensity*4 white pixels randomly in x: 64-127, y: 0-31
+    unsigned int seed = 54321;
+    for (int i = 0; i < intensity * 4; i++) {
+        seed = seed * 1103515245 + 12345;
+        int x = 64 + (seed % 64);
+        seed = seed * 1103515245 + 12345;
+        int y = seed % 32;
+        display.drawPixel(x, y, SSD1306_WHITE);
+    }
+    
+    // At intensity >= 2: draw horizontal white line at church roof
+    if (intensity >= 2) {
+        for (int x = 64; x < 127; x++) {
+            display.drawPixel(x, CHURCH_ROOF_Y, SSD1306_WHITE);
+        }
+    }
+}
+
+// Procedural wind — horizontal swoosh dashes
+void drawProceduralWind(Adafruit_SSD1306 &display, int speed) {
+    // Only active when speed >= 25 km/h
+    if (speed < 25) return;
+    
+    // Draw 2-3 dashed horizontal lines at y: 5, 9, 14, x: 64-127
+    int yPositions[] = {5, 9, 14};
+    for (int row = 0; row < 3; row++) {
+        int y = yPositions[row];
+        // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on
+        int pattern[] = {4, 2, 3, 1, 2};
+        int x = 64;
+        for (int p = 0; p < 5; p++) {
+            for (int i = 0; i < pattern[p]; i++) {
+                if (x < 128) display.drawPixel(x, y, SSD1306_WHITE);
+                x++;
+            }
+        }
+    }
+}
+
+// Reset a rain drop to random position at top
+// Reset a single rain drop to a new random position above the skyline
+void resetRainDrop(RainDrop &drop) {
+    // Calculate extended spawn zone based on wind for better coverage
+    // Average fall frames = HORIZON_Y / avg_speed (roughly 9 frames)
+    // x_spawn_extend = abs(wind_drift) * 9
+    int xSpawnExtend = 0;  // Simplified for reset
+    
+    drop.x = RAIN_AREA_X_START + random(RAIN_AREA_X_END - RAIN_AREA_X_START + 1 + xSpawnExtend);
+    drop.y = random(-8, -1);  // Start just above top edge
+    drop.targetY = HORIZON_Y + random(10);  // Slight variation in ground level
+    drop.speed = 3 + random(4);  // Speed: 3-6 pixels per frame (matching Python)
+    drop.spriteIdx = random(4);  // 0-3 sprite variants
+    drop.active = true;
+}
+
+// Initialize rain animation
+void initRainAnimation() {
+    randomSeed(analogRead(0));
+    for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+        // Reset first to initialize all fields
+        rainDrops[i].x = RAIN_AREA_X_START + random(64);
+        rainDrops[i].y = random(-30, HORIZON_Y);  // Spread across screen vertically
+        rainDrops[i].targetY = HORIZON_Y + random(10);
+        rainDrops[i].speed = 3 + random(4);  // 3-6 px/frame
+        rainDrops[i].spriteIdx = random(4);
+        rainDrops[i].active = true;
+    }
+    // Initialize splashes as inactive
+    for (int i = 0; i < MAX_SPLASHES; i++) {
+        splashes[i].active = false;
+        splashes[i].frameCounter = 0;
+        splashes[i].spriteIdx = 0;
+    }
+}
+
+// Calculate wind drift based on wind speed (matching Python logic)
+// Wind 0-10 km/h: straight down (no drift)
+// Wind 10-80 km/h: progressively more drift
+// Wind >80 km/h: max drift
+static int computeWindDrift(int windSpeed) {
+    if (windSpeed <= 10) return 0;
+    // Scale: 10 km/h = 0 drift, 80 km/h = max drift (-1 to -3)
+    float driftScaled = (windSpeed - 10) / 70.0;
+    int drift = -int(1 + driftScaled * 2);
+    if (drift < -3) drift = -3;
+    if (drift > -1) drift = -1;
+    return drift;
+}
+
+// Calculate target active drops based on rain intensity (mm/h)
+// Matching Python: 0 mm/h = 0 drops, 10 mm/h = MAX_RAIN_DROPS
+static int computeTargetDrops(float rainIntensityMMH) {
+    int baseTarget = int(rainIntensityMMH * (MAX_RAIN_DROPS / 10.0));
+    return min(MAX_RAIN_DROPS, baseTarget);
+}
+
+// Update rain animation — move drops, check collision, create splashes
+// windSpeed: 0-60 km/h
+// rainIntensity: 0-20 mm/h (controls how many drops are active)
+void updateRainAnimation(int windSpeed, float rainIntensity) {
+    // Store current values for drawRainAnimation to use
+    currentWindSpeed = windSpeed;
+    currentRainIntensity = rainIntensity;
+    
+    int windDrift = computeWindDrift(windSpeed);
+    int targetDrops = computeTargetDrops(rainIntensity);
+    
+    // Count active drops
+    int activeCount = 0;
+    for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+        if (rainDrops[i].active) activeCount++;
+    }
+    
+    // Activate or deactivate drops to match target
+    if (activeCount < targetDrops) {
+        for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+            if (!rainDrops[i].active) {
+                resetRainDrop(rainDrops[i]);
+                activeCount++;
+                if (activeCount >= targetDrops) break;
+            }
+        }
+    } else if (activeCount > targetDrops) {
+        for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+            if (rainDrops[i].active) {
+                rainDrops[i].active = false;
+                activeCount--;
+                if (activeCount <= targetDrops) break;
+            }
+        }
+    }
+    
+    // Move rain drops
+    for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+        if (!rainDrops[i].active) continue;
+        
+        // Move drop: vertical fall + horizontal wind drift
+        rainDrops[i].x += windDrift;
+        rainDrops[i].y += rainDrops[i].speed;
+        
+        // Check if drop hit the ground (targetY)
+        if (rainDrops[i].y >= rainDrops[i].targetY) {
+            // Create a splash
+            for (int j = 0; j < MAX_SPLASHES; j++) {
+                if (!splashes[j].active) {
+                    splashes[j].x = rainDrops[i].x;
+                    splashes[j].y = rainDrops[i].targetY;
+                    splashes[j].frameCounter = 3;  // 3 frames (matching Python SPLASH_FRAMES)
+                    splashes[j].spriteIdx = random(4);  // Random splash variant
+                    splashes[j].active = true;
+                    break;
+                }
+            }
+            // Reset the drop
+            resetRainDrop(rainDrops[i]);
+            continue;
+        }
+        
+        // Reset if off left edge or below canvas
+        if (rainDrops[i].x < RAIN_AREA_X_START || rainDrops[i].y >= 64) {
+            resetRainDrop(rainDrops[i]);
+        }
+    }
+    
+    // Update splash animations
+    for (int i = 0; i < MAX_SPLASHES; i++) {
+        if (splashes[i].active) {
+            splashes[i].frameCounter--;
+            if (splashes[i].frameCounter <= 0) {
+                splashes[i].active = false;
+            }
+        }
+    }
+}
+
+// Draw rain animation — render active drops and splashes with sprite support
+void drawRainAnimation(Adafruit_SSD1306 &display) {
+    // Draw rain drops (sprite-based if bitmaps available, else fallback to procedural)
+    for (int i = 0; i < MAX_RAIN_DROPS; i++) {
+        if (!rainDrops[i].active) continue;
+        
+        // Check if sprite bitmaps are available
+        #ifdef RAIN_DROP_1_BMP_W
+        // Use sprite-based rendering - select sprite based on variant
+        const uint8_t* sprite = nullptr;
+        int spriteW = 0, spriteH = 0;
+        
+        switch (rainDrops[i].spriteIdx % 4) {
+            case 0: sprite = rain_drop_1_bmp; spriteW = RAIN_DROP_1_BMP_W; spriteH = RAIN_DROP_1_BMP_H; break;
+            case 1: sprite = rain_drop_2_bmp; spriteW = RAIN_DROP_2_BMP_W; spriteH = RAIN_DROP_2_BMP_H; break;
+            case 2: sprite = rain_drop_3_bmp; spriteW = RAIN_DROP_3_BMP_W; spriteH = RAIN_DROP_3_BMP_H; break;
+            case 3: sprite = rain_drop_4_bmp; spriteW = RAIN_DROP_4_BMP_W; spriteH = RAIN_DROP_4_BMP_H; break;
+        }
+        
+        if (sprite) {
+            display.drawBitmap(rainDrops[i].x, rainDrops[i].y, sprite, spriteW, spriteH, SSD1306_WHITE);
+        } else
+        #endif
+        {
+            // Fallback: procedural 2x4 elongated pixel drop
+            display.drawPixel(rainDrops[i].x, rainDrops[i].y, SSD1306_WHITE);
+            display.drawPixel(rainDrops[i].x, rainDrops[i].y + 1, SSD1306_WHITE);
+            display.drawPixel(rainDrops[i].x, rainDrops[i].y + 2, SSD1306_WHITE);
+            display.drawPixel(rainDrops[i].x - 1, rainDrops[i].y + 1, SSD1306_WHITE);
+        }
+    }
+    
+    // Draw splashes (sprite-based if bitmaps available, else procedural)
+    for (int i = 0; i < MAX_SPLASHES; i++) {
+        if (!splashes[i].active) continue;
+        
+        #ifdef SPLASH_1_BMP_W
+        // Use splash sprite
+        const uint8_t* splashSprite = nullptr;
+        int splashW = 0, splashH = 0;
+        
+        switch (splashes[i].spriteIdx % 4) {
+            case 0: splashSprite = splash_1_bmp; splashW = SPLASH_1_BMP_W; splashH = SPLASH_1_BMP_H; break;
+            case 1: splashSprite = splash_2_bmp; splashW = SPLASH_2_BMP_W; splashH = SPLASH_2_BMP_H; break;
+            case 2: splashSprite = splash_3_bmp; splashW = SPLASH_3_BMP_W; splashH = SPLASH_3_BMP_H; break;
+            case 3: splashSprite = splash_4_bmp; splashW = SPLASH_4_BMP_W; splashH = SPLASH_4_BMP_H; break;
+        }
+        
+        if (splashSprite) {
+            // Center splash on impact point
+            display.drawBitmap(splashes[i].x - splashW/2, splashes[i].y - splashH, splashSprite, splashW, splashH, SSD1306_WHITE);
+        } else
+        #endif
+        {
+            // Fallback: procedural splash (width based on frame counter)
+            int fx = splashes[i].frameCounter;  // 3 = wide, 1 = narrow
+            display.drawPixel(splashes[i].x - fx, splashes[i].y, SSD1306_WHITE);
+            display.drawPixel(splashes[i].x + fx, splashes[i].y, SSD1306_WHITE);
+            if (splashes[i].frameCounter >= 2) {
+                display.drawPixel(splashes[i].x - fx + 1, splashes[i].y - 1, SSD1306_WHITE);
+                display.drawPixel(splashes[i].x + fx - 1, splashes[i].y - 1, SSD1306_WHITE);
+            }
+        }
+    }
+}
+
+// Render skyline card — composite render of right top half
+void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow) {
+    // Layer 1: blit skyline_base_bmp at (SKYLINE_X, SKYLINE_Y)
+    display.drawBitmap(SKYLINE_X, SKYLINE_Y, skyline_base_bmp, SKYLINE_BASE_BMP_W, SKYLINE_BASE_BMP_H, SSD1306_WHITE);
+    
+    // Layer 2: if night → applyNightOverlay + blit moon; else → blit sun
+    if (isNight) {
+        applyNightOverlay(display);
+        // TODO: blit moon at (MOON_X, MOON_Y) when moon_bmp exists
+    } else {
+        display.drawBitmap(SUN_X, SUN_Y, sun_bmp, SUN_BMP_W, SUN_BMP_H, SSD1306_WHITE);
+    }
+    
+    // Layer 3: draw weather effect based on weatherCondition
+    if (weatherCondition == WEATHER_RAIN) {
+        // Use animated sprite rain if intensity > 0, else procedural
+        if (intensity > 0) {
+            drawRainAnimation(display);
+        } else {
+            drawProceduralRain(display, 1);
+        }
+    } else if (weatherCondition == WEATHER_SNOW) {
+        drawProceduralSnow(display, intensity);
+    } else if (weatherCondition == WEATHER_WIND) {
+        drawProceduralWind(display, windSpeed);
+    }
+    
+    // Layer 4: draw tempStr text at (TEMP_X, TEMP_Y) with black background box
+    // First draw black box behind text for readability
+    display.fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, SSD1306_BLACK);
+    
+    // Draw temperature text
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(TEMP_X, TEMP_Y);
+    display.print(tempStr);
+    
+    // Blit trend arrow at (ARROW_X, ARROW_Y) based on trend character
+    // 'u' = up-right (rising), 'd' = down-right (falling), 'f' = right (flat)
+    const uint8_t* arrowSprite = nullptr;
+    int arrowW = 0, arrowH = 0;
+    
+    if (trendArrow == 'u') {
+        arrowSprite = arrow_ur_bmp;
+        arrowW = ARROW_UR_BMP_W;
+        arrowH = ARROW_UR_BMP_H;
+    } else if (trendArrow == 'd') {
+        arrowSprite = arrow_dr_bmp;
+        arrowW = ARROW_DR_BMP_W;
+        arrowH = ARROW_DR_BMP_H;
+    } else {
+        // 'f' or default = flat/right arrow
+        arrowSprite = arrow_r_bmp;
+        arrowW = ARROW_R_BMP_W;
+        arrowH = ARROW_R_BMP_H;
+    }
+    
+    if (arrowSprite) {
+        display.drawBitmap(ARROW_X, ARROW_Y, arrowSprite, arrowW, arrowH, SSD1306_WHITE);
+    }
+}
+
+// Render bottom card — weather icon + wind text + precip bars
+void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm) {
+    // Draw at y: 32-63 in right half
+    // Blit weather icon (cloud/rain_cloud) at (64, 33)
+    // For now, just draw a simple cloud shape
+    // TODO: load cloud/rain_cloud bitmaps
+    
+    // Draw wind speed text at bottom
+    // TODO: Convert windSpeed to string and display
+    
+    // Draw precipitation bars
+    // Each bar represents 1mm, max 5 bars
+    int numBars = (int)min(precipMm, 5.0f);
+    for (int i = 0; i < numBars; i++) {
+        display.fillRect(64 + i * 8, 55, 6, 6, SSD1306_WHITE);
+    }
+}
+
+// Render weekly matrix — 7-column AM/PM grid
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7]) {
+    // Full 128x64 view replacing primary view
+    // 7 columns: M T W T F S S
+    // 2 rows: AM / PM
+    // Each cell: draw the ride badge character (✓, !, X)
+    
+    // Draw column headers (days)
+    const char* days[] = {"M", "T", "W", "T", "F", "S", "S"};
+    for (int i = 0; i < 7; i++) {
+        (void)days[i];  // TODO: draw day letter
+    }
+    
+    // Draw AM row
+    for (int i = 0; i < 7; i++) {
+        char badge = weekAM[i];
+        (void)badge;  // Draw small badge at position
+        // TODO: draw badge char at grid position
+    }
+
+    // Draw PM row
+    for (int i = 0; i < 7; i++) {
+        char badge = weekPM[i];
+        (void)badge;  // Draw small badge at position
+        // TODO: draw badge char at grid position
+    }
+}
+
+// Render primary view — full composite display
+void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm) {
+    // Clear the display first
+    display.clearDisplay();
+    
+    // Left half: drawGiantBadge(badgeType)
+    drawGiantBadge(display, badgeType);
+    
+    // Draw divider line
+    display.drawLine(64, 0, 64, 63, SSD1306_WHITE);
+    
+    // Right top: renderSkylineCard(...)
+    renderSkylineCard(display, isNight, weatherCondition, intensity, windSpeed, tempStr, trendArrow);
+    
+    // Draw horizontal divider between top and bottom cards
+    display.drawLine(64, 41, 127, 41, SSD1306_WHITE);
+    
+    // Right bottom: renderBottomCard(...)
+    renderBottomCard(display, weatherCondition, windSpeed, precipMm);
+    
+    // Update the display
+    display.display();
+}
+
+// Render loading view — rotating badge circle and status text
+void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs) {
+    display.clearDisplay();
+    
+    // Draw rotating badge circle
+    int cx = 32, cy = 32;
+    // 1 full rotation per second (360 degrees / 1000 ms)
+    int startAngle = (timeMs % 1000) * 360 / 1000;
+    int endAngle = startAngle + 270; // 270 degree arc
+    
+    for (int r = 28; r >= 26; r--) {
+        for (int angle = startAngle; angle < endAngle; angle += 4) {
+            int a = angle % 360;
+            float rad = a * 3.14159 / 180.0;
+            int x = cx + (int)(r * cos(rad));
+            int y = cy + (int)(r * sin(rad));
+            display.drawPixel(x, y, SSD1306_WHITE);
+        }
+    }
+    
+    // Draw divider line
+    display.drawLine(64, 0, 64, 63, SSD1306_WHITE);
+    
+    // Draw status text on the right
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    
+    if (line1) {
+        display.setCursor(68, 24);
+        display.print(line1);
+    }
+    if (line2) {
+        display.setCursor(68, 36);
+        display.print(line2);
+    }
+    
+    display.display();
+}
