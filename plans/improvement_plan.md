@@ -1,0 +1,337 @@
+# MotoClock Improvement Plan
+
+Source: full code review of the firmware, web UI, tooling and docs (2026-09).
+This plan supersedes `plans/todo.md`. Several items there are already done or
+out of date, such as "corrupted weather.cpp" and "missing arrow bitmaps".
+
+Status legend: `[ ]` open · `[x]` done · **P0** broken or unsafe · **P1** important · **P2** nice to have
+
+The review was static: it was not compiled or run on hardware. Line numbers refer
+to the code at commit `15f953d`.
+
+---
+
+## Phase 1: Fix what is broken now (P0)
+
+### 1.1 Long press is never detected
+- **Where:** `firmware/src/main.cpp` in `loop()` and `firmware/src/touch.cpp`
+- **Problem:** `touch_short_tap()` and `touch_long_press()` each call
+  `touch_get_event()`, which consumes the event. The short-tap check runs
+  first and throws away `TOUCH_LONG`.
+- **Fix:** read the event once (`int ev = touch_get_event();`) and `switch`
+  on it. Remove or rewrite the convenience helpers so they do not consume
+  events.
+- **Done when:** a long press toggles the weekly view and a short tap toggles
+  today/tomorrow.
+
+### 1.2 A single WiFi drop leaves the device in AP-only mode
+- **Where:** `main.cpp` loop, section 3
+- **Problem:** `lastWifiAttemptMs` is set only in `setup()`. Any disconnect
+  after 30 s of uptime immediately runs `WiFi.mode(WIFI_AP)`, and nothing
+  switches back to STA. After a router reboot the clock stays offline until
+  it is power-cycled.
+- **Fix:**
+  - [ ] Track `everConnected` and the time of the last disconnect. Start the AP
+        only if the device has never connected, or after a long outage.
+  - [ ] Use `WIFI_AP_STA` so the device keeps retrying STA while the AP is up.
+  - [ ] Call `WiFi.setAutoReconnect(true)` and `WiFi.persistent(false)`.
+  - [ ] Stop the AP again once STA reconnects.
+  - [ ] Reconnect after new credentials are saved through `/api/wifi/config`.
+- **Done when:** unplugging the router for 2 minutes lets the device reconnect
+  on its own.
+
+### 1.3 No time source, and day/night detection is broken
+- **Where:** `main.cpp: updateDayNight()`, `weather.cpp: fetchWeather()`
+- **Problems:**
+  - Nothing calls `configTime()` or sets up NTP, so `time(nullptr)` is meaningless.
+  - The URL does not request `daily=sunrise,sunset`.
+  - Open-Meteo returns ISO strings by default, and `.as<time_t>()` turns them into 0.
+- **Fix:**
+  - [ ] Call `configTime(0, 0, "pool.ntp.org", "time.google.com")` once WiFi
+        connects, and set `timeSynced` from `time(nullptr) > 1'600'000'000`.
+  - [ ] Request `daily=sunrise,sunset` with `timeformat=unixtime`, and store
+        `utc_offset_seconds` for local-time calculations.
+  - [ ] Base the fallback night rule on local time only when `timeSynced`
+        is true. Otherwise default to "day".
+- **Done when:** the moon or night overlay appears after the real sunset
+  for the configured location.
+
+### 1.4 Weekly forecast and ratings are fake
+- **Where:** `weather.cpp: updateWeeklyState()`, `getTodayRating()`, `getTomorrowRating()`
+- **Problems:**
+  - AM and PM are computed from identical inputs, so they are always equal.
+  - Gust is estimated as `wind*0.7`, which understates it.
+  - The function uses `API_BASE_URL` directly and ignores the configured URL and units.
+  - It makes a second HTTP request each cycle.
+  - The hourly data is fetched but never parsed.
+  - `trend` is hard-coded to `'f'`.
+  - "Today" always shows the AM rating, even in the evening.
+- **Fix:**
+  - [ ] Merge everything into **one** request: `current=…`,
+        `hourly=temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m`,
+        `daily=sunrise,sunset,wind_gusts_10m_max`, `forecast_days=7`, `timeformat=unixtime`.
+  - [ ] Rate each AM/PM window from the hourly values inside it: the maximum
+        gust, the precipitation sum, and the minimum temperature. Use the
+        existing `wd_am`, `wd_pm`, `we_am` and `we_pm` settings (start hour,
+        duration) from `config.json`. They are in the file but never read.
+  - [ ] Show the next upcoming window for "today" and the first window of the
+        next day for "tomorrow".
+  - [ ] Compute `trend` from the hourly temperature over the next 3 hours
+        (±1 °C gives up or down, otherwise flat).
+  - [ ] Delete `updateWeeklyState()`'s separate fetch.
+- **Done when:** AM and PM can differ, the ratings match a manual check
+  against the Open-Meteo website, and each cycle makes one HTTP request.
+
+### 1.5 The weekly view is blank and never refreshes
+- **Where:** `display.cpp: renderWeeklyMatrix()` (stub), `main.cpp` render block
+- **Fix:**
+  - [ ] Implement the grid: day letters starting from the current weekday,
+        AM/PM row labels, and a small ✓ / ! / X glyph in each cell.
+  - [ ] Replace the special case in `loop()` with a single
+        `render()` dispatch on `displayMode`, so both views redraw when
+        `displayDirty` is set.
+  - [ ] Return to the primary view automatically after about 30 s.
+
+### 1.6 Primary view is incomplete
+- [ ] Add a moon bitmap (`moon_bmp`) and draw it at night. There is currently a TODO in `renderSkylineCard`.
+- [ ] Show wind speed text and a cloud or rain icon in `renderBottomCard`.
+- [ ] Use the correct unit label (`C`/`F`). The label is hard-coded to `C`.
+
+### 1.7 Smaller logic bugs
+- [ ] **Cache-Control is never read.** Call
+      `http.collectHeaders(...)` before `GET()`, or remove the dead code.
+- [ ] **`intervalPassed()`**: remove the `if (now < lastRun) return true;`
+      branch. Unsigned subtraction already handles rollover. Replace the
+      `millis() - interval` first-fetch trick with an explicit `fetchNow` flag.
+- [ ] **Unseeded `random()`**: call `randomSeed(ESP.getChipId() ^ micros())`
+      in `setup()`.
+- [ ] **Weather code mapping**: handle 1–3 (cloudy), 45/48 (fog) and 85/86
+      (snow showers). Apply the wind override after code 0 as well. Keep the
+      previous condition only when the field is missing, and log that case.
+- [ ] **Units**: rename `windspeed_unit` to `wind_speed_unit`. Either drop
+      imperial mode, or convert the thresholds and labels to match it.
+- [ ] **`manualConfigPresent`** is set whenever `config.json` parses. It
+      should mean "the user chose a location". Fix the location-source label.
+- [ ] Remove the dead `loadThresholds()`. If called, it would overwrite
+      the loaded config with defaults.
+- [ ] Remove `setDisplayMode()` and `getDisplayMode()` from `weather.cpp`.
+      They duplicate `state.displayMode` and are unused.
+- [ ] `geolocation.cpp`: either wire `geolocateDevice()` in (as a fallback
+      when there is no manual or SSID location) or delete it. It also needs
+      `#include <WiFiClientSecure.h>` and a header declaration.
+
+### 1.8 Duplicated struct definitions (ODR violations)
+- **Where:** `webserver.cpp` defines its own `struct SystemState` with a
+  different layout, plus `extern SystemState state;` (the one in main.cpp is
+  `static`). `SsidLocation` is also defined twice.
+- **Fix:**
+  - [ ] Create `include/app_state.h` with the shared types.
+  - [ ] Replace the mirrored extern globals (`wifiConnected`, `weatherValid`,
+        `weatherAge`, `mdnsStarted`, …) with one `const SystemState& getState()` accessor.
+  - [ ] Create `include/settings.h`: a `Settings` struct (location, thresholds, API, wifi,
+        ssidLocations, windows) with `load()` and `save()`. This removes about
+        15 externs.
+
+---
+
+## Phase 2: Security (P0)
+
+- [ ] **Stop leaking secrets:** remove `wifi.password` and `weatherApi.key`
+      from `/api/status`. Return `"passwordSet": true/false` instead.
+- [ ] **Authentication:** protect all `/api/*` write endpoints and `/update`
+      with `server.authenticate(user, pass)`. Set the admin password in the
+      web UI and store it in config.
+- [ ] **OTA:** use `httpUpdater.setup(&server, "/update", user, pass)`.
+- [ ] **AP password:** derive a password per device (for example from the
+      chip ID) instead of the hard-coded `password123`, and show it on the
+      OLED while in AP mode. Optionally add a captive portal with
+      `DNSServer`.
+- [ ] **XSS:** use `textContent` or DOM nodes instead of `innerHTML` for
+      SSIDs, logs and SSID-location lists (web UI JS, around lines 398, 477
+      and 506). A neighbour's AP name must not be able to run script.
+- [ ] **CSRF:** require a custom header (for example `X-MotoClock: 1`) on POSTs.
+      Browsers cannot send it cross-origin without a preflight.
+- [ ] **Input validation:** check lat ∈ [-90, 90], lon ∈ [-180, 180],
+      thresholds within sane ranges, SSID ≤ 32 chars, a maximum of about 10
+      SSID locations. Return 400 with a message on error.
+- [ ] **Secrets in the repo:**
+  - [ ] Move `WIFI_SSID`, `WIFI_PASS` and `GEOLOCATION_API_KEY` to a
+        git-ignored `include/secrets.h`, and commit a `secrets.h.example`.
+  - [ ] Rename `data/config.json` to `data/config.example.json` and git-ignore
+        the real one. Alternatively, keep it with empty credentials only.
+- [ ] **API key transport:** stop downgrading `https://` to `http://` in
+      `fetchWeather()`. Either use HTTPS with a pinned fingerprint or CA, or
+      drop the `apikey` feature, since free Open-Meteo needs no key.
+- [ ] Document the privacy impact of Google geolocation, which sends nearby
+      BSSIDs, if that feature is kept.
+
+---
+
+## Phase 3: Robustness and performance (P1)
+
+### Network and memory
+- [ ] Call `http.setTimeout(5000)`, and show a small "updating" indicator
+      during the fetch, because the fetch blocks the loop.
+- [ ] Stream-parse with an ArduinoJson **filter**
+      (`DeserializationOption::Filter`) directly from `http.getStream()`
+      instead of `getString()`.
+- [ ] Before each fetch, log free heap and max free block. Skip the fetch
+      and log it if the heap is below about 12 KB.
+- [ ] Move `locationsJson` to `PROGMEM` (currently about 2 KB of RAM).
+- [ ] `handleApiLogs`: stream logs into the JSON array directly instead of
+      using a 2 KB stack buffer plus `strtok`.
+- [ ] Resolve the SSID location only on the connect event, not on every
+      `loop()` iteration (`WiFi.SSID()` allocates a String each time).
+- [ ] Run `updateDayNight()` about once per second, not every loop.
+
+### Data freshness
+- [ ] Mark weather as stale after 2× the fetch interval, and show a stale or
+      offline icon on the OLED.
+- [ ] Back off exponentially on failures (1, 2, 4, 8 minutes, capped at
+      15) instead of retrying every minute forever.
+- [ ] Fix the night-time fetch interval so it depends on the fixed `isNight`
+      value from 1.3.
+
+### Display
+- [ ] Call `Wire.setClock(400000)`. At 100 kHz a full frame takes about 90 ms,
+      which exceeds the 66 ms frame budget.
+- [ ] Remove the double `display.display()` (`renderPrimaryView` and
+      `renderDisplay` both flush).
+- [ ] Replace the per-pixel float `sin`/`cos` circles in `drawGiantBadge` and
+      `renderLoadingView` with `drawCircle` or precomputed tables.
+- [ ] Night mode: call `display.dim(true)` or set contrast to 0 at night, and
+      optionally blank the screen after N minutes without a touch. This is a
+      bedside device.
+- [ ] Shift the layout by a pixel now and then to reduce OLED burn-in.
+
+### Config persistence
+- [ ] Replace the six copy-pasted read-modify-write blocks in `webserver.cpp`
+      with a single `Settings::save()`.
+- [ ] Write atomically: write `/config.tmp`, then
+      `LittleFS.rename()` it over `/config.json`.
+- [ ] If `config.json` fails to parse, log it, keep the defaults, and do not
+      overwrite the file.
+- [ ] Add a `version` field to config for future migrations.
+
+### Web server
+- [ ] Return 405 for wrong methods. Currently handlers send nothing and the
+      client hangs.
+- [ ] Return 500 when a file write fails, and a JSON body on success.
+- [ ] Serve the UI from LittleFS (`data/index.html.gz`) instead of a
+      roughly 400-line string in C++. Add cache headers.
+- [ ] Add a config export and import endpoint.
+
+### Debugging
+- [ ] `Serial` is never started, and GPIO3/RX is the touch pin. Remove the
+      `Serial.print` debug paths, or put them behind a build flag that
+      disables touch. Route all diagnostics through `logMessage()` and
+      `/api/logs`.
+- [ ] Record the reset reason (`ESP.getResetReason()`) in the log at boot.
+- [ ] Move `DISPLAY_STATUS_DEBUG` out of `config.h` into a debug build env.
+
+---
+
+## Phase 4: Build, tests, CI and repo hygiene (P1)
+
+### Build
+- [ ] `platformio.ini`:
+  - [ ] Pin the platform (`platform = espressif8266@4.2.1`).
+  - [ ] Remove the framework-bundled libraries from `lib_deps`
+        (`ESP8266WebServer`, `ESP8266mDNS`, `ESP8266HTTPUpdateServer`).
+  - [ ] Add `-Wall -Wextra` to `build_flags`.
+  - [ ] Add an `[env:esp01_1m_debug]` with the debug flags.
+  - [ ] Check whether `upload_flags = --no-stub` is still needed.
+- [ ] Add `firmware/include/version.h` (or a build flag with the git hash),
+      and show the version in the web UI and `/api/status`.
+- [ ] Make `bitmaps.h` self-contained (`#include <Arduino.h>` / `<pgmspace.h>`),
+      and add a "generated by png_to_bitmap.py, do not edit" header.
+
+### Tests
+- [ ] Add `[env:native]` and move pure logic into Arduino-free modules:
+  - `ride.cpp`: `evaluateRide`, window rating, and scoring
+  - `wmo.cpp`: weather-code mapping
+  - `timing.h`: `intervalPassed`, rollover
+  - forecast parsing from a saved Open-Meteo JSON fixture
+- [ ] Add Unity tests for each, run with `pio test -e native`.
+
+### CI
+- [ ] Add `.github/workflows/ci.yml` to run `pio run`, `pio test -e native`
+      and `pio run -t buildfs` on every push and PR, and to upload
+      `firmware.bin` as an artifact.
+- [ ] Add a Python lint job (`ruff`) for `tools/`.
+
+### Repo hygiene
+- [ ] Delete the committed `tools/__pycache__/` and add `__pycache__/` and
+      `*.pyc` to `.gitignore`.
+- [ ] Remove the duplicate `firmware/.gitignore`. It is identical to the
+      root one.
+- [ ] Delete or archive `codebase_analysis.md`, `codebase_analysis_grok.md` and
+      `plans/todo.md`. They describe problems that no longer exist.
+- [ ] Split the 1,866-line `tools/png_to_bitmap.py` into `converter.py` (pure,
+      with a CLI mode for CI or regeneration) and `gui.py`. Fix `requirements.txt`:
+      `customtkinter` is listed but plain tkinter is used.
+- [ ] Generate the shared layout constants (`SKYLINE_X`, …) from one source,
+      so that `display.h` and the Python simulator cannot drift apart.
+
+---
+
+## Phase 5: Documentation (P1)
+
+- [ ] Expand `README.md` with:
+  - [ ] Photo or render, and a feature list.
+  - [ ] Bill of materials: ESP-01, SSD1306 128×64 I²C, touch module (type and
+        polarity), 3.3 V regulator.
+  - [ ] Wiring diagram: SDA=GPIO0, SCL=GPIO2, touch=GPIO3 (RX). Note the
+        GPIO0/2 boot-strap pull-up requirements, and that serial is
+        unavailable while touch is connected.
+  - [ ] Build and flash steps: `pio run -t upload`, `pio run -t uploadfs`.
+  - [ ] First boot: AP name and password, and the web UI at `motoclock.local`.
+  - [ ] Config reference for every `config.json` key.
+  - [ ] How the ride rating works (thresholds, windows).
+  - [ ] OTA update procedure.
+- [ ] Make touch polarity configurable (`TOUCH_ACTIVE_LOW`). Common TTP223
+      modules are active-high.
+
+---
+
+## Phase 6: Features (P2, after phases 1–5)
+
+- [ ] Ride score (0–100) as described in `plans/memo_09042026.md`: a baseline of 100,
+      minus penalties for deviation from 20 °C, rain, and wind above 20 km/h, plus a
+      weekend bonus. Highlight the best day in the weekly view.
+- [ ] Rain thresholds based on precipitation probability, not only mm.
+- [ ] A "best time to leave" hint from the hourly data.
+- [ ] A third view on tap: a strip showing the next 6 hours.
+- [ ] "Last updated HH:MM" and a WiFi signal icon on the OLED.
+- [ ] Configurable brightness schedule and auto-off.
+- [ ] Use the preview hour: after `previewHr`, default the display to
+      tomorrow. The setting is in `config.json` but never read.
+
+---
+
+## Suggested commit or PR sequence
+
+| # | Scope | Items |
+|---|-------|-------|
+| 1 | Touch and WiFi reliability | 1.1, 1.2, `randomSeed`, `intervalPassed` |
+| 2 | Time and forecast | 1.3, 1.4, weather-code mapping, units, single request plus filter |
+| 3 | Display completion | 1.5, 1.6, render dispatch, I²C clock, double flush |
+| 4 | Shared state and settings refactor | 1.8, atomic config writes, dead code removal |
+| 5 | Security hardening | Phase 2 |
+| 6 | CI and native tests | Phase 4 |
+| 7 | Docs and repo cleanup | Phase 4 hygiene, Phase 5 |
+| 8+ | Features | Phase 6 |
+
+Each PR should build cleanly with `pio run`. From PR 6 onward, CI should be
+green before merging.
+
+## Test checklist on hardware (every release)
+
+- [ ] Cold boot with no config: AP mode starts, and the password is shown on the OLED.
+- [ ] Configure WiFi through the web UI: the device reconnects without a power cycle.
+- [ ] Router off for 2 minutes, then on: the device recovers by itself.
+- [ ] Short tap toggles today/tomorrow. Long press toggles the weekly grid.
+- [ ] The rain animation runs smoothly and the web UI stays responsive.
+- [ ] Day/night switches at the real sunset.
+- [ ] OTA update works with credentials and is rejected without them.
+- [ ] Free heap stays stable over 24 hours (check `/api/logs`).
