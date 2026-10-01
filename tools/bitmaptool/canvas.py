@@ -134,15 +134,16 @@ class OLEDCanvas:
                 self.set_pixel(x0 - y, y0 - x, on)
                 self.set_pixel(x0 - x, y0 - y, on)
 
-    def draw_text(self, x: int, y: int, text: str, on: bool = True):
-        """Draw text with the classic 5x7 GFX font (6 px per character), like display.print()."""
+    def draw_text(self, x: int, y: int, text: str, on: bool = True, size: int = 1):
+        """Draw text with the classic 5x7 GFX font (6 px per character at size 1), like display.print()
+        after setTextSize(size): every font pixel becomes a size x size block."""
         for ch in text:
             glyph = FONT_5X7.get(ch, FONT_5X7["?"])
             for col, bits in enumerate(glyph):
                 for row in range(8):
                     if bits & (1 << row):
-                        self.set_pixel(x + col, y + row, on)
-            x += 6
+                        self.fill_rect(x + col * size, y + row * size, size, size, on)
+            x += 6 * size
 
     def blit(self, x: int, y: int, bitmap: list[list[bool]]):
         """Paste a 2D bool array at offset (x, y)."""

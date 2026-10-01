@@ -471,6 +471,23 @@ The point of the simulator is to design and verify before flashing. It has drift
 
 ---
 
+## Follow-ups after the first release
+
+- [x] Rain drop and splash sprites: four variants each (`rain_drop_1..4`, `splash_1..4`), added to
+      `tools/assets` and `bitmaps.h`. The sprite path in `display.cpp` is now compiled in and used.
+      (Five variants were considered and rejected: four is enough.)
+- [x] Next-hours view: label column (`h`, `°C`, `mm`, `%`, `kmh`) so the rows are self-explanatory.
+- [x] Clock screen: time and date (fourth long-press screen; stays until tapped). Needs NTP and the UTC
+      offset from the first forecast.
+- [ ] Remember the UTC offset across reboots (it is only learned from the first forecast, so the clock
+      shows "Time not set yet" until then).
+- [ ] The clock is a static image for long periods: the sleep timer and quiet hours cover OLED burn-in, but a
+      small periodic position shift would help.
+- [ ] Hardware check: sprite drops and splashes look right on the real panel; the clock colon blink does
+      not flicker.
+
+---
+
 ## Suggested commit or PR sequence
 
 | # | Scope | Items |

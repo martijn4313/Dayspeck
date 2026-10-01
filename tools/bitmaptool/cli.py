@@ -49,7 +49,7 @@ def cmd_export(args) -> int:
 
 def cmd_render(args) -> int:
     from .canvas import OLEDCanvas
-    from .scene import SceneComposer, SceneState, VIEW_HOURLY, VIEW_TODAY, VIEW_WEEKLY
+    from .scene import SceneComposer, SceneState, VIEW_CLOCK, VIEW_HOURLY, VIEW_TODAY, VIEW_WEEKLY
 
     state = SceneState()
     state.weather = args.weather
@@ -57,7 +57,7 @@ def cmd_render(args) -> int:
     state.badge_type = args.badge
     state.temp_str = args.temp
     state.wind_speed = args.wind
-    state.view_mode = {"weekly": VIEW_WEEKLY, "hourly": VIEW_HOURLY}.get(args.view, VIEW_TODAY)
+    state.view_mode = {"weekly": VIEW_WEEKLY, "hourly": VIEW_HOURLY, "clock": VIEW_CLOCK}.get(args.view, VIEW_TODAY)
     state.week_best_day = args.best_day
     state.tomorrow = args.tomorrow
     state.stale = args.stale
@@ -70,9 +70,12 @@ def cmd_render(args) -> int:
         state.arrow_ur_bmp = by_name.get("arrow_ur_bmp")
         state.arrow_dr_bmp = by_name.get("arrow_dr_bmp")
         state.arrow_r_bmp = by_name.get("arrow_r_bmp")
+        state.rain_sprites = [by_name[f"rain_drop_{i}_bmp"] for i in range(1, 5) if f"rain_drop_{i}_bmp" in by_name]
+        state.splash_sprites = [by_name[f"splash_{i}_bmp"] for i in range(1, 5) if f"splash_{i}_bmp" in by_name]
     canvas = OLEDCanvas()
     state.show_horizon = False
-    SceneComposer.compose(canvas, state)
+    for _ in range(max(1, args.frames)):
+        SceneComposer.compose(canvas, state)    # the rain animation advances one step per frame
     canvas.to_image(scale=args.scale).save(args.out)
     print(f"Wrote {args.out}")
     return 0
@@ -108,7 +111,7 @@ def main(argv=None) -> int:
     p = sub.add_parser("render", help="render the OLED scene to a PNG without a GUI")
     p.add_argument("--out", required=True)
     p.add_argument("--bitmaps", default="firmware/include/bitmaps.h")
-    p.add_argument("--view", choices=["today", "weekly", "hourly"], default="today")
+    p.add_argument("--view", choices=["today", "weekly", "hourly", "clock"], default="today")
     p.add_argument("--best-day", type=int, default=-1, help="weekly view: column to highlight")
     p.add_argument("--tomorrow", action="store_true", help="show the TMR tag")
     p.add_argument("--stale", action="store_true", help="show the OLD tag")
@@ -118,6 +121,7 @@ def main(argv=None) -> int:
     p.add_argument("--temp", default="12C")
     p.add_argument("--wind", type=int, default=10)
     p.add_argument("--scale", type=int, default=4)
+    p.add_argument("--frames", type=int, default=1, help="animation steps to run before the snapshot")
     p.set_defaults(func=cmd_render)
 
     args = parser.parse_args(argv)

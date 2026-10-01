@@ -639,7 +639,8 @@ static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const 
     display.print(text);
 }
 
-// Render the next hours as a strip of columns
+// Render the next hours as a strip of columns. A label column on the left names the rows:
+// h (hour), degree C, mm (rain amount, solid bar), % (chance of rain, dotted line), kmh (gusts).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
                       bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute) {
     display.clearDisplay();
@@ -652,12 +653,30 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
         return;
     }
 
-    const int colW = 21, barBottom = 44, barMax = 24;
+    const int labelW = 20, colW = 18, barBottom = 44, barMax = 24;
+
+    // Row labels
+    display.setCursor(0, 0);
+    display.print("h");
+    display.drawRect(0, 10, 3, 3, SSD1306_WHITE);             // degree sign
+    display.setCursor(5, 10);
+    display.print("C");
+    display.setCursor(0, 21);
+    display.print("mm");
+    display.fillRect(14, 22, 4, 6, SSD1306_WHITE);            // sample bar
+    display.setCursor(0, 32);
+    display.print("%");
+    for (int dx = 8; dx <= 16; dx += 2) {
+        display.drawPixel(dx, 35, SSD1306_WHITE);             // sample dotted line
+    }
+    display.setCursor(0, 47);
+    display.print("kmh");
+
     size_t cols = count < 6 ? count : 6;
     char buf[20];
     for (size_t i = 0; i < cols; i++) {
         const HourSlice& h = hours[i];
-        int x = (int)i * colW + 1;
+        int x = labelW + (int)i * colW;
 
         snprintf(buf, sizeof(buf), "%02d", (firstHour + (int)i) % 24);
         printCentered(display, x, colW, 0, buf);
@@ -673,11 +692,11 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
         if (h.rainTenthMm > 0) {
             int barH = 2 + (int)h.rainTenthMm * 6 / 10;
             if (barH > barMax) barH = barMax;
-            display.fillRect(x + 6, barBottom - barH + 1, 9, barH, SSD1306_WHITE);
+            display.fillRect(x + 5, barBottom - barH + 1, 8, barH, SSD1306_WHITE);
         }
         if (h.rainProb != 255 && h.rainProb > 0) {
             int y = barBottom - (int)h.rainProb * barMax / 100;
-            for (int dx = 2; dx < 19; dx += 2) {
+            for (int dx = 2; dx <= 16; dx += 2) {
                 display.drawPixel(x + dx, y, SSD1306_WHITE);
             }
         }
@@ -728,3 +747,40 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
         }
     }
 }
+
+// Clock screen: HH:MM in large type, weekday and date below, year at the bottom
+void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
+                     int weekday, int day, int month, int year) {
+    static const char* const DAYS[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static const char* const MONTHS[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+
+    if (!timeValid) {
+        display.setTextSize(1);
+        display.setCursor(22, 22);
+        display.print("Time not set yet");
+        display.setCursor(10, 36);
+        display.print("waiting for WiFi...");
+        return;
+    }
+
+    char buf[24];
+    display.setTextSize(3);                         // 18 px per character
+    snprintf(buf, sizeof(buf), colon ? "%02d:%02d" : "%02d %02d", hour % 24, minute % 60);
+    display.setCursor((128 - ((int)strlen(buf) * 18 - 3)) / 2, 6);
+    display.print(buf);
+
+    display.setTextSize(2);                         // 12 px per character
+    snprintf(buf, sizeof(buf), "%s %d %s", DAYS[weekday % 7], day, MONTHS[(month + 11) % 12]);
+    int w = (int)strlen(buf) * 12 - 2;
+    display.setCursor((128 - w) / 2, 37);
+    display.print(buf);
+
+    display.setTextSize(1);
+    snprintf(buf, sizeof(buf), "%d", year);
+    display.setCursor((128 - ((int)strlen(buf) * 6 - 1)) / 2, 56);
+    display.print(buf);
+}
+

@@ -99,6 +99,10 @@ void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const c
 // firstHour = local hour of hours[0]. Footer: best time to leave and the time of the last update (-1 = unknown).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
                       bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute);
+// Clock screen: time (blinking colon) and date, centred. timeValid false shows a waiting message.
+// weekday 0 = Sunday, month 1-12.
+void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
+                     int weekday, int day, int month, int year);
 // Small status marks on the primary view: "TMRW" tag and WiFi signal bars (bars 0-4, -1 = not connected)
 void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars);
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm);

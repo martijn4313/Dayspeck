@@ -40,9 +40,10 @@ python -m bitmaptool render --weather rain --night --badge warn --out rain.png
 3. `python -m bitmaptool regen assets/manifest.json`, then build the firmware.
 4. CI runs `pytest tools/tests`, which includes a check that the committed header matches the PNGs.
 
-Slots the firmware uses today: `skyline_base`, `sun`, `moon`, `arrow_ur`, `arrow_dr`, `arrow_r`. The rain
-drop and splash sprites are optional: when `RAIN_DROP_1_BMP_W` / `SPLASH_1_BMP_W` are defined in
-`bitmaps.h` the firmware draws them, otherwise it uses its procedural fallback.
+Slots the firmware uses: `skyline_base`, `sun`, `moon`, `arrow_ur`, `arrow_dr`, `arrow_r`, the four rain
+drops `rain_drop_1..4` and the four splashes `splash_1..4`. Each rain drop and splash picks one of the
+four variants at random. The sprites are optional: when `RAIN_DROP_1_BMP_W` / `SPLASH_1_BMP_W` are not
+defined in `bitmaps.h` the firmware falls back to simple procedural drops and splashes.
 
 ## Layout
 

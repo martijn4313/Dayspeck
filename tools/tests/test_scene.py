@@ -96,12 +96,23 @@ def test_best_day_is_shown_in_inverse_video():
 
 def test_hourly_view_draws_columns_bars_and_footer():
     c = render(view_mode=VIEW_HOURLY)
-    assert lit(c, 1, 0, 20, 7) > 5                 # first hour label
+    assert lit(c, 20, 0, 37, 7) > 5                # first hour label (columns start after the 20 px label area)
     # the shower in column 3 (index 3, 2.5 mm) is a tall bar, the dry first column has none
-    assert lit(c, 64 + 6, 20, 64 + 14, 44) > 100
-    assert lit(c, 1 + 6, 25, 1 + 14, 40) == 0
+    assert lit(c, 74 + 5, 20, 74 + 12, 44) > 100
+    assert lit(c, 20 + 5, 25, 20 + 12, 40) == 0
     assert lit(c, 0, 57, 64, 63) > 20 and lit(c, 70, 57, 127, 63) > 20   # leave advice and update time
     assert all(c.pixels[45][x] for x in range(128))                       # baseline
+
+
+def test_hourly_view_labels_name_every_row():
+    c = render(view_mode=VIEW_HOURLY)
+    assert lit(c, 0, 0, 5, 7) > 3                  # h
+    assert lit(c, 0, 10, 11, 17) > 8               # degree sign and C
+    assert lit(c, 0, 21, 11, 28) > 8               # mm
+    assert lit(c, 14, 22, 17, 27) == 24            # sample bar
+    assert lit(c, 0, 32, 5, 39) > 3                # %
+    assert [c.pixels[35][x] for x in range(8, 18)] == [True, False] * 5   # sample dotted line
+    assert lit(c, 0, 47, 17, 54) > 8               # kmh
 
 
 def test_hourly_view_without_data_and_with_missing_hours():
@@ -118,3 +129,39 @@ def test_status_marks():
     assert lit(full, 51, 55, 62, 63) > lit(none, 51, 55, 62, 63)
     assert lit(render(wifi_bars=-1), 55, 57, 61, 63) > 8       # cross when not connected
     assert lit(render(stale=True), 0, 0, 17, 7) > 10           # OLD tag
+
+
+def test_clock_view_shows_time_date_and_year():
+    from bitmaptool.scene import VIEW_CLOCK
+    c = render(view_mode=VIEW_CLOCK)
+    assert lit(c, 20, 6, 107, 26) > 150          # 07:45 in 3x type
+    assert lit(c, 5, 37, 122, 52) > 100          # "Thu 1 Oct" in 2x type
+    assert lit(c, 50, 56, 78, 63) > 20           # year
+    assert lit(c, 0, 0, 127, 5) == 0             # nothing above the clock
+
+
+def test_clock_colon_blinks_and_missing_time_is_explained():
+    from bitmaptool.scene import VIEW_CLOCK
+    on, off = render(view_mode=VIEW_CLOCK), render(view_mode=VIEW_CLOCK, clock_colon=False)
+    assert lit(on, 56, 6, 72, 26) > lit(off, 56, 6, 72, 26)     # the colon sits between the digit pairs
+    unset = render(view_mode=VIEW_CLOCK, clock_valid=False)
+    assert lit(unset, 22, 22, 118, 29) > 20 and lit(unset, 20, 6, 107, 20) == 0
+
+
+def test_clock_has_no_stale_tag():
+    from bitmaptool.scene import VIEW_CLOCK
+    assert lit(render(view_mode=VIEW_CLOCK, stale=True), 0, 0, 17, 5) == 0
+
+
+def test_rain_sprites_are_in_the_header_and_used():
+    from bitmaptool.convert import Converter
+    entries = {e.name: e for e in Converter.parse_entries((ROOT / "firmware/include/bitmaps.h").read_text())}
+    drops = [entries[f"rain_drop_{i}_bmp"].pixels for i in range(1, 5)]
+    splashes = [entries[f"splash_{i}_bmp"].pixels for i in range(1, 5)]
+    assert len({str(d) for d in drops}) == 4 and len({str(s) for s in splashes}) == 4   # four different variants
+    from bitmaptool.rain import RainAnimation, RainDrop, Splash
+    c = OLEDCanvas()
+    RainAnimation.draw(c, [RainDrop(x=80, y=5, target_y=41, active=True, sprite_variant=0)],
+                       [Splash(x=100, y=41, frame_counter=3, active=True, sprite_variant=1)], drops, splashes)
+    assert lit(c, 80, 5, 82, 10) == sum(map(sum, drops[0]))                 # drop sprite 1 drawn at its position
+    assert lit(c, 97, 37, 103, 40) == sum(map(sum, splashes[1]))            # splash sprite 2 centred on x=100
