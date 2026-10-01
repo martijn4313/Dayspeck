@@ -92,6 +92,16 @@ int clothingFor(float tempC, float shortsFromC, float sweaterBelowC) {
     return CLOTHES_MILD;
 }
 
+int kidsWeatherFor(int code, float windKmh, float warnWindKmh) {
+    if (code >= 95) return KIDS_WEATHER_STORM;
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return KIDS_WEATHER_RAIN;
+    if ((code >= 71 && code <= 77) || code == 85 || code == 86) return KIDS_WEATHER_SNOW;
+    if (windKmh > warnWindKmh) return KIDS_WEATHER_WIND;
+    if (code == 2) return KIDS_WEATHER_PARTLY;
+    if (code == 3 || code == 45 || code == 48) return KIDS_WEATHER_CLOUDY;   // overcast, fog
+    return KIDS_WEATHER_CLEAR;
+}
+
 int mapWeatherCode(int code, float windKmh, float warnWindKmh) {
     int condition = WEATHER_CLEAR;
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) {

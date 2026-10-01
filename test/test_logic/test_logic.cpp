@@ -186,6 +186,20 @@ void test_clothing() {
     TEST_ASSERT_EQUAL(CLOTHES_MILD, clothingFor(NAN, 20, 15));
 }
 
+void test_kids_weather() {
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWeatherFor(0, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWeatherFor(1, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_PARTLY, kidsWeatherFor(2, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, kidsWeatherFor(3, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, kidsWeatherFor(45, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(61, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(81, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_SNOW, kidsWeatherFor(73, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_STORM, kidsWeatherFor(95, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_WIND, kidsWeatherFor(1, 50, 40));    // wind replaces dry weather
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(61, 50, 40));   // but not rain
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_rate_ride_good);
@@ -202,6 +216,7 @@ int main(int, char**) {
     RUN_TEST(test_rate_window_sums_rain);
     RUN_TEST(test_rate_window_missing_hours);
     RUN_TEST(test_clothing);
+    RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
     RUN_TEST(test_wind_overrides_only_dry_weather);
     RUN_TEST(test_trend);

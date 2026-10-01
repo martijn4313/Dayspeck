@@ -46,6 +46,8 @@ bool displayDimAtNight = true;
 int  displaySleepMinutes = 0;
 int  quietStartHr = -1;
 int  quietEndHr = -1;
+bool displayAlwaysSleep = false;
+String displayLanguage = "en";
 
 // WiFi configuration (loaded from config.json)
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
@@ -160,6 +162,12 @@ void loadConfig() {
     if (doc["display"]["quietStart"].is<int>()) quietStartHr = constrain((int)doc["display"]["quietStart"], -1, 23);
     if (doc["display"]["quietEnd"].is<int>()) quietEndHr = constrain((int)doc["display"]["quietEnd"], -1, 23);
 
+    if (doc["display"]["alwaysSleep"].is<bool>()) displayAlwaysSleep = doc["display"]["alwaysSleep"];
+    if (doc["display"]["language"].is<String>()) {
+        String lang = doc["display"]["language"].as<String>();
+        if (lang == "en" || lang == "nl") displayLanguage = lang;
+    }
+
     // Weather API config
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
@@ -272,7 +280,13 @@ void renderKids() {
     float tempC = getCurrentWeather().tempC;
     int clothing = clothingFor(tempC, DEFAULT_SHORTS_FROM_C, DEFAULT_SWEATER_BELOW_C);
     float shown = (weatherUnits == "imperial") ? tempC * 9.0f / 5.0f + 32.0f : tempC;
-    renderKidsView(display, clothing, isnan(shown) ? 0 : (int)lroundf(shown));
+    bool dutch = displayLanguage == "nl";
+    if (state.displayMode == 1) {
+        WeatherData w = getCurrentWeather();
+        renderKidsWeatherView(display, kidsWeatherFor(w.code, w.windKmh, warnWindKmh), state.isNight, dutch);
+    } else {
+        renderKidsView(display, clothing, isnan(shown) ? 0 : (int)lroundf(shown), dutch);
+    }
 }
 #endif
 
@@ -342,14 +356,16 @@ void render() {
         const char* line2;
         getInitStatus(line1, line2);
         renderLoadingView(display, line1, line2, millis());
+#ifdef KIDS_MODE
+    } else if (state.weatherValid) {
+        renderKids();
+#endif
     } else if (state.displayMode == 1) {
         renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay);
     } else if (state.displayMode == 2) {
         renderHourly();
     } else {
-#ifdef KIDS_MODE
-        renderKids();
-#else
+#ifndef KIDS_MODE
         renderDisplay();
         renderStatusMarks(display, state.showTomorrow != state.previewActive, wifiBars());
 #endif
@@ -388,7 +404,12 @@ void handleTouch() {
     }
 
 #ifdef KIDS_MODE
-    // The kids view is the only view: a touch only wakes the panel
+    // Kids variant: a tap (or long press) switches between the clothes and the weather picture
+    if (event != TOUCH_NONE) {
+        state.displayMode = state.displayMode == 0 ? 1 : 0;
+        state.weeklyEnteredMs = millis();
+        state.displayDirty = true;
+    }
     event = TOUCH_NONE;
 #endif
 
@@ -432,7 +453,7 @@ void managePower() {
     }
     bool sleepy = displaySleepMinutes > 0 && state.isNight &&
                   intervalPassed(state.lastActivityMs, (unsigned long)displaySleepMinutes * 60000UL);
-    bool off = (quiet && !awake) || sleepy;
+    bool off = ((quiet || displayAlwaysSleep) && !awake) || sleepy;
 
     if (off != state.displayOff) {
         state.displayOff = off;

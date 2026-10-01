@@ -212,6 +212,8 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Tomorrow from (hour):</span> <input name="previewHr" type="number" min="0" max="24" title="24 = never"> <small>24 = never</small><br>
             <span class="label">Dim at night:</span> <input name="dimAtNight" type="checkbox"><br>
             <span class="label">Sleep at night after (min):</span> <input name="sleepMinutes" type="number" min="0" max="600"> <small>0 = never; a touch wakes it</small><br>
+            <span class="label">Always sleep:</span> <input name="alwaysSleep" type="checkbox"> <small>screen off; a touch wakes it for 30 s</small><br>
+            <span class="label">Language (kids build):</span> <select name="language"><option value="en">English</option><option value="nl">Nederlands</option></select><br>
             <span class="label">Screen off from (hour):</span> <input name="quietStart" type="number" min="-1" max="23"> <small>-1 = off</small><br>
             <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
             <button type="submit">Save Settings</button>
@@ -357,6 +359,8 @@ static const char index_html[] PROGMEM = R"HTML(
                     d.previewHr.value = s.display.previewHr;
                     d.dimAtNight.checked = s.display.dimAtNight;
                     d.sleepMinutes.value = s.display.sleepMinutes;
+                    d.alwaysSleep.checked = s.display.alwaysSleep;
+                    d.language.value = s.display.language;
                     d.quietStart.value = s.display.quietStart;
                     d.quietEnd.value = s.display.quietEnd;
 
@@ -656,6 +660,8 @@ static void handleApiStatus() {
     display["previewHr"] = previewHr;
     display["dimAtNight"] = displayDimAtNight;
     display["sleepMinutes"] = displaySleepMinutes;
+    display["alwaysSleep"] = displayAlwaysSleep;
+    display["language"] = displayLanguage;
     display["quietStart"] = quietStartHr;
     display["quietEnd"] = quietEndHr;
 
@@ -743,11 +749,16 @@ static void handleApiDisplay() {
         return;
     }
     bool dim = server.hasArg("dimAtNight");
+    bool alwaysSleep = server.hasArg("alwaysSleep");
+    String language = server.arg("language");
+    if (language != "en" && language != "nl") language = "en";
 
     bool saved = updateConfig([&](JsonDocument& doc) {
         doc["previewHr"] = preview;
         doc["display"]["dimAtNight"] = dim;
         doc["display"]["sleepMinutes"] = sleepMin;
+        doc["display"]["alwaysSleep"] = alwaysSleep;
+        doc["display"]["language"] = language;
         doc["display"]["quietStart"] = qStart;
         doc["display"]["quietEnd"] = qEnd;
     });
@@ -758,6 +769,8 @@ static void handleApiDisplay() {
     previewHr = preview;
     displayDimAtNight = dim;
     displaySleepMinutes = sleepMin;
+    displayAlwaysSleep = alwaysSleep;
+    displayLanguage = language;
     quietStartHr = qStart;
     quietEndHr = qEnd;
     state.displayDirty = true;

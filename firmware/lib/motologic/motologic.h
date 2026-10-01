@@ -71,6 +71,18 @@ int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t
 // An unknown temperature (NAN) gives the middle option.
 int clothingFor(float tempC, float shortsFromC, float sweaterBelowC);
 
+// Kids variant: which weather picture to show (day or night is chosen when drawing)
+#define KIDS_WEATHER_CLEAR   0
+#define KIDS_WEATHER_PARTLY  1
+#define KIDS_WEATHER_CLOUDY  2
+#define KIDS_WEATHER_RAIN    3
+#define KIDS_WEATHER_STORM   4
+#define KIDS_WEATHER_SNOW    5
+#define KIDS_WEATHER_WIND    6
+
+// From an Open-Meteo WMO weather code. Strong wind (above `warnWindKmh`) only replaces dry weather.
+int kidsWeatherFor(int code, float windKmh, float warnWindKmh);
+
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 
