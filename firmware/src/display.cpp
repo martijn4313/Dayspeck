@@ -59,16 +59,10 @@ void drawGiantBadge(Adafruit_SSD1306 &display, char type) {
     
     // Draw the badge symbol inside based on type
     if (type == BADGE_CHECK) {
-        // Thick checkmark: two thick lines forming a checkmark
-        // First line: top-left to center
-        for (int i = 0; i < 6; i++) {
-            display.drawPixel(cx - 14 + i, cy - 6 + i/2, SSD1306_WHITE);
-            display.drawPixel(cx - 14 + i + 1, cy - 6 + i/2, SSD1306_WHITE);
-        }
-        // Second line: center to bottom-right
-        for (int i = 0; i < 10; i++) {
-            display.drawPixel(cx - 6 + i, cy - 2 + i, SSD1306_WHITE);
-            display.drawPixel(cx - 6 + i, cy - 1 + i, SSD1306_WHITE);
+        // Thick checkmark: a short stroke down-right and a long stroke up-right, 3 px thick
+        for (int o = -1; o <= 1; o++) {
+            display.drawLine(cx - 14, cy + o, cx - 5, cy + 10 + o, SSD1306_WHITE);
+            display.drawLine(cx - 5, cy + 10 + o, cx + 14, cy - 12 + o, SSD1306_WHITE);
         }
     } else if (type == BADGE_WARN) {
         // Thick exclamation: vertical bar + bottom dot
@@ -159,17 +153,20 @@ void drawProceduralWind(Adafruit_SSD1306 &display, int speed) {
     // Only active when speed >= 25 km/h
     if (speed < 25) return;
     
-    // Draw 2-3 dashed horizontal lines at y: 5, 9, 14, x: 64-127
+    // Three dashed horizontal lines at y: 5, 9, 14 across x: 64-127
     int yPositions[] = {5, 9, 14};
+    // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on (12 px), repeated across the card
+    int pattern[] = {4, 2, 3, 1, 2};
     for (int row = 0; row < 3; row++) {
         int y = yPositions[row];
-        // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on
-        int pattern[] = {4, 2, 3, 1, 2};
         int x = 64;
-        for (int p = 0; p < 5; p++) {
-            for (int i = 0; i < pattern[p]; i++) {
-                if (x < 128) display.drawPixel(x, y, SSD1306_WHITE);
-                x++;
+        while (x < 128) {
+            for (int p = 0; p < 5; p++) {
+                bool on = (p % 2 == 0);   // entries 0, 2, 4 are dashes, 1 and 3 are gaps
+                for (int i = 0; i < pattern[p]; i++) {
+                    if (on && x < 128) display.drawPixel(x, y, SSD1306_WHITE);
+                    x++;
+                }
             }
         }
     }

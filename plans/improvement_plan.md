@@ -301,7 +301,7 @@ to the code at commit `15f953d`.
       root one.
 - [x] Archived (moved to `plans/archive/`) `codebase_analysis.md`, `codebase_analysis_grok.md` and
       `plans/todo.md`. They describe problems that no longer exist.
-- [ ] (Details in Phase 4b.) Split the 1,866-line `tools/png_to_bitmap.py` into `converter.py` (pure,
+- [x] (Details in Phase 4b.) Split the 1,866-line `tools/png_to_bitmap.py` into `converter.py` (pure,
       with a CLI mode for CI or regeneration) and `gui.py`. Fix `requirements.txt`:
       `customtkinter` is listed but plain tkinter is used.
 - [ ] Generate the shared layout constants (`SKYLINE_X`, …) from one source,
@@ -311,26 +311,34 @@ to the code at commit `15f953d`.
 
 ## Phase 4b: Python bitmap tool (`tools/png_to_bitmap.py`) (P1/P2)
 
+> **Status:** sections A-E are implemented; the tool is now the package `tools/bitmaptool` (with
+> `tools/png_to_bitmap.py` as launcher). Verified: `pytest tools/tests` (21 passed), the GUI starts and
+> switches views and colour schemes under a virtual display (xvfb), `regen --check` passes, ruff is clean.
+> The pixel-editor dialog and the animation timer were not exercised interactively.
+> Found and fixed in the firmware while syncing the simulator: the badge check mark was a thin, barely
+> recognisable stroke (now a 3 px check), and the wind effect drew only 12 pixels (hidden under the
+> temperature box) with no gaps (now repeats across the card with gaps).
+
 Review of the 1,866-line tool: a Tk GUI that converts PNGs to `PROGMEM` arrays and simulates
 the 128×64 OLED (rain animation, badge, weekly and "time" views). It compiles, but I could not run
 it headless (no `tkinter`/Pillow in the review sandbox), so the items below come from reading it.
 
 ### A. The simulator no longer matches the firmware (biggest problem)
 The point of the simulator is to design and verify before flashing. It has drifted:
-- [ ] **Weekly view:** the firmware now draws a glyph grid (`renderWeeklyMatrix`, 16 px columns,
+- [x] **Weekly view:** the firmware now draws a glyph grid (`renderWeeklyMatrix`, 16 px columns,
       day letters starting at today, AM/PM rows). The tool uses `cell_*` bitmaps (14×20) that the
       firmware never loads. Make the tool mirror the firmware layout, and drop the `cell_*` slots.
-- [ ] **Bottom card:** the firmware draws a procedural cloud, rain, snow, wind or sun icon plus
+- [x] **Bottom card:** the firmware draws a procedural cloud, rain, snow, wind or sun icon plus
       `NNkm/h` and `N.Nmm` text. The tool blits `cloud_bmp` or `rain_cloud_bmp` and draws precipitation
       bars. Port the firmware's version, or move this card to shared data (see D).
-- [ ] **Badge:** `Procedural.draw_giant_badge` uses different geometry than `drawGiantBadge`
+- [x] **Badge:** `Procedural.draw_giant_badge` uses different geometry than `drawGiantBadge`
       (for example, the "!" bar is 8 px wide in Python and 3 px in the firmware, and the check
       coordinates differ). Make one the reference and copy it.
-- [ ] **Rain constants:** `MAX_RAIN_DROPS = 40` and `MAX_SPLASHES = 30` in the tool, versus 16 and
+- [x] **Rain constants:** `MAX_RAIN_DROPS = 40` and `MAX_SPLASHES = 30` in the tool, versus 16 and
       8 in `display.h`. The preview shows far more rain than the device can.
-- [ ] **"Time" view** (`VIEW_TIME`, large digits) exists only in the tool. Either implement it in
+- [x] **"Time" view** (`VIEW_TIME`, large digits) exists only in the tool. Either implement it in
       the firmware (needs the NTP time from Phase 1) or remove it.
-- [ ] **Asset slots do not match reality:** `moon` is listed as 8×8 but `bitmaps.h` has 10×10;
+- [x] **Asset slots do not match reality:** `moon` is listed as 8×8 but `bitmaps.h` has 10×10;
       `cloud`, `rain_cloud`, `rain_drop_*`, `splash_*` and `cell_*` have no arrays in `bitmaps.h`
       (the firmware falls back to procedural drawing through `#ifdef RAIN_DROP_1_BMP_W`). Generate
       the slot list from the firmware or `bitmaps.h`, and mark each slot as "used by firmware" or
@@ -340,49 +348,49 @@ The point of the simulator is to design and verify before flashing. It has drift
       CI instead of surprising someone later.
 
 ### B. Conversion correctness
-- [ ] **Transparency:** `load_png` does `.convert("L")`, which discards alpha. Transparent pixels
+- [x] **Transparency:** `load_png` does `.convert("L")`, which discards alpha. Transparent pixels
       take whatever RGB sits under them, usually black. Composite onto black first (or treat alpha < 128
       as off) and document which one is "ink".
-- [ ] **Polarity:** add an **Invert** option and a threshold slider. Dark-on-white art currently
+- [x] **Polarity:** add an **Invert** option and a threshold slider. Dark-on-white art currently
       converts to the opposite of what was drawn. Show the 1-bit result next to the source before saving.
-- [ ] **Size check:** warn when the PNG's size differs from the slot's size (for example a 9×10
+- [x] **Size check:** warn when the PNG's size differs from the slot's size (for example a 9×10
       image for a 10×10 slot), instead of silently emitting whatever size it was.
-- [ ] **Speed:** replace per-pixel `getpixel` loops with `img.tobytes()` or `numpy`-free
+- [x] **Speed:** replace per-pixel `getpixel` loops with `img.tobytes()` or `numpy`-free
       `img.point()` plus `Image.getdata()`.
-- [ ] **Close files:** use `with Image.open(...)`.
-- [ ] **Naming:** `to_c_array` appends `_bmp` and `_BMP_W/_H`. Reject or sanitise names that are not
+- [x] **Close files:** use `with Image.open(...)`.
+- [x] **Naming:** `to_c_array` appends `_bmp` and `_BMP_W/_H`. Reject or sanitise names that are not
       valid C identifiers and name clashes with existing arrays.
 
 ### C. Safer `bitmaps.h` round trip
-- [ ] **Writing the header:** "Save" removes the old definition with a regex and appends the new one
+- [x] **Writing the header:** "Save" removes the old definition with a regex and appends the new one
       at the end of the file, so ordering and comments are lost, and a new file has no include guard
       or includes. Regenerate the whole file from a manifest (name → PNG) in a fixed order, with a
       "generated by tools/png_to_bitmap.py, do not edit" banner, `#ifndef BITMAPS_H`, and
       `#include <Arduino.h>` / `<pgmspace.h>` (which also fixes the include-order dependency noted in Phase 4).
-- [ ] **Source of truth:** keep the PNGs in `assets/` (committed) and treat `bitmaps.h` as build
+- [x] **Source of truth:** keep the PNGs in `assets/` (committed) and treat `bitmaps.h` as build
       output. At the moment the only record of the art is the header, and hand-edits in the pixel
       editor cannot be reproduced.
-- [ ] **Parser robustness:** `parse_bitmaps_h` requires the two `#define`s to follow the array
+- [x] **Parser robustness:** `parse_bitmaps_h` requires the two `#define`s to follow the array
       directly, prints warnings with `print` and skips arrays with a wrong byte count. Return the
       problems to the UI and tolerate comments and different ordering.
-- [ ] Make "Save" write atomically (temp file then rename) and keep a `.bak` copy.
-- [ ] Add a **round-trip test**: parse the committed `bitmaps.h`, re-emit it, and assert the output is
+- [x] Make "Save" write atomically (temp file then rename) and keep a `.bak` copy.
+- [x] Add a **round-trip test**: parse the committed `bitmaps.h`, re-emit it, and assert the output is
       byte-identical.
 
 ### D. Structure and maintainability
-- [ ] Split the single file (already planned in Phase 4 hygiene) into:
+- [x] Split the single file (already planned in Phase 4 hygiene) into:
       `tools/bitmaptool/convert.py` (PNG ⇄ C array, pure), `canvas.py` (`OLEDCanvas`, drawing),
       `scene.py` (`SceneComposer`, rain, procedural), `gui.py` (Tk). The first three need no `tkinter`
       or display so they can run in CI.
-- [ ] Add a CLI: `python -m bitmaptool convert in.png --name sun --out bitmaps.h`,
+- [x] Add a CLI: `python -m bitmaptool convert in.png --name sun --out bitmaps.h`,
       `... regen --manifest assets/manifest.json`, and `... render --scene rain --out preview.png`
       (headless PNG preview). Use it from CI and from a `pre-commit` check that the header is up to date.
 - [ ] **Shared constants:** `SKYLINE_X`, `HORIZON_Y`, `RAIN_FRAME_INTERVAL`, the colour of each region and
       so on are duplicated in `display.h` and the tool. Generate one from the other (a small
       `layout.json` that both a generated `layout.h` and the Python import).
-- [ ] Remove module-level mutable colours (`global OLED_ON, OLED_OFF` changed from `_on_scheme_change`);
+- [x] Remove module-level mutable colours (`global OLED_ON, OLED_OFF` changed from `_on_scheme_change`);
       pass a theme to the canvas renderer instead.
-- [ ] Move the stray `import re` inside `_on_save_h` and the imports placed after the colour constants to
+- [x] Move the stray `import re` inside `_on_save_h` and the imports placed after the colour constants to
       the top of the file; enable `ruff` (planned in CI) to catch these.
 - [ ] Use `after_cancel` on window close for the rain-animation timer; guard `_tick_rain` so it stops when
       the window is destroyed.
@@ -390,13 +398,13 @@ The point of the simulator is to design and verify before flashing. It has drift
       `list[list[bool]]`) and say so in the README.
 
 ### E. Packaging and hygiene
-- [ ] `requirements.txt` lists `customtkinter`, but the tool never imports it. Remove it, or port the GUI.
-- [ ] Delete `tools/__pycache__/` (two `.pyc` files, 233 KB, are committed) and ignore it.
+- [x] `requirements.txt` lists `customtkinter`, but the tool never imports it. Remove it, or port the GUI.
+- [x] Delete `tools/__pycache__/` (two `.pyc` files, 233 KB, are committed) and ignore it.
 - [ ] `plans/png_to_bitmap_architecture.md` describes the original design; update it after the split
       (`requirements.txt` there lists only Pillow, which is correct).
-- [ ] Add a short `tools/README.md`: install, run, the asset workflow (PNG → header → build), and how to
+- [x] Add a short `tools/README.md`: install, run, the asset workflow (PNG → header → build), and how to
       add a new sprite end to end.
-- [ ] Add pytest tests for `convert.py` (threshold, padding for widths that are not a multiple of 8,
+- [x] Add pytest tests for `convert.py` (threshold, padding for widths that are not a multiple of 8,
       MSB-first bit order, the round trip) and a smoke test that imports the scene code headless.
 
 ### F. Nice to have
