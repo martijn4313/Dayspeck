@@ -22,16 +22,9 @@
 #define API_BASE_URL        "http://api.open-meteo.com/v1/forecast"
 
 // Weather API configuration (defaults; overridden by config.json)
-#define DEFAULT_WEATHER_API_KEY ""
 #define DEFAULT_WEATHER_API_URL API_BASE_URL
 #define DEFAULT_WEATHER_UNITS    "metric"
 #define DEFAULT_WEATHER_DEBUG    false
-
-// Google Geolocation API key (optional). Leave empty to disable automatic geolocation.
-// Privacy: when enabled, the BSSID and signal strength of nearby WiFi access points are sent to Google.
-#ifndef GEOLOCATION_API_KEY
-#define GEOLOCATION_API_KEY ""
-#endif
 
 // Display (SSD1306 I2C)
 #define OLED_WIDTH      128

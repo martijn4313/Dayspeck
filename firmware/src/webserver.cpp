@@ -25,7 +25,6 @@ ESP8266WebServer server(80);
 
 #define MAX_SSID_LOCATIONS   10
 #define MAX_SSID_LEN         32
-#define MAX_API_KEY_LEN      64
 #define MAX_API_URL_LEN      128
 #define AUTH_MAX_FAILURES    10
 #define AUTH_LOCKOUT_MS      60000UL
@@ -208,9 +207,7 @@ static const char index_html[] PROGMEM = R"HTML(
     <div class="card">
         <h3>Weather API Config</h3>
         <form id="weatherApiForm">
-            <span class="label">API Key:</span> <input name="apiKey" type="password" maxlength="64" autocomplete="off" placeholder="Optional"><br>
-            <span class="label">Remove stored key:</span> <input name="clearKey" type="checkbox"><br>
-            <span class="label">API URL:</span> <input name="apiUrl" type="url" maxlength="128" value="https://api.open-meteo.com/v1/forecast"><br>
+            <span class="label">API URL:</span> <input name="apiUrl" type="url" maxlength="128" value="http://api.open-meteo.com/v1/forecast"><br>
             <span class="label">Units:</span>
             <select name="units">
                 <option value="metric">Metric</option>
@@ -341,7 +338,6 @@ static const char index_html[] PROGMEM = R"HTML(
                     t.warnWind.value = s.thresholds.warnWindKmh;
 
                     const w = document.forms.weatherApiForm;
-                    w.apiKey.placeholder = s.weatherApi.keySet ? '(key stored - leave empty to keep)' : 'Optional';
                     w.apiUrl.value = s.weatherApi.url;
                     w.units.value = s.weatherApi.units;
                     document.getElementById('weatherDebug').checked = s.weatherApi.debug;
@@ -570,19 +566,10 @@ static bool updateConfig(const std::function<void(JsonDocument&)>& mutate) {
 
 static bool validUrl(const String& url) {
     if (url.length() == 0 || url.length() > MAX_API_URL_LEN) return false;
-    if (!url.startsWith("http://") && !url.startsWith("https://")) return false;
+    if (!url.startsWith("http://")) return false;   // plain HTTP only (no TLS on the ESP8266)
     for (size_t i = 0; i < url.length(); i++) {
         char c = url[i];
         if (c <= ' ' || c == '"' || c == '\'' || c == '<' || c == '>' || c == '\\') return false;
-    }
-    return true;
-}
-
-static bool validApiKey(const String& key) {
-    if (key.length() > MAX_API_KEY_LEN) return false;
-    for (size_t i = 0; i < key.length(); i++) {
-        char c = key[i];
-        if (!isalnum((unsigned char)c) && c != '-' && c != '_') return false;
     }
     return true;
 }
@@ -620,8 +607,6 @@ static void handleApiStatus() {
         doc["locationSource"] = "Manual Selection";
     } else if (ssidBasedLocation) {
         doc["locationSource"] = "SSID-based";
-    } else if (geolocationActive) {
-        doc["locationSource"] = "Automatic Geolocation";
     } else if (manualConfigPresent) {
         doc["locationSource"] = "Configuration file";
     } else {
@@ -644,7 +629,6 @@ static void handleApiStatus() {
     doc["wifi"]["ssid"] = wifiSsid;
     doc["wifi"]["passwordSet"] = wifiPassword.length() > 0;   // the password itself is never sent
 
-    doc["weatherApi"]["keySet"] = weatherApiKey.length() > 0;  // neither is the API key
     doc["weatherApi"]["url"] = weatherApiUrl;
     doc["weatherApi"]["units"] = weatherUnits;
     doc["weatherApi"]["debug"] = weatherDebug;
@@ -805,20 +789,13 @@ static void handleApiWifiConfig() {
 }
 
 static void handleApiWeatherConfig() {
-    String apiKey = server.arg("apiKey");
     String apiUrl = server.arg("apiUrl");
     String units = server.arg("units");
     bool debug = server.hasArg("weatherDebug");
-    bool clearKey = server.hasArg("clearKey");
 
-    apiKey.trim();
     apiUrl.trim();
     if (!validUrl(apiUrl)) {
-        sendMessage(400, "The API URL must start with http:// or https:// (max 128 characters)");
-        return;
-    }
-    if (!validApiKey(apiKey)) {
-        sendMessage(400, "The API key may only contain letters, digits, - and _ (max 64 characters)");
+        sendMessage(400, "The API URL must start with http:// (max 128 characters; https is not supported)");
         return;
     }
     if (units != "metric" && units != "imperial") {
@@ -826,11 +803,7 @@ static void handleApiWeatherConfig() {
         return;
     }
 
-    // An empty key field keeps the stored key unless "remove" is ticked
-    String newKey = clearKey ? String("") : (apiKey.length() > 0 ? apiKey : weatherApiKey);
-
     bool saved = updateConfig([&](JsonDocument& doc) {
-        doc["weatherApiKey"] = newKey;
         doc["weatherApiUrl"] = apiUrl;
         doc["weatherUnits"] = units;
         doc["weatherDebug"] = debug;
@@ -840,7 +813,6 @@ static void handleApiWeatherConfig() {
         return;
     }
 
-    weatherApiKey = newKey;
     weatherApiUrl = apiUrl;
     weatherUnits = units;
     weatherDebug = debug;

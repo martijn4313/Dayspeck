@@ -12,7 +12,6 @@
 
 #include "config.h"
 #include "app_state.h"
-#include "geolocation.h"
 #include "bitmaps.h"
 #include "display.h"
 #include "weather.h"
@@ -36,7 +35,6 @@ float configLat = 51.5074;  // Default: London
 float configLon = -0.1278;
 
 // Location source flags
-bool geolocationActive = false;
 bool manualConfigPresent = false;   // config.json defines a location
 bool manualLocation = false;        // user picked a location in the web UI
 bool ssidBasedLocation = false;
@@ -46,7 +44,6 @@ String wifiSsid = WIFI_SSID;  // Default to compile-time values
 String wifiPassword = WIFI_PASS;
 
 // Weather API configuration (loaded from config.json)
-String weatherApiKey = DEFAULT_WEATHER_API_KEY;
 String weatherApiUrl = DEFAULT_WEATHER_API_URL;
 String weatherUnits = DEFAULT_WEATHER_UNITS;
 bool weatherDebug = DEFAULT_WEATHER_DEBUG;
@@ -142,7 +139,6 @@ void loadConfig() {
     loadWindow(doc["we_pm"], weekendPM);
 
     // Weather API config
-    if (doc["weatherApiKey"].is<String>()) weatherApiKey = doc["weatherApiKey"].as<String>();
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
     if (doc["weatherDebug"].is<bool>()) weatherDebug = doc["weatherDebug"].as<bool>();
@@ -346,18 +342,6 @@ void onWifiConnected() {
             }
         }
 
-        // No better source: try automatic geolocation once per boot if a key is configured
-        if (!ssidBasedLocation && !state.geolocationTried && geolocationConfigured()) {
-            state.geolocationTried = true;
-            float lat, lon;
-            if (geolocateDevice(lat, lon)) {
-                configLat = lat;
-                configLon = lon;
-                geolocationActive = true;
-            } else {
-                logMessage("Geolocation failed, using configured location");
-            }
-        }
     }
 
     state.fetchNow = true;   // location may have changed

@@ -16,8 +16,7 @@ to the code at commit `15f953d`.
 > **Status:** implemented on branch `ccr-9c0b59d9-v315pr`. `pio run` and `pio run -t buildfs` succeed
 > (flash 74 %, static RAM 47 %), but it has **not been run on hardware** yet. Run the hardware
 > checklist before merging. Notes: a short tap in the weekly view now closes it;
-> imperial mode only changes the temperature label; geolocation is wired in but only runs when a
-> real key is set in `config.h`; the "weekly view" auto-closes after 30 s.
+> imperial mode only changes the temperature label; the "weekly view" auto-closes after 30 s.
 
 ### 1.1 Long press is never detected
 - **Where:** `firmware/src/main.cpp` in `loop()` and `firmware/src/touch.cpp`
@@ -122,9 +121,8 @@ to the code at commit `15f953d`.
       the loaded config with defaults.
 - [x] Remove `setDisplayMode()` and `getDisplayMode()` from `weather.cpp`.
       They duplicate `state.displayMode` and are unused.
-- [x] `geolocation.cpp`: either wire `geolocateDevice()` in (as a fallback
-      when there is no manual or SSID location) or delete it. It also needs
-      `#include <WiFiClientSecure.h>` and a header declaration.
+- [x] `geolocation.cpp`: was dead code. Deleted together with the Google geolocation feature
+      (it needed HTTPS, which the device cannot afford; see Phase 2).
 
 ### 1.8 Duplicated struct definitions (ODR violations)
 - **Where:** `webserver.cpp` defines its own `struct SystemState` with a
@@ -157,8 +155,11 @@ to the code at commit `15f953d`.
 >   form post cannot reach it.
 > - **`data/config.json`** is kept, with empty WiFi credentials. To avoid committing your own, run
 >   `git update-index --skip-worktree firmware/data/config.json`.
-> - **API key:** when a key is set the request goes over HTTPS (never HTTP), with
->   `setInsecure()` (no certificate check). That protects against passive sniffing only.
+> - **No HTTPS, no API key, no geolocation:** the ESP8266 is too slow and too short on RAM for TLS
+>   (flash dropped from 74 % to 60 % and the heap guard no longer needs a TLS case when it was removed),
+>   and Open-Meteo's public data needs no key. The `apikey` setting, the Google geolocation feature
+>   (HTTPS-only) and the certificate-verification item were therefore removed. An `https://` API URL
+>   in an old config is downgraded to `http://`; the web UI only accepts `http://`.
 
 - [x] **Stop leaking secrets:** remove `wifi.password` and `weatherApi.key`
       from `/api/status`. Return `"passwordSet": true/false` instead.
@@ -179,21 +180,15 @@ to the code at commit `15f953d`.
       thresholds within sane ranges, SSID ≤ 32 chars, a maximum of about 10
       SSID locations. Return 400 with a message on error.
 - [x] **Secrets in the repo:**
-  - [x] Move `WIFI_SSID`, `WIFI_PASS` and `GEOLOCATION_API_KEY` to a
+  - [x] Move `WIFI_SSID` and `WIFI_PASS` to a
         git-ignored `include/secrets.h`, and commit a `secrets.h.example`.
   - [x] Rename `data/config.json` to `data/config.example.json` and git-ignore
         the real one. Alternatively, keep it with empty credentials only.
-- [ ] **Verify TLS certificates:** `fetchWeather()` and geolocation use `setInsecure()`. Pin the
-      server certificate fingerprint or ship a small CA bundle so an active attacker on the LAN cannot
-      impersonate the API.
-- [x] **API key transport:** stop downgrading `https://` to `http://` in
-      `fetchWeather()`. Either use HTTPS with a pinned fingerprint or CA, or
-      drop the `apikey` feature, since free Open-Meteo needs no key.
+- [x] **API key transport:** resolved by removing the API key and HTTPS altogether (see the status note).
 - [ ] Known limits to document in the README: Basic auth is unencrypted on the LAN (use a trusted
       network), and DNS rebinding is not blocked (consider checking the `Host` header against the
       device IP or `motoclock.local`).
-- [x] Document the privacy impact of Google geolocation, which sends nearby
-      BSSIDs, if that feature is kept.
+- [x] Privacy impact of Google geolocation: the feature was removed.
 
 ---
 

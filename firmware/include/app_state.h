@@ -34,7 +34,6 @@ struct SystemState {
     bool          mdnsStarted;
     bool          apModeStarted;
     bool          ntpStarted;
-    bool          geolocationTried;
 
     // Validity flags
     bool          weatherValid;
@@ -61,7 +60,6 @@ extern std::vector<SsidLocation> ssidLocations;
 // Location (config.json / web UI)
 extern float configLat;
 extern float configLon;
-extern bool  geolocationActive;
 extern bool  manualConfigPresent;
 extern bool  manualLocation;
 extern bool  ssidBasedLocation;
@@ -70,8 +68,7 @@ extern bool  ssidBasedLocation;
 extern String wifiSsid;
 extern String wifiPassword;
 
-// Weather API configuration (config.json / web UI)
-extern String weatherApiKey;
+// Weather API configuration (config.json / web UI). Plain HTTP only: the ESP8266 is too slow for TLS.
 extern String weatherApiUrl;
 extern String weatherUnits;   // "metric" or "imperial" (display only; API data is always metric)
 extern bool   weatherDebug;
