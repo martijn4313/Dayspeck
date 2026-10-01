@@ -17,11 +17,8 @@ void touch_init();
 // Call every loop iteration to update touch state
 void touch_update();
 
-// Get the current touch event (consumed on read)
+// Get the pending touch event (TOUCH_NONE/SHORT/LONG) and clear it.
+// Call once per loop iteration and act on the returned value: every call consumes the event.
 int touch_get_event();
-
-// Convenience checks
-bool touch_short_tap();
-bool touch_long_press();
 
 #endif // TOUCH_H

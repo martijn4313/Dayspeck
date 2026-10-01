@@ -67,13 +67,3 @@ int touch_get_event() {
     touchState = TOUCH_NONE;
     return event;
 }
-
-// Convenience check for short tap
-bool touch_short_tap() {
-    return touch_get_event() == TOUCH_SHORT;
-}
-
-// Convenience check for long press
-bool touch_long_press() {
-    return touch_get_event() == TOUCH_LONG;
-}

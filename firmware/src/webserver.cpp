@@ -2,59 +2,12 @@
 #include "webserver.h"
 #include "config.h"
 #include "weather.h"
+#include "app_state.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <vector>
 
-// System state structure (mirrored from main.cpp)
-struct SystemState {
-    uint8_t      displayMode;
-    bool         displayDirty;
-
-    // Timing
-    unsigned long lastFetchMs;
-    unsigned long nextFetchIntervalMs;
-    unsigned long lastFrameMs;
-    unsigned long lastWifiAttemptMs;
-
-    // Environment
-    bool         isNight;
-    bool         rainAnimationActive;
-
-    // Network state
-    bool         wifiConnected;
-    int8_t       wifiSignal;
-    bool         mdnsStarted;
-
-    // Validity flags
-    bool         weatherValid;
-    unsigned int weatherAge;
-    bool         timeSynced;
-};
-
-extern SystemState state;
-
 ESP8266WebServer server(80);
-
-extern float configLat;
-extern float configLon;
-extern bool geolocationActive;
-extern bool manualConfigPresent;
-extern bool manualLocation;
-extern bool ssidBasedLocation;
-
-struct SsidLocation {
-    String ssid;
-    float lat;
-    float lon;
-};
-extern std::vector<SsidLocation> ssidLocations;
-
-// Weather API config
-extern String weatherApiKey;
-extern String weatherApiUrl;
-extern String weatherUnits;
-extern bool weatherDebug;
 
 // Predefined locations: countries and cities with lat/lon
 const char* locationsJson = R"JSON(
@@ -131,20 +84,6 @@ const char* locationsJson = R"JSON(
   }
 }
 )JSON";
-
-extern float maxRainMm;
-extern float maxWindKmh;
-extern float minTempC;
-extern float warnWindKmh;
-
-extern bool wifiConnected;
-extern int8_t wifiSignal;
-extern String wifiSsid;
-extern String wifiPassword;
-
-extern bool weatherValid;
-extern unsigned int weatherAge;
-extern bool mdnsStarted;
 
 static const char index_html[] PROGMEM = R"HTML(
 <!DOCTYPE html>
@@ -568,7 +507,7 @@ static void handleApiStatus() {
     } else if (ssidBasedLocation) {
         doc["locationSource"] = "SSID-based";
     } else if (manualConfigPresent) {
-        doc["locationSource"] = "Manual Config";
+        doc["locationSource"] = "Configuration file";
     } else if (geolocationActive) {
         doc["locationSource"] = "Automatic Geolocation";
     } else {
@@ -586,8 +525,8 @@ static void handleApiStatus() {
     doc["current"]["windKmh"] = current.windKmh;
     doc["current"]["precipMm"] = current.precipMm;
 
-    doc["wifi"]["connected"] = wifiConnected;
-    doc["wifi"]["signalStrength"] = wifiSignal;
+    doc["wifi"]["connected"] = state.wifiConnected;
+    doc["wifi"]["signalStrength"] = state.wifiSignal;
     doc["wifi"]["ssid"] = wifiSsid;
     doc["wifi"]["password"] = wifiPassword;
 
@@ -605,9 +544,9 @@ static void handleApiStatus() {
     }
 
     JsonObject debug = doc["debug"].to<JsonObject>();
-    debug["weatherValid"] = weatherValid;
-    debug["weatherAge"] = weatherAge;
-    debug["mdnsStarted"] = mdnsStarted;
+    debug["weatherValid"] = state.weatherValid;
+    debug["weatherAge"] = state.weatherAge;
+    debug["mdnsStarted"] = state.mdnsStarted;
 
     String output;
     serializeJson(doc, output);
@@ -726,9 +665,9 @@ static void handleApiLogs() {
     
     // Add system debug info
     logs.add("[SYS] Free heap: " + String(system_get_free_heap_size()) + " bytes");
-    logs.add("[SYS] Weather valid: " + String(weatherValid ? "yes" : "no"));
-    logs.add("[SYS] Weather age: " + String(weatherAge) + " min");
-    logs.add("[SYS] mDNS: " + String(mdnsStarted ? "started" : "not started"));
+    logs.add("[SYS] Weather valid: " + String(state.weatherValid ? "yes" : "no"));
+    logs.add("[SYS] Weather age: " + String(state.weatherAge) + " min");
+    logs.add("[SYS] mDNS: " + String(state.mdnsStarted ? "started" : "not started"));
     
     String output;
     serializeJson(doc, output);
@@ -764,6 +703,7 @@ static void handleApiWifiConfig() {
         }
 
         // Attempt to reconnect with new credentials
+        state.disconnectedSinceMs = 0;   // restart the outage timer for the setup AP
         WiFi.disconnect();
         WiFi.begin(newSsid.c_str(), newPassword.c_str());
 

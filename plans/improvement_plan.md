@@ -13,6 +13,12 @@ to the code at commit `15f953d`.
 
 ## Phase 1: Fix what is broken now (P0)
 
+> **Status:** implemented on branch `ccr-9c0b59d9-v315pr` but **not yet compiled or run on
+> hardware** (the PlatformIO registry is blocked in the review sandbox). Run `pio run` and the
+> hardware checklist before merging. Notes: a short tap in the weekly view now closes it;
+> imperial mode only changes the temperature label; geolocation is wired in but only runs when a
+> real key is set in `config.h`; the "weekly view" auto-closes after 30 s.
+
 ### 1.1 Long press is never detected
 - **Where:** `firmware/src/main.cpp` in `loop()` and `firmware/src/touch.cpp`
 - **Problem:** `touch_short_tap()` and `touch_long_press()` each call
@@ -31,12 +37,12 @@ to the code at commit `15f953d`.
   switches back to STA. After a router reboot the clock stays offline until
   it is power-cycled.
 - **Fix:**
-  - [ ] Track `everConnected` and the time of the last disconnect. Start the AP
+  - [x] Track `everConnected` and the time of the last disconnect. Start the AP
         only if the device has never connected, or after a long outage.
-  - [ ] Use `WIFI_AP_STA` so the device keeps retrying STA while the AP is up.
-  - [ ] Call `WiFi.setAutoReconnect(true)` and `WiFi.persistent(false)`.
-  - [ ] Stop the AP again once STA reconnects.
-  - [ ] Reconnect after new credentials are saved through `/api/wifi/config`.
+  - [x] Use `WIFI_AP_STA` so the device keeps retrying STA while the AP is up.
+  - [x] Call `WiFi.setAutoReconnect(true)` and `WiFi.persistent(false)`.
+  - [x] Stop the AP again once STA reconnects.
+  - [x] Reconnect after new credentials are saved through `/api/wifi/config`.
 - **Done when:** unplugging the router for 2 minutes lets the device reconnect
   on its own.
 
@@ -47,11 +53,11 @@ to the code at commit `15f953d`.
   - The URL does not request `daily=sunrise,sunset`.
   - Open-Meteo returns ISO strings by default, and `.as<time_t>()` turns them into 0.
 - **Fix:**
-  - [ ] Call `configTime(0, 0, "pool.ntp.org", "time.google.com")` once WiFi
+  - [x] Call `configTime(0, 0, "pool.ntp.org", "time.google.com")` once WiFi
         connects, and set `timeSynced` from `time(nullptr) > 1'600'000'000`.
-  - [ ] Request `daily=sunrise,sunset` with `timeformat=unixtime`, and store
+  - [x] Request `daily=sunrise,sunset` with `timeformat=unixtime`, and store
         `utc_offset_seconds` for local-time calculations.
-  - [ ] Base the fallback night rule on local time only when `timeSynced`
+  - [x] Base the fallback night rule on local time only when `timeSynced`
         is true. Otherwise default to "day".
 - **Done when:** the moon or night overlay appears after the real sunset
   for the configured location.
@@ -67,56 +73,56 @@ to the code at commit `15f953d`.
   - `trend` is hard-coded to `'f'`.
   - "Today" always shows the AM rating, even in the evening.
 - **Fix:**
-  - [ ] Merge everything into **one** request: `current=…`,
+  - [x] Merge everything into **one** request: `current=…`,
         `hourly=temperature_2m,precipitation,precipitation_probability,wind_speed_10m,wind_gusts_10m`,
         `daily=sunrise,sunset,wind_gusts_10m_max`, `forecast_days=7`, `timeformat=unixtime`.
-  - [ ] Rate each AM/PM window from the hourly values inside it: the maximum
+  - [x] Rate each AM/PM window from the hourly values inside it: the maximum
         gust, the precipitation sum, and the minimum temperature. Use the
         existing `wd_am`, `wd_pm`, `we_am` and `we_pm` settings (start hour,
         duration) from `config.json`. They are in the file but never read.
-  - [ ] Show the next upcoming window for "today" and the first window of the
+  - [x] Show the next upcoming window for "today" and the first window of the
         next day for "tomorrow".
-  - [ ] Compute `trend` from the hourly temperature over the next 3 hours
+  - [x] Compute `trend` from the hourly temperature over the next 3 hours
         (±1 °C gives up or down, otherwise flat).
-  - [ ] Delete `updateWeeklyState()`'s separate fetch.
+  - [x] Delete `updateWeeklyState()`'s separate fetch.
 - **Done when:** AM and PM can differ, the ratings match a manual check
   against the Open-Meteo website, and each cycle makes one HTTP request.
 
 ### 1.5 The weekly view is blank and never refreshes
 - **Where:** `display.cpp: renderWeeklyMatrix()` (stub), `main.cpp` render block
 - **Fix:**
-  - [ ] Implement the grid: day letters starting from the current weekday,
+  - [x] Implement the grid: day letters starting from the current weekday,
         AM/PM row labels, and a small ✓ / ! / X glyph in each cell.
-  - [ ] Replace the special case in `loop()` with a single
+  - [x] Replace the special case in `loop()` with a single
         `render()` dispatch on `displayMode`, so both views redraw when
         `displayDirty` is set.
-  - [ ] Return to the primary view automatically after about 30 s.
+  - [x] Return to the primary view automatically after about 30 s.
 
 ### 1.6 Primary view is incomplete
-- [ ] Add a moon bitmap (`moon_bmp`) and draw it at night. There is currently a TODO in `renderSkylineCard`.
-- [ ] Show wind speed text and a cloud or rain icon in `renderBottomCard`.
-- [ ] Use the correct unit label (`C`/`F`). The label is hard-coded to `C`.
+- [x] Add a moon bitmap (`moon_bmp`) and draw it at night. There is currently a TODO in `renderSkylineCard`.
+- [x] Show wind speed text and a cloud or rain icon in `renderBottomCard`.
+- [x] Use the correct unit label (`C`/`F`). The label is hard-coded to `C`.
 
 ### 1.7 Smaller logic bugs
-- [ ] **Cache-Control is never read.** Call
+- [x] **Cache-Control is never read.** Call
       `http.collectHeaders(...)` before `GET()`, or remove the dead code.
-- [ ] **`intervalPassed()`**: remove the `if (now < lastRun) return true;`
+- [x] **`intervalPassed()`**: remove the `if (now < lastRun) return true;`
       branch. Unsigned subtraction already handles rollover. Replace the
       `millis() - interval` first-fetch trick with an explicit `fetchNow` flag.
-- [ ] **Unseeded `random()`**: call `randomSeed(ESP.getChipId() ^ micros())`
+- [x] **Unseeded `random()`**: call `randomSeed(ESP.getChipId() ^ micros())`
       in `setup()`.
-- [ ] **Weather code mapping**: handle 1–3 (cloudy), 45/48 (fog) and 85/86
+- [x] **Weather code mapping**: handle 1–3 (cloudy), 45/48 (fog) and 85/86
       (snow showers). Apply the wind override after code 0 as well. Keep the
       previous condition only when the field is missing, and log that case.
-- [ ] **Units**: rename `windspeed_unit` to `wind_speed_unit`. Either drop
-      imperial mode, or convert the thresholds and labels to match it.
-- [ ] **`manualConfigPresent`** is set whenever `config.json` parses. It
+- [x] **Units**: the API is now always requested in metric (thresholds are metric);
+      the display converts temperature to °F for `weatherUnits: "imperial"`.
+- [x] **`manualConfigPresent`** is set whenever `config.json` parses. It
       should mean "the user chose a location". Fix the location-source label.
-- [ ] Remove the dead `loadThresholds()`. If called, it would overwrite
+- [x] Remove the dead `loadThresholds()`. If called, it would overwrite
       the loaded config with defaults.
-- [ ] Remove `setDisplayMode()` and `getDisplayMode()` from `weather.cpp`.
+- [x] Remove `setDisplayMode()` and `getDisplayMode()` from `weather.cpp`.
       They duplicate `state.displayMode` and are unused.
-- [ ] `geolocation.cpp`: either wire `geolocateDevice()` in (as a fallback
+- [x] `geolocation.cpp`: either wire `geolocateDevice()` in (as a fallback
       when there is no manual or SSID location) or delete it. It also needs
       `#include <WiFiClientSecure.h>` and a header declaration.
 
@@ -125,10 +131,10 @@ to the code at commit `15f953d`.
   different layout, plus `extern SystemState state;` (the one in main.cpp is
   `static`). `SsidLocation` is also defined twice.
 - **Fix:**
-  - [ ] Create `include/app_state.h` with the shared types.
-  - [ ] Replace the mirrored extern globals (`wifiConnected`, `weatherValid`,
+  - [x] Create `include/app_state.h` with the shared types.
+  - [x] Replace the mirrored extern globals (`wifiConnected`, `weatherValid`,
         `weatherAge`, `mdnsStarted`, …) with one `const SystemState& getState()` accessor.
-  - [ ] Create `include/settings.h`: a `Settings` struct (location, thresholds, API, wifi,
+  - [x] Create `include/settings.h`: a `Settings` struct (location, thresholds, API, wifi,
         ssidLocations, windows) with `load()` and `save()`. This removes about
         15 externs.
 

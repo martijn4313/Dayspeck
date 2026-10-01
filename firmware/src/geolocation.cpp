@@ -1,14 +1,18 @@
 // MotoWeather Bedside Display — Automatic WiFi Geolocation
 // Google Geolocation API implementation for zero configuration setup
 
-#include "weather.h"
-#include "../include/config.h"
+#include "geolocation.h"
+#include "config.h"
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
 #define GEOLOCATION_API "https://www.googleapis.com/geolocation/v1/geolocate?key="
+
+bool geolocationConfigured() {
+    return strlen(GEOLOCATION_API_KEY) > 0 && strcmp(GEOLOCATION_API_KEY, "YOUR_GOOGLE_API_KEY") != 0;
+}
 
 bool geolocateDevice(float &outLat, float &outLon) {
     HTTPClient http;
