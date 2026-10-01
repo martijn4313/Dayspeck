@@ -487,6 +487,8 @@ The point of the simulator is to design and verify before flashing. It has drift
 - [x] Redrew the sun (disc with eight rays), the moon (filled crescent) and the three trend arrows (clear
       arrowheads); the sun and arrows were hard to read. The temperature box is 26 px wide and the arrow moved
       from x=87 to x=91, so a four character temperature such as "-10C" no longer runs into the arrow.
+- [x] A clear night showed the sun icon in the bottom card (while the sky showed the moon). The card now
+      shows a crescent moon with stars at night (`renderBottomCard` takes `isNight`).
 - [ ] Remember the UTC offset across reboots (it is only learned from the first forecast, so the clock
       shows "Time not set yet" until then).
 - [ ] The clock is a static image for long periods: the sleep timer and quiet hours cover OLED burn-in, but a

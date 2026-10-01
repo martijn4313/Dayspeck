@@ -412,7 +412,7 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
 }
 
 // Render bottom card — weather icon, wind and precipitation text (x: 64-127, y: 42-63)
-void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm) {
+void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm, bool isNight) {
     // Icon area: x 66-90, y 44-62
     const int ix = 66, iy = 44;
     if (weatherCondition == WEATHER_RAIN || weatherCondition == WEATHER_SNOW) {
@@ -441,6 +441,14 @@ void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windS
             display.drawFastHLine(ix, y, gustLen[i], SSD1306_WHITE);
             display.drawCircleHelper(ix + gustLen[i], y - gustR[i], gustR[i], 2 | 4, SSD1306_WHITE);
         }
+    } else if (isNight) {
+        // Clear night: crescent moon (a disc with a second disc cut out) and three stars
+        const int cx = ix + 10, cy = iy + 10;
+        display.fillCircle(cx, cy, 8, SSD1306_WHITE);
+        display.fillCircle(cx + 5, cy - 3, 7, SSD1306_BLACK);
+        display.drawPixel(ix + 18, iy + 4, SSD1306_WHITE);                 // stars (single pixels: a "+" next
+        display.drawPixel(ix + 21, iy + 11, SSD1306_WHITE);                // to the speed would read as text)
+        display.drawPixel(ix + 3, iy + 1, SSD1306_WHITE);
     } else {
         // Clear: sun with rays
         const int cx = ix + 11, cy = iy + 9;
@@ -541,7 +549,7 @@ void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, 
     display.drawLine(64, 41, 127, 41, SSD1306_WHITE);
     
     // Right bottom: renderBottomCard(...)
-    renderBottomCard(display, weatherCondition, windSpeed, precipMm);
+    renderBottomCard(display, weatherCondition, windSpeed, precipMm, isNight);
 }
 
 // Render loading view — rotating badge circle and status text

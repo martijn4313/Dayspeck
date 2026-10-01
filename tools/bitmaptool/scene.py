@@ -199,6 +199,13 @@ class SceneComposer:
                 y = iy + dy
                 canvas.draw_hline(ix, y, length)
                 canvas.draw_circle_helper(ix + length, y - r, r, 2 | 4)
+        elif state.night:
+            # Clear night: crescent moon (a disc with a second disc cut out) and three stars
+            cx, cy = ix + 10, iy + 10
+            canvas.fill_disc(cx, cy, 8)
+            canvas.fill_disc(cx + 5, cy - 3, 7, on=False)
+            for sx, sy in ((18, 4), (21, 11), (3, 1)):    # stars
+                canvas.set_pixel(ix + sx, iy + sy)
         else:
             cx, cy = ix + 11, iy + 9
             canvas.fill_disc(cx, cy, 4)

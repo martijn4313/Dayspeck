@@ -180,3 +180,15 @@ def test_rain_lands_above_the_card_divider():
     for _ in range(200):
         RainAnimation.update(drops, splashes, rng, 41, 4, 10, 8.0)
     assert all(38 <= s.y <= 41 for s in splashes if s.active) and all(38 <= d.target_y <= 41 for d in drops)
+
+
+def test_clear_night_shows_a_moon_not_a_sun_in_the_bottom_card():
+    day, night = render(weather="clear"), render(weather="clear", night=True)
+    assert lit(day, 66, 44, 90, 63) != lit(night, 66, 44, 90, 63)
+    # a crescent: the left half is solid, the right half is mostly cut away
+    left, right = lit(night, 68, 46, 76, 62), lit(night, 77, 46, 85, 62)
+    assert left > 2 * right
+    # no sun rays: the sun's top ray sits at (77, 45)-(77, 46)
+    assert not night.pixels[45][77]
+    # rain and snow keep their cloud at night
+    assert lit(render(weather="rain", night=True), 66, 44, 90, 63) == lit(render(weather="rain"), 66, 44, 90, 63)

@@ -91,7 +91,7 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity);
 
 // Composite renderers. They draw into the buffer only; the caller flushes with display.display().
 void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow);
-void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm);
+void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm, bool isNight);
 // bestDay: column to highlight (inverse header), -1 for none
 void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay);
 // Next hours (up to 6 columns): hour, temperature, rain bar (mm) with chance-of-rain tick, gusts (km/h).
