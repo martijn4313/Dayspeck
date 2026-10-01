@@ -178,7 +178,8 @@ highest-scoring day is highlighted in the week grid.
 
 ### Screen power
 
-The panel can be dimmed at night, switched off after some idle minutes at night, and switched off
+The panel can be dimmed at night (to *Night brightness*, 10 % by default; a touch gives full
+brightness for 30 s), switched off after some idle minutes at night, and switched off
 during fixed quiet hours (for example 23 to 6). A touch wakes it (the first touch only wakes it, and it
 then stays on for 30 s even in quiet hours). All of this needs the clock to be synced.
 
@@ -205,7 +206,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `weatherUnits` | `metric` or `imperial`; imperial only changes the temperature shown on the display |
 | `weatherDebug` | log extra detail to the web UI log |
 | `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
-| `display.dimAtNight` | lowest brightness at night |
+| `display.dimAtNight` | dim the panel at night |
+| `display.nightBrightness` | brightness at night in percent, 1-100 (default 10); raise it if the screen looks blank at night |
 | `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
 | `display.language` | words in the kids build: `en` (default) or `nl` |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |

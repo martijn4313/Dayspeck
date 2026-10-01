@@ -102,6 +102,12 @@ int kidsWeatherFor(int code, float windKmh, float warnWindKmh) {
     return KIDS_WEATHER_CLEAR;
 }
 
+uint8_t contrastForPercent(int percent) {
+    if (percent < 1) percent = 1;
+    if (percent > 100) percent = 100;
+    return (uint8_t)((percent * 255 + 50) / 100);
+}
+
 int mapWeatherCode(int code, float windKmh, float warnWindKmh) {
     int condition = WEATHER_CLEAR;
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) {

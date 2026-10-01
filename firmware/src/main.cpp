@@ -43,6 +43,7 @@ bool ssidBasedLocation = false;
 // Display options (loaded from config.json)
 int  previewHr = DEFAULT_PREVIEW_HR;
 bool displayDimAtNight = true;
+int  displayNightBrightness = DEFAULT_NIGHT_BRIGHTNESS_PCT;
 int  displaySleepMinutes = 0;
 int  quietStartHr = -1;
 int  quietEndHr = -1;
@@ -158,6 +159,7 @@ void loadConfig() {
     // Display options
     if (doc["previewHr"].is<int>()) previewHr = constrain((int)doc["previewHr"], 0, 24);
     if (doc["display"]["dimAtNight"].is<bool>()) displayDimAtNight = doc["display"]["dimAtNight"];
+    if (doc["display"]["nightBrightness"].is<int>()) displayNightBrightness = constrain((int)doc["display"]["nightBrightness"], 1, 100);
     if (doc["display"]["sleepMinutes"].is<int>()) displaySleepMinutes = constrain((int)doc["display"]["sleepMinutes"], 0, 600);
     if (doc["display"]["quietStart"].is<int>()) quietStartHr = constrain((int)doc["display"]["quietStart"], -1, 23);
     if (doc["display"]["quietEnd"].is<int>()) quietEndHr = constrain((int)doc["display"]["quietEnd"], -1, 23);
@@ -228,12 +230,16 @@ void updateDayNight() {
         state.displayDirty = true;
     }
 
-    // Lowest contrast at night: this is a bedside display
-    static bool dimmed = false;
-    bool wantDim = state.isNight && displayDimAtNight;
-    if (wantDim != dimmed) {
-        display.dim(wantDim);
-        dimmed = wantDim;
+    // Dimmer at night (this is a bedside display), but full brightness for 30 s after a touch.
+    // Not the library's dim(): that sets contrast 0, which is completely dark on some panels.
+    static int applied = -1;
+    bool touched = !intervalPassed(state.lastActivityMs, 30000UL);
+    int contrast = (state.isNight && displayDimAtNight && !touched)
+                   ? contrastForPercent(displayNightBrightness) : DAY_CONTRAST;
+    if (contrast != applied) {
+        display.ssd1306_command(SSD1306_SETCONTRAST);
+        display.ssd1306_command((uint8_t)contrast);
+        applied = contrast;
     }
 
     // After previewHr the default view is tomorrow; a tap flips it relative to that default
