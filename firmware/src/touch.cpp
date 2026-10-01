@@ -13,7 +13,11 @@ static bool touchHandled = false;  // prevent multiple fires
 
 // Initialize touch sensor on GPIO3 (RX pin)
 void touch_init() {
+#if TOUCH_ACTIVE_HIGH
+    pinMode(TOUCH_PIN, INPUT);
+#else
     pinMode(TOUCH_PIN, INPUT_PULLUP);
+#endif
     touchState = TOUCH_NONE;
     touchPressed = false;
     touchStartMs = 0;
@@ -25,9 +29,8 @@ void touch_init() {
 void touch_update() {
     unsigned long now = millis();
     
-    // Read GPIO3 (LOW = touched, HIGH = not touched)
-    int reading = digitalRead(TOUCH_PIN);
-    bool pressed = (reading == LOW);
+    // Read GPIO3; the polarity depends on the sensor (TOUCH_ACTIVE_HIGH in config.h)
+    bool pressed = (digitalRead(TOUCH_PIN) == (TOUCH_ACTIVE_HIGH ? HIGH : LOW));
     
     // Debounce check
     if (pressed != touchPressed) {
@@ -66,14 +69,4 @@ int touch_get_event() {
     int event = touchState;
     touchState = TOUCH_NONE;
     return event;
-}
-
-// Convenience check for short tap
-bool touch_short_tap() {
-    return touch_get_event() == TOUCH_SHORT;
-}
-
-// Convenience check for long press
-bool touch_long_press() {
-    return touch_get_event() == TOUCH_LONG;
 }

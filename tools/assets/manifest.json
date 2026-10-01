@@ -1,0 +1,30 @@
+{
+  "output": "../../firmware/include/bitmaps.h",
+  "threshold": 128,
+  "assets": {
+    "sun": {
+      "png": "sun.png",
+      "header": "sun  10x10"
+    },
+    "skyline_base": {
+      "png": "skyline_base.png",
+      "header": "skyline_base  64x30"
+    },
+    "moon": {
+      "png": "moon.png",
+      "header": "moon  10x10 crescent moon (night sky)"
+    },
+    "arrow_ur": {
+      "png": "arrow_ur.png",
+      "header": "trend arrow up-right  7x7 (temperature rising)"
+    },
+    "arrow_dr": {
+      "png": "arrow_dr.png",
+      "header": "trend arrow down-right  7x7 (temperature falling)"
+    },
+    "arrow_r": {
+      "png": "arrow_r.png",
+      "header": "trend arrow flat  7x7 (temperature steady)"
+    }
+  }
+}

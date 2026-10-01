@@ -6,6 +6,7 @@
 
 #include <Arduino.h>
 #include <Adafruit_SSD1306.h>
+#include "motologic.h"
 
 // Ride badge types
 #define BADGE_CHECK   'C'
@@ -89,11 +90,20 @@ void drawProceduralRain(Adafruit_SSD1306 &display, int intensity);
 void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity);
 void drawProceduralWind(Adafruit_SSD1306 &display, int speed);
 
-// Composite renderers
+// Composite renderers. They draw into the buffer only; the caller flushes with display.display().
 void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow);
 void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm);
-void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7]);
+// bestDay: column to highlight (inverse header), -1 for none
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay);
+// Next hours (up to 6 columns): hour, temperature, rain bar (mm) with chance-of-rain tick, gusts (km/h).
+// firstHour = local hour of hours[0]. Footer: best time to leave and the time of the last update (-1 = unknown).
+void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
+                      bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute);
+// Small status marks on the primary view: "TMRW" tag and WiFi signal bars (bars 0-4, -1 = not connected)
+void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars);
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm);
+// Setup access point instructions (full width): network name, password and IP address
+void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip);
 void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs);
 
 #endif // DISPLAY_H

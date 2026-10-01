@@ -5,68 +5,79 @@
 #define WEATHER_H
 
 #include <Arduino.h>
+#include <time.h>
+#include "app_state.h"
 
-// Weather conditions
-#define WEATHER_CLEAR   0
-#define WEATHER_RAIN    1
-#define WEATHER_SNOW    2
-#define WEATHER_WIND    3
+#include "motologic.h"   // RIDE_* ratings, WEATHER_* conditions and the pure logic
 
-// Ride ratings
-#define RIDE_GOOD       'G'
-#define RIDE_CAUTION    '!'
-#define RIDE_DONT       'X'
-
-// Weekly state arrays
+// Weekly state arrays (index 0 = today)
 extern char weekAM[7];
 extern char weekPM[7];
+// Day of week of weekAM[0]/weekPM[0] (0 = Sunday ... 6 = Saturday)
+extern uint8_t weekStartDow;
 
 // Current weather data
 struct WeatherData {
-    // Current (Real-time view)
     float tempC;        // Temperature in Celsius
     float windKmh;      // Wind speed in km/h
     float gustKmh;      // Wind gusts in km/h
     float precipMm;     // Precipitation in mm
     int   condition;    // WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_WIND
     char  trend;        // 'u' (up), 'd' (down), 'f' (flat)
-
-    // Hourly (Next 12 hours - Commute view)
-    float hourlyTemp[12], hourlyWindGusts[12];
-    int hourlyRainProb[12];
-
-    // Daily (7 Days - AI Planning view)
-    float dailyTempMax[7], dailyTempMin[7];
-    float dailyPrecip[7], dailyWindMax[7], dailyGustMax[7];
 };
 
-// Ride decision thresholds (from config or JSON)
+// Ride decision thresholds (from config.json, defaults from config.h)
 extern float maxRainMm;
 extern float maxWindKmh;
 extern float minTempC;
 extern float warnWindKmh;
+extern float rainProbPct;
 
-// Sunrise/sunset times for day/night detection
+// Ride windows (from config.json): weekday / weekend, morning / evening
+extern RideWindow weekdayAM, weekdayPM, weekendAM, weekendPM;
+
+// Sunrise/sunset (unix time, UTC) of the first forecast day, and the location's UTC offset
 extern time_t sunriseTime;
 extern time_t sunsetTime;
+extern long   utcOffsetSeconds;
 
 // API functions
+// Fetches current weather and the 7-day forecast in a single request.
+// Returns the recommended delay until the next fetch in ms, or 0 on failure.
 unsigned long fetchWeather(float lat, float lon);
-char evaluateRide(float precipMm, float gustKmh, float tempC, float windKmh);
-int getBestRideDay();
-void updateWeeklyState(float lat, float lon);
-void loadThresholds();
+
+
+// Ride score per day (0-100, weekend bonus may exceed 100; -1 = nothing rideable) and the best day
+extern int16_t weekScore[7];
+extern int8_t  weekBestDay;     // index into the week arrays, -1 = none
+
+// Forecast hours from the current hour on. Returns how many are available; `first` points at the
+// current hour and `firstEpoch` is its start (unix time, UTC).
+size_t getUpcomingHours(const HourSlice*& first, time_t& firstEpoch);
+
+// Best time to leave within the next 12 hours (a 2 hour ride, daytime only).
+// Returns false when there is no usable forecast. `hourLocal` is the local start hour.
+bool getBestLeave(int& hourLocal, bool& startNow);
+
+// Unix time of the last successful update, 0 if none (needs NTP, or the API's own clock)
+extern time_t lastUpdateEpoch;
+
+// Local time helpers (valid only when NTP has synced, see state.timeSynced)
+int  localHour();
+int  localHourOf(time_t t);   // local hour (0-23) of a unix time
+// True when the forecast was fetched on a previous local day (week arrays are shifted)
+bool forecastIsFromPastDay();
 
 // Accessors
 WeatherData getCurrentWeather();
-char getTodayRating();
-char getTomorrowRating();
-void setDisplayMode(int mode);  // 0 = primary, 1 = weekly matrix
-int getDisplayMode();
+char getTodayRating();     // next upcoming ride window today
+char getTomorrowRating();  // morning window tomorrow
 
 // Logging system
 #define MAX_LOG_ENTRIES 16
 void logMessage(const char* message);
+size_t getLogCount();
+const char* getLogEntry(size_t i);   // i = 0 is the oldest entry
 void getLogs(char* output, size_t maxLen);
 
 #endif // WEATHER_H

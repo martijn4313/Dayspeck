@@ -52,29 +52,17 @@ void drawDebugStatus(Adafruit_SSD1306 &display, const char* message) {
 void drawGiantBadge(Adafruit_SSD1306 &display, char type) {
     int cx = 32, cy = 32;
     
-    // Draw three concentric circles for thick border ring
+    // Three concentric circles for a thick border ring
     for (int r = 28; r >= 26; r--) {
-        // Draw circle using points
-        for (int angle = 0; angle < 360; angle += 2) {
-            float rad = angle * 3.14159 / 180.0;
-            int x = cx + (int)(r * cos(rad));
-            int y = cy + (int)(r * sin(rad));
-            display.drawPixel(x, y, SSD1306_WHITE);
-        }
+        display.drawCircle(cx, cy, r, SSD1306_WHITE);
     }
     
     // Draw the badge symbol inside based on type
     if (type == BADGE_CHECK) {
-        // Thick checkmark: two thick lines forming a checkmark
-        // First line: top-left to center
-        for (int i = 0; i < 6; i++) {
-            display.drawPixel(cx - 14 + i, cy - 6 + i/2, SSD1306_WHITE);
-            display.drawPixel(cx - 14 + i + 1, cy - 6 + i/2, SSD1306_WHITE);
-        }
-        // Second line: center to bottom-right
-        for (int i = 0; i < 10; i++) {
-            display.drawPixel(cx - 6 + i, cy - 2 + i, SSD1306_WHITE);
-            display.drawPixel(cx - 6 + i, cy - 1 + i, SSD1306_WHITE);
+        // Thick checkmark: a short stroke down-right and a long stroke up-right, 3 px thick
+        for (int o = -1; o <= 1; o++) {
+            display.drawLine(cx - 14, cy + o, cx - 5, cy + 10 + o, SSD1306_WHITE);
+            display.drawLine(cx - 5, cy + 10 + o, cx + 14, cy - 12 + o, SSD1306_WHITE);
         }
     } else if (type == BADGE_WARN) {
         // Thick exclamation: vertical bar + bottom dot
@@ -165,17 +153,20 @@ void drawProceduralWind(Adafruit_SSD1306 &display, int speed) {
     // Only active when speed >= 25 km/h
     if (speed < 25) return;
     
-    // Draw 2-3 dashed horizontal lines at y: 5, 9, 14, x: 64-127
+    // Three dashed horizontal lines at y: 5, 9, 14 across x: 64-127
     int yPositions[] = {5, 9, 14};
+    // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on (12 px), repeated across the card
+    int pattern[] = {4, 2, 3, 1, 2};
     for (int row = 0; row < 3; row++) {
         int y = yPositions[row];
-        // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on
-        int pattern[] = {4, 2, 3, 1, 2};
         int x = 64;
-        for (int p = 0; p < 5; p++) {
-            for (int i = 0; i < pattern[p]; i++) {
-                if (x < 128) display.drawPixel(x, y, SSD1306_WHITE);
-                x++;
+        while (x < 128) {
+            for (int p = 0; p < 5; p++) {
+                bool on = (p % 2 == 0);   // entries 0, 2, 4 are dashes, 1 and 3 are gaps
+                for (int i = 0; i < pattern[p]; i++) {
+                    if (on && x < 128) display.drawPixel(x, y, SSD1306_WHITE);
+                    x++;
+                }
             }
         }
     }
@@ -391,7 +382,7 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
     // Layer 2: if night → applyNightOverlay + blit moon; else → blit sun
     if (isNight) {
         applyNightOverlay(display);
-        // TODO: blit moon at (MOON_X, MOON_Y) when moon_bmp exists
+        display.drawBitmap(MOON_X, MOON_Y, moon_bmp, MOON_BMP_W, MOON_BMP_H, SSD1306_WHITE);
     } else {
         display.drawBitmap(SUN_X, SUN_Y, sun_bmp, SUN_BMP_W, SUN_BMP_H, SSD1306_WHITE);
     }
@@ -445,53 +436,117 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
     }
 }
 
-// Render bottom card — weather icon + wind text + precip bars
+// Render bottom card — weather icon, wind and precipitation text (x: 64-127, y: 42-63)
 void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm) {
-    // Draw at y: 32-63 in right half
-    // Blit weather icon (cloud/rain_cloud) at (64, 33)
-    // For now, just draw a simple cloud shape
-    // TODO: load cloud/rain_cloud bitmaps
-    
-    // Draw wind speed text at bottom
-    // TODO: Convert windSpeed to string and display
-    
-    // Draw precipitation bars
-    // Each bar represents 1mm, max 5 bars
-    int numBars = (int)min(precipMm, 5.0f);
-    for (int i = 0; i < numBars; i++) {
-        display.fillRect(64 + i * 8, 55, 6, 6, SSD1306_WHITE);
+    // Icon area: x 66-90, y 44-62
+    const int ix = 66, iy = 44;
+    if (weatherCondition == WEATHER_RAIN || weatherCondition == WEATHER_SNOW) {
+        // Cloud
+        display.fillCircle(ix + 7, iy + 8, 5, SSD1306_WHITE);
+        display.fillCircle(ix + 14, iy + 5, 6, SSD1306_WHITE);
+        display.fillCircle(ix + 20, iy + 9, 4, SSD1306_WHITE);
+        display.fillRect(ix + 7, iy + 8, 14, 5, SSD1306_WHITE);
+        // Falling drops (rain) or flakes (snow)
+        for (int i = 0; i < 3; i++) {
+            int x = ix + 6 + i * 7;
+            if (weatherCondition == WEATHER_RAIN) {
+                display.drawLine(x + 1, iy + 15, x - 1, iy + 19, SSD1306_WHITE);
+            } else {
+                display.drawPixel(x, iy + 16, SSD1306_WHITE);
+                display.drawPixel(x - 1, iy + 18, SSD1306_WHITE);
+            }
+        }
+    } else if (weatherCondition == WEATHER_WIND) {
+        // Three gusting lines
+        for (int i = 0; i < 3; i++) {
+            int y = iy + 4 + i * 6;
+            int len = (i == 1) ? 22 : 16;
+            display.drawFastHLine(ix, y, len, SSD1306_WHITE);
+            display.drawCircleHelper(ix + len, y - 2, 2, 2, SSD1306_WHITE);
+        }
+    } else {
+        // Clear: sun with rays
+        const int cx = ix + 11, cy = iy + 9;
+        display.fillCircle(cx, cy, 4, SSD1306_WHITE);
+        for (int a = 0; a < 8; a++) {
+            static const int8_t dx[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
+            static const int8_t dy[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+            display.drawLine(cx + dx[a] * 6, cy + dy[a] * 6, cx + dx[a] * 8, cy + dy[a] * 8, SSD1306_WHITE);
+        }
+    }
+
+    // Text column: wind speed and precipitation
+    char buf[12];
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    snprintf(buf, sizeof(buf), "%dkm/h", windSpeed);
+    display.setCursor(93, 46);
+    display.print(buf);
+    snprintf(buf, sizeof(buf), "%.1fmm", precipMm);
+    display.setCursor(93, 55);
+    display.print(buf);
+}
+
+// Draw a ride rating glyph centred on (cx, cy), about 14px square
+static void drawRatingGlyph(Adafruit_SSD1306 &display, int cx, int cy, char rating) {
+    if (rating == RIDE_GOOD) {
+        for (int o = 0; o <= 1; o++) {
+            display.drawLine(cx - 6, cy + o, cx - 2, cy + 4 + o, SSD1306_WHITE);
+            display.drawLine(cx - 2, cy + 4 + o, cx + 6, cy - 5 + o, SSD1306_WHITE);
+        }
+    } else if (rating == RIDE_CAUTION) {
+        display.fillRect(cx - 1, cy - 7, 3, 9, SSD1306_WHITE);
+        display.fillRect(cx - 1, cy + 4, 3, 3, SSD1306_WHITE);
+    } else if (rating == RIDE_DONT) {
+        for (int o = 0; o <= 1; o++) {
+            display.drawLine(cx - 6 + o, cy - 6, cx + 6 + o, cy + 6, SSD1306_WHITE);
+            display.drawLine(cx - 6 + o, cy + 6, cx + 6 + o, cy - 6, SSD1306_WHITE);
+        }
+    } else {
+        display.drawFastHLine(cx - 4, cy, 9, SSD1306_WHITE);   // unknown
     }
 }
 
-// Render weekly matrix — 7-column AM/PM grid
-void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7]) {
-    // Full 128x64 view replacing primary view
-    // 7 columns: M T W T F S S
-    // 2 rows: AM / PM
-    // Each cell: draw the ride badge character (✓, !, X)
-    
-    // Draw column headers (days)
-    const char* days[] = {"M", "T", "W", "T", "F", "S", "S"};
-    for (int i = 0; i < 7; i++) {
-        (void)days[i];  // TODO: draw day letter
-    }
-    
-    // Draw AM row
-    for (int i = 0; i < 7; i++) {
-        char badge = weekAM[i];
-        (void)badge;  // Draw small badge at position
-        // TODO: draw badge char at grid position
-    }
+// Render weekly matrix — full-screen 7-column AM/PM grid, first column is today
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay) {
+    static const char dayLetters[7] = { 'S', 'M', 'T', 'W', 'T', 'F', 'S' };   // Sunday first
+    const int labelW = 16, colW = 16;
 
-    // Draw PM row
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+
+    // Day headers (today underlined, best day in inverse video)
     for (int i = 0; i < 7; i++) {
-        char badge = weekPM[i];
-        (void)badge;  // Draw small badge at position
-        // TODO: draw badge char at grid position
+        int x = labelW + i * colW + colW / 2 - 3;
+        bool best = (i == bestDay);
+        if (best) {
+            display.fillRect(labelW + i * colW, 0, colW, 11, SSD1306_WHITE);
+        }
+        display.setTextColor(best ? SSD1306_BLACK : SSD1306_WHITE);
+        display.setCursor(x, 1);
+        display.print(dayLetters[(startDow + i) % 7]);
+    }
+    display.setTextColor(SSD1306_WHITE);
+    display.drawFastHLine(labelW + 2, 10, colW - 4, bestDay == 0 ? SSD1306_BLACK : SSD1306_WHITE);   // underline today
+    display.drawFastHLine(0, 12, 128, SSD1306_WHITE);
+
+    // Row labels
+    display.setCursor(1, 24);
+    display.print("AM");
+    display.setCursor(1, 49);
+    display.print("PM");
+    display.drawFastHLine(0, 38, 128, SSD1306_WHITE);
+
+    // Ride badges
+    for (int i = 0; i < 7; i++) {
+        int cx = labelW + i * colW + colW / 2;
+        drawRatingGlyph(display, cx, 26, weekAM[i]);
+        drawRatingGlyph(display, cx, 51, weekPM[i]);
     }
 }
 
-// Render primary view — full composite display
+// Render primary view — full composite display (caller flushes with display.display())
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm) {
     // Clear the display first
     display.clearDisplay();
@@ -510,9 +565,6 @@ void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, 
     
     // Right bottom: renderBottomCard(...)
     renderBottomCard(display, weatherCondition, windSpeed, precipMm);
-    
-    // Update the display
-    display.display();
 }
 
 // Render loading view — rotating badge circle and status text
@@ -525,13 +577,22 @@ void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char*
     int startAngle = (timeMs % 1000) * 360 / 1000;
     int endAngle = startAngle + 270; // 270 degree arc
     
+    // Sine/cosine table in 4 degree steps (x256), built once: float trig per pixel is slow
+    static int16_t cosTable[90], sinTable[90];
+    static bool tablesReady = false;
+    if (!tablesReady) {
+        for (int i = 0; i < 90; i++) {
+            float rad = i * 4 * 3.14159f / 180.0f;
+            cosTable[i] = (int16_t)(cos(rad) * 256);
+            sinTable[i] = (int16_t)(sin(rad) * 256);
+        }
+        tablesReady = true;
+    }
+
     for (int r = 28; r >= 26; r--) {
         for (int angle = startAngle; angle < endAngle; angle += 4) {
-            int a = angle % 360;
-            float rad = a * 3.14159 / 180.0;
-            int x = cx + (int)(r * cos(rad));
-            int y = cy + (int)(r * sin(rad));
-            display.drawPixel(x, y, SSD1306_WHITE);
+            int i = (angle % 360) / 4;
+            display.drawPixel(cx + ((r * cosTable[i]) >> 8), cy + ((r * sinTable[i]) >> 8), SSD1306_WHITE);
         }
     }
     
@@ -551,5 +612,119 @@ void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char*
         display.print(line2);
     }
     
-    display.display();
+}
+
+// Render setup AP instructions — full 128x64 text screen
+void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print("Setup: join WiFi");
+    display.setCursor(0, 14);
+    display.print(ssid);
+    display.setCursor(0, 26);
+    display.print("pw ");
+    display.print(password);
+    display.setCursor(0, 40);
+    display.print("then open");
+    display.setCursor(0, 52);
+    display.print(ip);
+}
+
+// Centre a short number in a column of width w starting at x
+static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const char* text) {
+    int textW = (int)strlen(text) * 6 - 1;
+    display.setCursor(x + (w - textW) / 2, y);
+    display.print(text);
+}
+
+// Render the next hours as a strip of columns
+void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
+                      bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+
+    if (count == 0) {
+        display.setCursor(16, 28);
+        display.print("No hourly data");
+        return;
+    }
+
+    const int colW = 21, barBottom = 44, barMax = 24;
+    size_t cols = count < 6 ? count : 6;
+    char buf[20];
+    for (size_t i = 0; i < cols; i++) {
+        const HourSlice& h = hours[i];
+        int x = (int)i * colW + 1;
+
+        snprintf(buf, sizeof(buf), "%02d", (firstHour + (int)i) % 24);
+        printCentered(display, x, colW, 0, buf);
+
+        if (!h.valid) {
+            printCentered(display, x, colW, 22, "--");
+            continue;
+        }
+        snprintf(buf, sizeof(buf), "%d", h.tempC);
+        printCentered(display, x, colW, 10, buf);
+
+        // Rain: bar for the amount, dotted line at the chance of rain
+        if (h.rainTenthMm > 0) {
+            int barH = 2 + (int)h.rainTenthMm * 6 / 10;
+            if (barH > barMax) barH = barMax;
+            display.fillRect(x + 6, barBottom - barH + 1, 9, barH, SSD1306_WHITE);
+        }
+        if (h.rainProb != 255 && h.rainProb > 0) {
+            int y = barBottom - (int)h.rainProb * barMax / 100;
+            for (int dx = 2; dx < 19; dx += 2) {
+                display.drawPixel(x + dx, y, SSD1306_WHITE);
+            }
+        }
+
+        snprintf(buf, sizeof(buf), "%d", h.gustKmh);
+        printCentered(display, x, colW, 47, buf);
+    }
+    display.drawFastHLine(0, barBottom + 1, 128, SSD1306_WHITE);
+
+    // Footer: best time to leave, time of the last update
+    display.setCursor(0, 57);
+    if (hasLeave) {
+        if (leaveNow) {
+            display.print("Leave now");
+        } else {
+            snprintf(buf, sizeof(buf), "Best %02d:00", leaveHour % 24);
+            display.print(buf);
+        }
+    }
+    if (updHour >= 0) {
+        snprintf(buf, sizeof(buf), "upd %02d:%02d", updHour % 24, updMinute % 60);
+        display.setCursor(128 - (int)strlen(buf) * 6 + 1, 57);
+        display.print(buf);
+    }
+}
+
+// Status marks in the free corners of the primary view's left half
+void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars) {
+    if (showTomorrow) {
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        display.setCursor(0, 57);
+        display.print("TMR");
+    }
+    if (wifiBars < 0) {
+        // Not connected: a small cross where the bars would be
+        display.drawLine(55, 57, 61, 63, SSD1306_WHITE);
+        display.drawLine(61, 57, 55, 63, SSD1306_WHITE);
+        return;
+    }
+    for (int i = 0; i < 4; i++) {
+        int x = 51 + i * 3;
+        int h = 2 + i * 2;
+        if (i < wifiBars) {
+            display.fillRect(x, 64 - h, 2, h, SSD1306_WHITE);
+        } else {
+            display.drawPixel(x, 63, SSD1306_WHITE);
+        }
+    }
 }

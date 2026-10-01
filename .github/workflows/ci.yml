@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Unit tests (host)
+        run: pio test -e native
+
+      - name: Build firmware
+        run: pio run -e esp01_1m
+
+      - name: Build debug firmware
+        run: pio run -e esp01_1m_debug
+
+      - name: Build filesystem image
+        run: pio run -e esp01_1m -t buildfs
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            .pio/build/esp01_1m/firmware.bin
+            .pio/build/esp01_1m/littlefs.bin
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r tools/requirements-dev.txt
+      - name: Lint tools (syntax errors, undefined names, unused imports)
+        run: ruff check tools --select E9,F63,F7,F82,F401,F811
+      - name: Tests
+        run: cd tools && python -m pytest tests
+      - name: bitmaps.h matches its PNG sources
+        run: cd tools && python -m bitmaptool regen assets/manifest.json --check
