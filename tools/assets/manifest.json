@@ -4,7 +4,7 @@
   "assets": {
     "sun": {
       "png": "sun.png",
-      "header": "sun  10x10"
+      "header": "sun  10x10 sun with rays"
     },
     "skyline_base": {
       "png": "skyline_base.png",

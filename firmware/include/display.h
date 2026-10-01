@@ -34,7 +34,7 @@
 #define MOON_Y          2
 #define TEMP_X          65
 #define TEMP_Y          1
-#define ARROW_X         87
+#define ARROW_X         91    // right of a 4 character temperature such as "-10C"
 #define ARROW_Y         1
 
 // Rain animation constants

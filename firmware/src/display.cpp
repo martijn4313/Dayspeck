@@ -378,7 +378,7 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
     
     // Layer 4: draw tempStr text at (TEMP_X, TEMP_Y) with black background box
     // First draw black box behind text for readability
-    display.fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, SSD1306_BLACK);
+    display.fillRect(TEMP_X - 1, TEMP_Y - 1, 26, 10, SSD1306_BLACK);
     
     // Draw temperature text
     display.setTextSize(1);

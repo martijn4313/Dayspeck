@@ -10,9 +10,9 @@ ASSET_SLOTS = [
     ("skyline_base",  "64×30",  "City skyline silhouette (30px tall)", 64, 12),
     ("sun",           "10×10",  "Sun icon (daytime sky)", 116, 2),
     ("moon",          "10×10",  "Moon icon (night sky)", 116, 2),
-    ("arrow_ur",      "7×7",    "Trend arrow — up-right", 87, 1),
-    ("arrow_dr",      "7×7",    "Trend arrow — down-right", 87, 1),
-    ("arrow_r",       "7×7",    "Trend arrow — flat", 87, 1),
+    ("arrow_ur",      "7×7",    "Trend arrow — up-right", 91, 1),
+    ("arrow_dr",      "7×7",    "Trend arrow — down-right", 91, 1),
+    ("arrow_r",       "7×7",    "Trend arrow — flat", 91, 1),
     # ── Rain animation sprites ─────────────────────────────────────────────
     ("rain_drop_1",   "3×6",    "Rain drop variant 1", 64, 0),
     ("rain_drop_2",   "3×6",    "Rain drop variant 2", 64, 0),

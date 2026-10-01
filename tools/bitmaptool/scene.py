@@ -169,8 +169,8 @@ class SceneComposer:
         elif state.weather == "snow":
             Procedural.draw_procedural_snow(canvas, state.intensity, state.seed)
 
-        # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, BLACK)), then the trend arrow
-        canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 20, 10, on=False)
+        # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 26, 10, BLACK)), then the trend arrow
+        canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 26, 10, on=False)
         if state.temp_str:
             canvas.draw_text(TEMP_X, TEMP_Y, state.temp_str)
         arrow = {"up": state.arrow_ur_bmp, "down": state.arrow_dr_bmp}.get(state.trend, state.arrow_r_bmp)

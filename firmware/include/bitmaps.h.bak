@@ -70,4 +70,60 @@ const uint8_t PROGMEM arrow_r_bmp[] = {
 #define ARROW_R_BMP_W  7
 #define ARROW_R_BMP_H  7
 
+// rain_drop_1  3x6 slanted streak
+const uint8_t PROGMEM rain_drop_1_bmp[] = {
+    0x20, 0x20, 0x40, 0x40, 0x80, 0x80,
+};
+#define RAIN_DROP_1_BMP_W  3
+#define RAIN_DROP_1_BMP_H  6
+
+// rain_drop_2  3x6 upright streak
+const uint8_t PROGMEM rain_drop_2_bmp[] = {
+    0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
+};
+#define RAIN_DROP_2_BMP_W  3
+#define RAIN_DROP_2_BMP_H  6
+
+// rain_drop_3  2x5 short slanted streak
+const uint8_t PROGMEM rain_drop_3_bmp[] = {
+    0x40, 0x40, 0x80, 0x80, 0x80,
+};
+#define RAIN_DROP_3_BMP_W  2
+#define RAIN_DROP_3_BMP_H  5
+
+// rain_drop_4  2x4 short fast streak
+const uint8_t PROGMEM rain_drop_4_bmp[] = {
+    0x40, 0x40, 0x80, 0x80,
+};
+#define RAIN_DROP_4_BMP_W  2
+#define RAIN_DROP_4_BMP_H  4
+
+// splash_1  7x4 crown
+const uint8_t PROGMEM splash_1_bmp[] = {
+    0x10, 0x28, 0x44, 0x82,
+};
+#define SPLASH_1_BMP_W  7
+#define SPLASH_1_BMP_H  4
+
+// splash_2  7x4 wide ripple
+const uint8_t PROGMEM splash_2_bmp[] = {
+    0x00, 0x28, 0x44, 0xC6,
+};
+#define SPLASH_2_BMP_W  7
+#define SPLASH_2_BMP_H  4
+
+// splash_3  7x4 small
+const uint8_t PROGMEM splash_3_bmp[] = {
+    0x00, 0x10, 0x28, 0x44,
+};
+#define SPLASH_3_BMP_W  7
+#define SPLASH_3_BMP_H  4
+
+// splash_4  7x4 droplets
+const uint8_t PROGMEM splash_4_bmp[] = {
+    0x82, 0x44, 0x28, 0x00,
+};
+#define SPLASH_4_BMP_W  7
+#define SPLASH_4_BMP_H  4
+
 #endif // BITMAPS_H

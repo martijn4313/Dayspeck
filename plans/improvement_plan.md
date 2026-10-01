@@ -484,6 +484,9 @@ The point of the simulator is to design and verify before flashing. It has drift
 - [x] Wind: removed the dashed lines in the sky (they collided with the temperature box, skyline and moon
       and duplicated the icon) and redrew the bottom-card wind icon as three gusts of different lengths with
       curls, leaving a gap before the speed text. The `Wind Effect` entry is gone from the tool's GUI.
+- [x] Redrew the sun (disc with eight rays), the moon (filled crescent) and the three trend arrows (clear
+      arrowheads); the sun and arrows were hard to read. The temperature box is 26 px wide and the arrow moved
+      from x=87 to x=91, so a four character temperature such as "-10C" no longer runs into the arrow.
 - [ ] Remember the UTC offset across reboots (it is only learned from the first forecast, so the clock
       shows "Time not set yet" until then).
 - [ ] The clock is a static image for long periods: the sleep timer and quiet hours cover OLED burn-in, but a
