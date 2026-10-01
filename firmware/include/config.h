@@ -43,9 +43,9 @@
 
 // Ride decision thresholds (defaults; overridden by config.json)
 #define DEFAULT_MAX_RAIN_MM   2.0
-#define DEFAULT_MAX_WIND_KMH  45
+#define DEFAULT_MAX_WIND_KMH  60   // gusts above this: do not ride
 #define DEFAULT_MIN_TEMP_C    5
-#define DEFAULT_WARN_WIND_KMH 25
+#define DEFAULT_WARN_WIND_KMH 40   // gusts above this: caution
 #define DEFAULT_PREVIEW_HR    24   // 24 = never switch the default view to tomorrow
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 

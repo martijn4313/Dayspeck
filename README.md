@@ -90,8 +90,8 @@ rated by its **worst hour**:
 
 | Rating | Condition (defaults) |
 |--------|----------------------|
-| ✗ don't ride | rain over the window > 2.0 mm, or gusts > 45 km/h |
-| ! caution | any rain, temperature < 5 °C, gusts > 25 km/h, or a chance of rain of 50 % or more |
+| ✗ don't ride | rain over the window > 2.0 mm, or gusts > 60 km/h |
+| ! caution | any rain, temperature < 5 °C, gusts > 40 km/h, or a chance of rain of 50 % or more |
 | ✓ good | none of the above |
 
 *Today* shows the morning ride until its window is over, then the evening ride. *Tomorrow* shows
@@ -125,7 +125,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `thresholds.maxRainMm` | rain over a ride window above which you should not ride |
 | `thresholds.maxWindKmh` | gust speed above which you should not ride |
 | `thresholds.minTempC` | below this the rating is "caution" |
-| `thresholds.warnWindKmh` | gusts above this give "caution" (also shows the wind symbol) |
+| `thresholds.warnWindKmh` | gusts above this give "caution" |
 | `thresholds.rainProbPct` | a chance of rain from this percentage on gives "caution"; 101 switches it off |
 | `wd_am`, `wd_pm` | weekday morning / evening ride window: `[start hour, hours]` |
 | `we_am`, `we_pm` | the same for Saturday and Sunday |

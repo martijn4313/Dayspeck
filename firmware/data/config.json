@@ -14,9 +14,9 @@
    "previewHr": 17,
    "thresholds": {
       "maxRainMm": 2.0,
-      "maxWindKmh": 45,
+      "maxWindKmh": 60,
       "minTempC": 5,
-      "warnWindKmh": 25,
+      "warnWindKmh": 40,
       "rainProbPct": 50
    },
    "ssidLocations": []

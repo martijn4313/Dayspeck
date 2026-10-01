@@ -3,7 +3,7 @@
 #include <math.h>
 #include "motologic.h"
 
-static const RideThresholds T = { 2.0f, 45.0f, 5.0f, 25.0f, 50.0f };   // the config.h defaults
+static const RideThresholds T = { 2.0f, 60.0f, 5.0f, 40.0f, 50.0f };   // the config.h defaults
 
 void setUp() {}
 void tearDown() {}
@@ -15,17 +15,17 @@ void test_rate_ride_good() {
 void test_rate_ride_caution() {
     TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 0.5f, 10, 15));   // light rain
     TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 0, 10, 3));       // cold
-    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 0, 30, 15));      // gusty
+    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 0, 45, 15));      // gusty
 }
 
 void test_rate_ride_dont() {
     TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateRide(T, 3, 10, 15));         // heavy rain
-    TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateRide(T, 0, 50, 15));         // storm gusts
+    TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateRide(T, 0, 65, 15));         // storm gusts
 }
 
 void test_rate_ride_thresholds_are_exclusive() {
-    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 2.0f, 45.0f, 15));   // exactly at the maximum
-    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateRide(T, 0, 25.0f, 5.0f));       // exactly at the warnings
+    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 2.0f, 60.0f, 15));   // exactly at the maximum
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateRide(T, 0, 40.0f, 5.0f));       // exactly at the warnings
 }
 
 void test_rate_window_uses_worst_hour() {

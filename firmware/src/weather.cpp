@@ -14,6 +14,7 @@
 #define MAX_WINDOW_HOURS     24
 #define MIN_FREE_HEAP_BYTES  20000
 #define DEFAULT_FETCH_MS     900000UL
+#define WIND_SYMBOL_KMH      25     // sustained wind from which the wind symbol replaces clear weather (matches the display effect)
 
 // Weekly state arrays
 char weekAM[7] = { RIDE_UNKNOWN, RIDE_UNKNOWN, RIDE_UNKNOWN, RIDE_UNKNOWN, RIDE_UNKNOWN, RIDE_UNKNOWN, RIDE_UNKNOWN };
@@ -115,7 +116,7 @@ static bool parseForecast(JsonDocument& doc) {
     if (current["wind_speed_10m"].is<float>())   w.windKmh = current["wind_speed_10m"].as<float>();
     if (current["wind_gusts_10m"].is<float>())   w.gustKmh = current["wind_gusts_10m"].as<float>();
     if (current["weather_code"].is<int>()) {
-        w.condition = mapWeatherCode(current["weather_code"].as<int>(), w.windKmh, warnWindKmh);
+        w.condition = mapWeatherCode(current["weather_code"].as<int>(), w.windKmh, WIND_SYMBOL_KMH);
     } else {
         logMessage("Weather API: weather_code missing, keeping previous condition");
     }
