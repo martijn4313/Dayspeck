@@ -1,7 +1,17 @@
 # MotoClock
 
-A bedside weather display for motorcyclists, on an ESP8266 (ESP-01) with a 128×64 SSD1306 OLED.
-It answers one question at a glance: **can I ride today?**
+<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (t-shirt and shorts, 24, WARM)" width="640"></p>
+
+A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
+It comes in two flavours, built from the same code:
+
+- **Rider** (default): answers one question at a glance, **can I ride today?**
+- **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I wear
+  today?** with a picture, a number and a short word. [Jump to the kids variant](#kids-variant-what-do-i-wear-today).
+
+## Rider variant
+
+<p align="center"><img src="docs/images/rider-today.png" alt="Three rider screens: good (check mark), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, strong wind)" width="860"></p>
 
 - **Left half:** a big ride badge — ✓ good, ! caution, X don't ride.
 - **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
@@ -25,7 +35,14 @@ It answers one question at a glance: **can I ride today?**
 - **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
 
+The other screens, in order: the week grid, the next hours and the clock.
+
+<p align="center"><img src="docs/images/rider-views.png" alt="Week grid with the best day highlighted, next-hours view and clock" width="860"></p>
+
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
+
+*The screenshots in this README are renders of the firmware's drawing code (the host simulator in
+[`tools/`](tools/README.md) and a host build of the kids screens), not photos of the device.*
 
 ## Kids variant: what do I wear today?
 
@@ -33,6 +50,8 @@ A second firmware build for children of about 4-5 who are starting to read. Inst
 rating it shows what to wear and what the weather is like, with big shapes and as little text as
 possible. A tap on the touch sensor switches between the two screens (they close by themselves after
 30 s).
+
+<p align="center"><img src="docs/images/kids-clothes.png" alt="Kids clothes screens: 24 WARM with t-shirt and shorts, 17 MILD with a t-shirt, 9 COOL with a sweater" width="860"></p>
 
 **Clothes screen**
 
@@ -44,6 +63,8 @@ possible. A tap on the touch sensor switches between the two screens (they close
 
 The left half shows the clothes, the right half the current temperature as a big number (a number
 to read, no unit) and a short word.
+
+<p align="center"><img src="docs/images/kids-weather.png" alt="Kids weather screens: SUN, RAIN, STORM and SNOW" width="640"></p>
 
 **Weather screen:** a big picture (sun or moon, partly cloudy, cloud, rain, thunderstorm, snow, wind)
 with its name: `SUN`/`ZON`, `MOON`/`MAAN`, `CLOUD`/`WOLK`, `RAIN`/`REGEN`, `STORM`/`ONWEER`,
@@ -60,6 +81,19 @@ pio run -e esp01_1m_kids -t upload
 ```
 
 ## Hardware
+
+Designed for a bare ESP-01 and a 0.96" SSD1306 module, wired as below. Cheap "mini weather clock" DIY
+soldering kits (an ESP8266 board, a 0.96" OLED and an acrylic case, a few euros on AliExpress) use
+the same chip family and the same kind of display, so they are good candidates. **They are untested
+with this firmware.** Check three things before you flash one:
+
+- the display is an SSD1306 at address `0x3C` (some 0.96" modules use an SH1106 or a different address);
+- which GPIOs the OLED and the button or touch pad use: set `OLED_SDA`, `OLED_SCL` and `TOUCH_PIN` in
+  `firmware/include/config.h`;
+- the flash size: the `esp01_1m` environment assumes 1 MB, so a board with 4 MB (NodeMCU, ESP-12F)
+  needs its own environment in `platformio.ini` (`board = esp12e` or `nodemcuv2`).
+
+A kit without a touch pad or button can use any momentary switch to ground on a free GPIO.
 
 | Part | Notes |
 |------|-------|
@@ -144,7 +178,8 @@ highest-scoring day is highlighted in the week grid.
 
 ### Screen power
 
-The panel can be dimmed at night, switched off after some idle minutes at night, and switched off
+The panel can be dimmed at night (to *Night brightness*, 10 % by default; a touch gives full
+brightness for 30 s), switched off after some idle minutes at night, and switched off
 during fixed quiet hours (for example 23 to 6). A touch wakes it (the first touch only wakes it, and it
 then stays on for 30 s even in quiet hours). All of this needs the clock to be synced.
 
@@ -171,7 +206,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `weatherUnits` | `metric` or `imperial`; imperial only changes the temperature shown on the display |
 | `weatherDebug` | log extra detail to the web UI log |
 | `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
-| `display.dimAtNight` | lowest brightness at night |
+| `display.dimAtNight` | dim the panel at night |
+| `display.nightBrightness` | brightness at night in percent, 1-100 (default 10); raise it if the screen looks blank at night |
 | `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
 | `display.language` | words in the kids build: `en` (default) or `nl` |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
@@ -252,6 +288,7 @@ A build without a key accepts unsigned images; upload a compressed one
 firmware/src, include   device code (display, touch, weather, web server, main loop)
 firmware/lib/motologic  pure logic, unit tested on the host
 firmware/data           files for the LittleFS filesystem (config.json)
+docs/images             the screenshots used in this README
 test/                   host-side unit tests
 tools/                  png_to_bitmap.py — bitmap converter and OLED simulator (see tools/README.md)
 tools/ota_tool.py       signing key, image signing and release manifest for OTA updates

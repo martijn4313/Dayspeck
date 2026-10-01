@@ -83,6 +83,10 @@ int clothingFor(float tempC, float shortsFromC, float sweaterBelowC);
 // From an Open-Meteo WMO weather code. Strong wind (above `warnWindKmh`) only replaces dry weather.
 int kidsWeatherFor(int code, float windKmh, float warnWindKmh);
 
+// SSD1306 contrast for a brightness percentage (clamped to 1-100). Never 0: on some panels
+// contrast 0 is completely dark.
+uint8_t contrastForPercent(int percent);
+
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 

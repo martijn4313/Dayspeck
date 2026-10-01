@@ -55,6 +55,11 @@
 #define DEFAULT_SHORTS_FROM_C   20
 #define DEFAULT_SWEATER_BELOW_C 15
 
+// Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
+// config.json "display.nightBrightness")
+#define DAY_CONTRAST                0xCF   // the Adafruit library's default for SSD1306_SWITCHCAPVCC
+#define DEFAULT_NIGHT_BRIGHTNESS_PCT 10
+
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes
 

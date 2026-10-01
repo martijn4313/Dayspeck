@@ -242,6 +242,14 @@ void test_hex_to_bytes() {
     TEST_ASSERT_FALSE(hexToBytes(nullptr, b, 3));
 }
 
+void test_contrast_for_percent() {
+    TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(1));
+    TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(0));      // never 0 (dark on some panels)
+    TEST_ASSERT_EQUAL_UINT8(26, contrastForPercent(10));
+    TEST_ASSERT_EQUAL_UINT8(255, contrastForPercent(100));
+    TEST_ASSERT_EQUAL_UINT8(255, contrastForPercent(150));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_rate_ride_good);
@@ -258,6 +266,7 @@ int main(int, char**) {
     RUN_TEST(test_rate_window_sums_rain);
     RUN_TEST(test_rate_window_missing_hours);
     RUN_TEST(test_clothing);
+    RUN_TEST(test_contrast_for_percent);
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
     RUN_TEST(test_wind_overrides_only_dry_weather);
