@@ -27,6 +27,38 @@ It answers one question at a glance: **can I ride today?**
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
+## Kids variant: what do I wear today?
+
+A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
+rating it shows what to wear and what the weather is like, with big shapes and as little text as
+possible. A tap on the touch sensor switches between the two screens (they close by themselves after
+30 s).
+
+**Clothes screen**
+
+| Temperature | Picture | Word (English / Dutch) |
+|-------------|---------|------------------------|
+| 20 °C and up | t-shirt and shorts | `WARM` / `WARM` |
+| 15 to under 20 °C | t-shirt | `MILD` / `MILD` |
+| under 15 °C | sweater | `COOL` / `KOEL` |
+
+The left half shows the clothes, the right half the current temperature as a big number (a number
+to read, no unit) and a short word.
+
+**Weather screen:** a big picture (sun or moon, partly cloudy, cloud, rain, thunderstorm, snow, wind)
+with its name: `SUN`/`ZON`, `MOON`/`MAAN`, `CLOUD`/`WOLK`, `RAIN`/`REGEN`, `STORM`/`ONWEER`,
+`SNOW`/`SNEEUW`, `WIND`/`WIND`.
+
+**Settings** (web UI, *Display*): *Language* (English by default, or Nederlands) and *Always sleep*:
+the screen stays off and a touch wakes it for 30 s (the first touch only wakes it). *Always sleep*
+also works in the normal build. The clothes limits are `DEFAULT_SHORTS_FROM_C` and
+`DEFAULT_SWEATER_BELOW_C` in `firmware/include/config.h` (compile-time). The rain animation and the
+`OLD` tag are left out in this build; Wifi, location, the web UI and OTA work as before.
+
+```sh
+pio run -e esp01_1m_kids -t upload
+```
+
 ## Hardware
 
 | Part | Notes |
@@ -65,6 +97,7 @@ pio run -t upload             # flash the firmware
 pio run -t uploadfs           # flash firmware/data (config.json) to the filesystem
 pio test -e native            # host unit tests for the pure logic
 pio run -e esp01_1m_debug     # development build with on-screen debug status
+pio run -e esp01_1m_kids      # kids variant (what to wear)
 ```
 
 Optional compile-time defaults (WiFi credentials) go in `firmware/include/secrets.h`; copy
@@ -139,6 +172,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `weatherDebug` | log extra detail to the web UI log |
 | `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
 | `display.dimAtNight` | lowest brightness at night |
+| `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
+| `display.language` | words in the kids build: `en` (default) or `nl` |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
 | `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
 

@@ -34,7 +34,7 @@ static time_t apiEpochAtFetch = 0;      // the API's clock at the last fetch (va
 static unsigned long fetchMillis = 0;
 
 // Current weather data
-static WeatherData currentWeather = { 0, 0, 0, 0, WEATHER_CLEAR, 'f' };
+static WeatherData currentWeather = { 0, 0, 0, 0, WEATHER_CLEAR, 'f', 0 };
 
 // Unix time (UTC) of local midnight of the first forecast day; 0 = no forecast yet
 static time_t forecastDay0 = 0;
@@ -116,7 +116,8 @@ static bool parseForecast(JsonDocument& doc) {
     if (current["wind_speed_10m"].is<float>())   w.windKmh = current["wind_speed_10m"].as<float>();
     if (current["wind_gusts_10m"].is<float>())   w.gustKmh = current["wind_gusts_10m"].as<float>();
     if (current["weather_code"].is<int>()) {
-        w.condition = mapWeatherCode(current["weather_code"].as<int>(), w.windKmh, WIND_SYMBOL_KMH);
+        w.code = current["weather_code"].as<int>();
+        w.condition = mapWeatherCode(w.code, w.windKmh, WIND_SYMBOL_KMH);
     } else {
         logMessage("Weather API: weather_code missing, keeping previous condition");
     }

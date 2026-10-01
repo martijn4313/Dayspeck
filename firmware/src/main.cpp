@@ -46,6 +46,8 @@ bool displayDimAtNight = true;
 int  displaySleepMinutes = 0;
 int  quietStartHr = -1;
 int  quietEndHr = -1;
+bool displayAlwaysSleep = false;
+String displayLanguage = "en";
 
 // WiFi configuration (loaded from config.json)
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
@@ -160,6 +162,12 @@ void loadConfig() {
     if (doc["display"]["quietStart"].is<int>()) quietStartHr = constrain((int)doc["display"]["quietStart"], -1, 23);
     if (doc["display"]["quietEnd"].is<int>()) quietEndHr = constrain((int)doc["display"]["quietEnd"], -1, 23);
 
+    if (doc["display"]["alwaysSleep"].is<bool>()) displayAlwaysSleep = doc["display"]["alwaysSleep"];
+    if (doc["display"]["language"].is<String>()) {
+        String lang = doc["display"]["language"].as<String>();
+        if (lang == "en" || lang == "nl") displayLanguage = lang;
+    }
+
     // Weather API config
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
@@ -264,6 +272,24 @@ void renderDisplay() {
                      (int)weather.windKmh, tempStr, weather.trend, weather.precipMm);
 }
 
+#ifdef KIDS_MODE
+/**
+ * Kids variant: what to wear, from the current temperature
+ */
+void renderKids() {
+    float tempC = getCurrentWeather().tempC;
+    int clothing = clothingFor(tempC, DEFAULT_SHORTS_FROM_C, DEFAULT_SWEATER_BELOW_C);
+    float shown = (weatherUnits == "imperial") ? tempC * 9.0f / 5.0f + 32.0f : tempC;
+    bool dutch = displayLanguage == "nl";
+    if (state.displayMode == 1) {
+        WeatherData w = getCurrentWeather();
+        renderKidsWeatherView(display, kidsWeatherFor(w.code, w.windKmh, warnWindKmh), state.isNight, dutch);
+    } else {
+        renderKidsView(display, clothing, isnan(shown) ? 0 : (int)lroundf(shown), dutch);
+    }
+}
+#endif
+
 /**
  * Get initialization status text for loading screen
  */
@@ -347,14 +373,21 @@ void render() {
         const char* line2;
         getInitStatus(line1, line2);
         renderLoadingView(display, line1, line2, millis());
+#ifdef KIDS_MODE
+    } else if (state.weatherValid) {
+        renderKids();
+#endif
     } else if (state.displayMode == 1) {
         renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay);
     } else if (state.displayMode == 2) {
         renderHourly();
     } else {
+#ifndef KIDS_MODE
         renderDisplay();
         renderStatusMarks(display, state.showTomorrow != state.previewActive, wifiBars());
+#endif
     }
+#ifndef KIDS_MODE
     if (state.weatherValid && state.weatherStale && state.displayMode != 3) {
         // Data is old (offline or the API keeps failing): mark it in the free top-left corner
         display.setTextSize(1);
@@ -362,6 +395,7 @@ void render() {
         display.setCursor(0, 0);
         display.print("OLD");
     }
+#endif
     display.display();
     state.displayDirty = false;
 }
@@ -385,6 +419,16 @@ void handleTouch() {
             return;
         }
     }
+
+#ifdef KIDS_MODE
+    // Kids variant: a tap (or long press) switches between the clothes and the weather picture
+    if (event != TOUCH_NONE) {
+        state.displayMode = state.displayMode == 0 ? 1 : 0;
+        state.weeklyEnteredMs = millis();
+        state.displayDirty = true;
+    }
+    event = TOUCH_NONE;
+#endif
 
     if (event == TOUCH_SHORT) {
         if (state.displayMode != 0) {
@@ -426,7 +470,7 @@ void managePower() {
     }
     bool sleepy = displaySleepMinutes > 0 && state.isNight &&
                   intervalPassed(state.lastActivityMs, (unsigned long)displaySleepMinutes * 60000UL);
-    bool off = (quiet && !awake) || sleepy;
+    bool off = ((quiet || displayAlwaysSleep) && !awake) || sleepy;
 
     if (off != state.displayOff) {
         state.displayOff = off;
@@ -658,6 +702,7 @@ void loop() {
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
         if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
+#ifndef KIDS_MODE
         } else if (state.displayMode == 0) {
             WeatherData weather = getCurrentWeather();
             if (weather.condition == WEATHER_RAIN) {
@@ -671,6 +716,7 @@ void loop() {
                 state.rainAnimationActive = false;
                 state.displayDirty = true;
             }
+#endif
         }
         state.lastFrameMs = millis();
     }

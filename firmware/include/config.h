@@ -49,6 +49,12 @@
 #define DEFAULT_PREVIEW_HR    24   // 24 = never switch the default view to tomorrow
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
+// Kids variant (build the esp01_1m_kids environment, -DKIDS_MODE): instead of the ride rating the display
+// shows what to wear. Shorts (with a t-shirt) from SHORTS_FROM_C on, a sweater below SWEATER_BELOW_C,
+// a t-shirt in between.
+#define DEFAULT_SHORTS_FROM_C   20
+#define DEFAULT_SWEATER_BELOW_C 15
+
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes
 

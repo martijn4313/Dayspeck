@@ -24,6 +24,7 @@ struct WeatherData {
     float precipMm;     // Precipitation in mm
     int   condition;    // WEATHER_CLEAR, WEATHER_RAIN, WEATHER_SNOW, WEATHER_WIND
     char  trend;        // 'u' (up), 'd' (down), 'f' (flat)
+    int   code;         // WMO weather code (kids variant picture)
 };
 
 // Ride decision thresholds (from config.json, defaults from config.h)

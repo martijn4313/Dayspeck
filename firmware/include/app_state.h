@@ -76,6 +76,8 @@ extern bool displayDimAtNight;
 extern int  displaySleepMinutes;  // switch the panel off after this many idle minutes at night; 0 = never
 extern int  quietStartHr;         // quiet hours: panel off from start (inclusive) to end (exclusive); -1 = off
 extern int  quietEndHr;
+extern bool displayAlwaysSleep;   // panel stays off; a touch wakes it for 30 s
+extern String displayLanguage;    // kids variant words: "en" (default) or "nl"
 
 // WiFi credentials (config.json / web UI)
 extern String wifiSsid;

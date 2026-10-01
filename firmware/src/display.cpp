@@ -733,6 +733,197 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
     }
 }
 
+// ---- Kids variant: what to wear -------------------------------------------------------------------
+
+// Filled convex quadrilateral
+static void fillQuad(Adafruit_SSD1306 &d, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3) {
+    d.fillTriangle(x0, y0, x1, y1, x2, y2, SSD1306_WHITE);
+    d.fillTriangle(x0, y0, x2, y2, x3, y3, SSD1306_WHITE);
+}
+
+// T-shirt silhouette. Coordinates are given for a 48x30 box and scaled by num/den.
+static void drawShirt(Adafruit_SSD1306 &d, int ox, int oy, int num, int den) {
+    #define SX(v) (ox + (v) * num / den)
+    #define SY(v) (oy + (v) * num / den)
+    d.fillRect(SX(12), SY(1), SX(36) - SX(12), SY(30) - SY(1), SSD1306_WHITE);
+    fillQuad(d, SX(13), SY(1), SX(0), SY(9), SX(5), SY(17), SX(13), SY(12));
+    fillQuad(d, SX(35), SY(1), SX(48), SY(9), SX(43), SY(17), SX(35), SY(12));
+    d.fillTriangle(SX(19), SY(0), SX(29), SY(0), SX(24), SY(8), SSD1306_BLACK);   // neck
+    #undef SX
+    #undef SY
+}
+
+// Sweater silhouette with long sleeves and a ribbed hem, in a 56x52 box
+static void drawSweater(Adafruit_SSD1306 &d, int ox, int oy) {
+    d.fillRect(ox + 14, oy + 1, 28, 50, SSD1306_WHITE);
+    fillQuad(d, ox + 15, oy + 1, ox + 6, oy + 6, ox + 1, oy + 40, ox + 9, oy + 42);
+    fillQuad(d, ox + 41, oy + 1, ox + 50, oy + 6, ox + 55, oy + 40, ox + 47, oy + 42);
+    d.fillTriangle(ox + 22, oy, ox + 34, oy, ox + 28, oy + 8, SSD1306_BLACK);     // neck
+    d.drawFastHLine(ox + 14, oy + 45, 28, SSD1306_BLACK);                          // hem
+    d.drawLine(ox + 1, oy + 36, ox + 8, oy + 38, SSD1306_BLACK);                   // cuffs
+    d.drawLine(ox + 55, oy + 36, ox + 48, oy + 38, SSD1306_BLACK);
+}
+
+// Shorts silhouette, 34x24
+static void drawShorts(Adafruit_SSD1306 &d, int ox, int oy) {
+    d.fillRect(ox, oy, 34, 24, SSD1306_WHITE);
+    d.fillTriangle(ox + 17, oy + 11, ox + 13, oy + 24, ox + 21, oy + 24, SSD1306_BLACK);   // gap between the legs
+    d.drawFastHLine(ox, oy + 3, 34, SSD1306_BLACK);                                        // waistband
+}
+
+// Centre text (size `size`) in the right half
+static void printRightHalf(Adafruit_SSD1306 &d, const char* text, int size, int y) {
+    int w = (int)strlen(text) * 6 * size;
+    d.setTextSize(size);
+    d.setCursor(64 + (64 - w) / 2, y);
+    d.print(text);
+}
+
+void renderKidsView(Adafruit_SSD1306 &d, int clothing, int tempShown, bool dutch) {
+    d.clearDisplay();
+    d.setTextColor(SSD1306_WHITE);
+    d.setTextWrap(false);
+
+    const char* word;
+    if (clothing == CLOTHES_WARM) {
+        drawShirt(d, 8, 2, 1, 1);
+        drawShorts(d, 15, 36);
+        word = "WARM";
+    } else if (clothing == CLOTHES_COOL) {
+        drawSweater(d, 4, 6);
+        word = dutch ? "KOEL" : "COOL";
+    } else {
+        drawShirt(d, 2, 13, 5, 4);
+        word = "MILD";
+    }
+
+    d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
+
+    char num[8];
+    snprintf(num, sizeof(num), "%d", tempShown);
+    printRightHalf(d, num, strlen(num) > 2 ? 3 : 4, strlen(num) > 2 ? 10 : 6);   // big digits, easy to read
+    printRightHalf(d, word, 2, 44);
+}
+
+// Cloud silhouette in a 40x26 box; `grow` fattens it (drawn in black first to cut it out of what is behind)
+static void drawCloud(Adafruit_SSD1306 &d, int ox, int oy, int grow, int color) {
+    d.fillCircle(ox + 10, oy + 16, 9 + grow, color);
+    d.fillCircle(ox + 20, oy + 11, 11 + grow, color);
+    d.fillCircle(ox + 31, oy + 17, 8 + grow, color);
+    d.fillRect(ox + 10 - grow, oy + 16, 22 + 2 * grow, 9 + grow, color);
+}
+
+static void drawSun(Adafruit_SSD1306 &d, int cx, int cy, int r) {
+    d.fillCircle(cx, cy, r, SSD1306_WHITE);
+    static const int8_t dir[8][2] = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} };
+    for (int i = 0; i < 8; i++) {
+        int dx = dir[i][0], dy = dir[i][1];
+        int a = r + 3, b = r + 3 + (r > 14 ? 7 : 4);
+        if (dx && dy) { a = (a * 7) / 10; b = (b * 7) / 10; }
+        for (int o = -1; o <= 0; o++) {   // 2 px thick
+            d.drawLine(cx + dx * a + o, cy + dy * a, cx + dx * b + o, cy + dy * b, SSD1306_WHITE);
+            d.drawLine(cx + dx * a, cy + dy * a + o, cx + dx * b, cy + dy * b + o, SSD1306_WHITE);
+        }
+    }
+}
+
+static void drawMoon(Adafruit_SSD1306 &d, int cx, int cy, int r) {
+    d.fillCircle(cx, cy, r, SSD1306_WHITE);
+    d.fillCircle(cx + r * 2 / 5, cy - r / 4, r * 5 / 6, SSD1306_BLACK);   // bite out of it: a crescent
+}
+
+static void drawRainDrops(Adafruit_SSD1306 &d, int ox, int oy) {
+    for (int i = 0; i < 4; i++) {
+        int x = ox + 4 + i * 9, y = oy + (i % 2) * 5;
+        d.drawLine(x, y, x - 3, y + 7, SSD1306_WHITE);
+        d.drawLine(x + 1, y, x - 2, y + 7, SSD1306_WHITE);
+    }
+}
+
+static void drawSnowFlakes(Adafruit_SSD1306 &d, int ox, int oy) {
+    for (int i = 0; i < 4; i++) {
+        int x = ox + 6 + i * 9, y = oy + 2 + (i % 2) * 6;
+        d.fillRect(x - 1, y - 1, 3, 3, SSD1306_WHITE);
+        d.drawPixel(x, y - 3, SSD1306_WHITE);
+        d.drawPixel(x, y + 3, SSD1306_WHITE);
+        d.drawPixel(x - 3, y, SSD1306_WHITE);
+        d.drawPixel(x + 3, y, SSD1306_WHITE);
+    }
+}
+
+static void drawLightning(Adafruit_SSD1306 &d, int ox, int oy) {
+    d.fillTriangle(ox + 8, oy, ox + 18, oy, ox + 5, oy + 14, SSD1306_WHITE);
+    d.fillTriangle(ox + 3, oy + 11, ox + 15, oy + 11, ox + 2, oy + 27, SSD1306_WHITE);
+    d.fillTriangle(ox + 15, oy + 11, ox + 8, oy + 20, ox + 3, oy + 11, SSD1306_WHITE);
+}
+
+// Wind: three streaks that curl at the end
+static void drawWindStreaks(Adafruit_SSD1306 &d, int ox, int oy) {
+    static const int8_t rows[3][3] = { {0, 8, 36}, {10, 0, 40}, {20, 6, 30} };   // y, x start, x end
+    for (int i = 0; i < 3; i++) {
+        int y = oy + 8 + rows[i][0] * 2, x0 = ox + rows[i][1], x1 = ox + rows[i][2];
+        for (int o = 0; o < 2; o++) d.drawFastHLine(x0, y + o, x1 - x0, SSD1306_WHITE);
+        for (int r = 5; r <= 6; r++) d.drawCircleHelper(x1, y - 5, r, 2 | 4, SSD1306_WHITE);   // curl up and back
+    }
+}
+
+void renderKidsWeatherView(Adafruit_SSD1306 &d, int weather, bool isNight, bool dutch) {
+    d.clearDisplay();
+    d.setTextColor(SSD1306_WHITE);
+    d.setTextWrap(false);
+
+    // Picture box: 56x56 at the left, centred vertically
+    const int ox = 4, oy = 4;
+    const char* word = "";
+    switch (weather) {
+    case KIDS_WEATHER_PARTLY:
+        if (isNight) drawMoon(d, ox + 20, oy + 18, 14); else drawSun(d, ox + 20, oy + 18, 9);
+        drawCloud(d, ox + 12, oy + 22, 2, SSD1306_BLACK);
+        drawCloud(d, ox + 12, oy + 22, 0, SSD1306_WHITE);
+        word = dutch ? "WOLK" : "CLOUD";
+        break;
+    case KIDS_WEATHER_CLOUDY:
+        drawCloud(d, ox + 6, oy + 12, 4, SSD1306_WHITE);
+        word = dutch ? "WOLK" : "CLOUD";
+        break;
+    case KIDS_WEATHER_RAIN:
+        drawCloud(d, ox + 6, oy + 4, 2, SSD1306_WHITE);
+        drawRainDrops(d, ox + 6, oy + 38);
+        word = dutch ? "REGEN" : "RAIN";
+        break;
+    case KIDS_WEATHER_STORM:
+        drawCloud(d, ox + 6, oy + 2, 2, SSD1306_WHITE);
+        drawLightning(d, ox + 20, oy + 28);
+        word = dutch ? "ONWEER" : "STORM";
+        break;
+    case KIDS_WEATHER_SNOW:
+        drawCloud(d, ox + 6, oy + 4, 2, SSD1306_WHITE);
+        drawSnowFlakes(d, ox + 6, oy + 38);
+        word = dutch ? "SNEEUW" : "SNOW";
+        break;
+    case KIDS_WEATHER_WIND:
+        drawWindStreaks(d, ox + 4, oy);
+        word = "WIND";
+        break;
+    default:
+        if (isNight) {
+            drawMoon(d, ox + 28, oy + 28, 24);
+            d.drawPixel(ox + 47, oy + 6, SSD1306_WHITE);
+            d.fillRect(ox + 50, oy + 14, 2, 2, SSD1306_WHITE);
+            d.fillRect(ox + 8, oy + 4, 2, 2, SSD1306_WHITE);
+            word = dutch ? "MAAN" : "MOON";
+        } else {
+            drawSun(d, ox + 28, oy + 28, 14);
+            word = dutch ? "ZON" : "SUN";
+        }
+    }
+
+    int w = (int)strlen(word) * 12;   // size 2: 12 px per letter, fits the 74 px right of the picture
+    d.setTextSize(2);
+    d.setCursor(54 + (74 - w) / 2, 24);
+    d.print(word);
+}
+
 // Clock screen: HH:MM in large type, weekday and date below, year at the bottom
 void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
                      int weekday, int day, int month, int year) {
