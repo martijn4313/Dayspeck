@@ -6,7 +6,8 @@
 //  * state-changing routes must be POST and carry the per-boot token in the X-MotoClock header.
 //    The token can only be read by same-origin script (/api/token), which defeats cross-site
 //    request forgery against a browser that has cached the Basic credentials
-//  * OTA uploads live on /update-<token> behind the same password
+//  * OTA uploads live on /update-<token> behind the same password; with a key compiled in, every
+//    update (uploaded or pulled from the relay, see ota.h) must carry a valid signature
 //  * secrets (WiFi password, API key) are never sent back to the browser
 //  * Basic auth is not encrypted: anyone who can sniff the LAN can read the password.
 #include "webserver.h"
@@ -15,6 +16,7 @@
 #include "app_state.h"
 #include "security.h"
 #include "version.h"
+#include "ota.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
@@ -258,12 +260,27 @@ static const char index_html[] PROGMEM = R"HTML(
     </div>
 
     <div class="card">
-        <h3>OTA Update</h3>
+        <h3>Firmware Update</h3>
+        <span class="label">Installed:</span> <span id="otaCurrent"></span><br>
+        <span class="label">Latest release:</span> <span id="otaLatest"></span><br>
+        <span class="label">Last check:</span> <span id="otaChecked"></span><br>
+        <div id="otaNotes"></div>
+        <div id="otaError" style="color:#b3261e"></div>
+        <button id="otaCheckBtn">Check now</button>
+        <button id="otaInstallBtn" style="display:none"></button>
+        <div id="otaFeedback"></div>
+        <form id="otaSettingsForm">
+            <span class="label">Update server:</span> <input name="url" type="url" maxlength="128" placeholder="http://motoclock-ota.you.workers.dev"><br>
+            <span class="label">Check daily:</span> <input name="autoCheck" type="checkbox"><br>
+            <button type="submit">Save Settings</button>
+        </form>
+        <h4>Manual upload</h4>
+        <p><small>A signed <code>motoclock-rider.bin.gz</code> or <code>motoclock-kids.bin.gz</code> from a release.</small></p>
         <form id="otaForm">
-            <input type="file" name="update" accept=".bin" required><br>
+            <input type="file" name="update" accept=".gz,.bin" required><br>
             <button type="submit">Upload and Update</button>
         </form>
-        <div id="otaFeedback"></div>
+        <div id="otaUploadFeedback"></div>
     </div>
 
     <script>
@@ -480,14 +497,94 @@ static const char index_html[] PROGMEM = R"HTML(
                 .catch(() => toast('Could not load the logs', false));
         });
 
-        // OTA: the upload path contains the per-boot token
+        // Pull updates from the release relay
+        let otaInfo = {};
+        function loadOta() {
+            return fetch('/api/ota')
+                .then(r => r.json())
+                .then(o => {
+                    otaInfo = o;
+                    document.getElementById('otaCurrent').textContent = o.current + ' (' + o.build + ', ' + o.variant + ' build)';
+                    document.getElementById('otaLatest').textContent = !o.latest ? 'unknown' :
+                        o.latest + (o.available ? ' (new)' : ' (you are up to date)');
+                    document.getElementById('otaChecked').textContent = o.checkedMinutesAgo < 0 ? 'not yet' :
+                        o.checkedMinutesAgo + ' minutes ago';
+                    document.getElementById('otaNotes').textContent = o.available ? o.notes : '';
+                    let error = o.error ? 'Last error: ' + o.error : '';
+                    if (!o.keySet) {
+                        error = 'This build has no update key, so it cannot install updates (see the README).';
+                    } else if (o.available && o.size > o.freeSpace) {
+                        error = 'Version ' + o.latest + ' (' + o.size + ' bytes) does not fit in the free flash (' +
+                            o.freeSpace + ' bytes): flash it over serial once.';
+                    }
+                    document.getElementById('otaError').textContent = error;
+                    const install = document.getElementById('otaInstallBtn');
+                    install.style.display = o.available && o.keySet ? 'inline-block' : 'none';
+                    install.textContent = 'Install ' + o.latest;
+                    const f = document.forms.otaSettingsForm;
+                    if (!f.dataset.loaded) {
+                        f.url.value = o.url;
+                        f.autoCheck.checked = o.autoCheck;
+                        f.dataset.loaded = '1';
+                    }
+                })
+                .catch(() => toast('Could not load the update status', false));
+        }
+        loadOta();
+        submitForm('otaSettingsForm', '/api/ota/settings', 'Update settings saved');
+
+        document.getElementById('otaCheckBtn').addEventListener('click', () => {
+            const feedback = document.getElementById('otaFeedback');
+            feedback.textContent = 'Checking...';
+            post('/api/ota/check', '')
+                .then(res => {
+                    if (!res.ok) { feedback.textContent = res.message || 'Error ' + res.status; return; }
+                    // The device answers again once the check is done
+                    setTimeout(() => loadOta().then(() => { feedback.textContent = ''; }), 1500);
+                })
+                .catch(() => { feedback.textContent = 'Request failed'; });
+        });
+
+        // After an install or upload: wait until the device is back with another version
+        function waitForRestart(feedback) {
+            const before = otaInfo.current;
+            const poll = () => fetch('/api/ota')
+                .then(r => r.json())
+                .then(o => {
+                    if (o.current !== before) { location.reload(); return; }
+                    if (o.error) { feedback.textContent = 'Update failed: ' + o.error; loadOta(); return; }
+                    setTimeout(poll, 5000);
+                })
+                .catch(() => setTimeout(poll, 5000));
+            setTimeout(poll, 15000);
+        }
+
+        document.getElementById('otaInstallBtn').addEventListener('click', () => {
+            if (!confirm('Install version ' + otaInfo.latest + '? The device restarts afterwards.')) return;
+            const feedback = document.getElementById('otaFeedback');
+            post('/api/ota/install', '')
+                .then(res => {
+                    feedback.textContent = res.message || 'Error ' + res.status;
+                    if (res.ok) waitForRestart(feedback);
+                })
+                .catch(() => { feedback.textContent = 'Request failed'; });
+        });
+
+        // Manual upload: the upload path contains the per-boot token. The update server answers
+        // 200 with "Update error: ..." when it rejects an image.
         document.getElementById('otaForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const feedback = document.getElementById('otaFeedback');
+            const feedback = document.getElementById('otaUploadFeedback');
             feedback.textContent = 'Uploading...';
             tokenReady
                 .then(() => fetch(otaPath, { method: 'POST', headers: { 'X-MotoClock': csrf }, body: new FormData(this) }))
-                .then(r => { feedback.textContent = r.ok ? 'Update successful. The device restarts, reload the page in a few seconds.' : 'Update failed (' + r.status + ').'; })
+                .then(r => r.text().then(text => {
+                    if (r.ok && !text.startsWith('Update error')) {
+                        feedback.textContent = 'Update successful. The device restarts, reload the page in a few seconds.';
+                    } else {
+                        feedback.textContent = 'Update failed: ' + (r.ok ? text : 'HTTP ' + r.status);
+                    }
+                }))
                 .catch(err => { feedback.textContent = 'Error: ' + err.message; });
         });
     </script>
@@ -1000,6 +1097,81 @@ static void handleApiPassword() {
     sendMessage(200, "Password changed. The device restarts now; sign in again with the new password.");
 }
 
+// Pull update status for the Firmware Update card
+static void handleApiOta() {
+    JsonDocument doc;
+    doc["current"] = FW_VERSION;
+    doc["build"] = FW_GIT_HASH;
+    doc["variant"] = OTA_VARIANT;
+    doc["keySet"] = otaStatus.keySet;
+    doc["url"] = otaServerUrl;
+    doc["autoCheck"] = otaAutoCheck;
+    doc["checkedMinutesAgo"] = otaStatus.checked ? (long)((millis() - otaStatus.lastCheckMs) / 60000UL) : -1L;
+    doc["latest"] = otaStatus.latestVersion;
+    doc["notes"] = otaStatus.notes;
+    doc["available"] = otaStatus.available;
+    doc["size"] = otaStatus.size;
+    doc["freeSpace"] = otaFreeSpace();
+    doc["error"] = otaStatus.error;
+    String output;
+    serializeJson(doc, output);
+    server.send(200, "application/json", output);
+}
+
+static void handleApiOtaCheck() {
+    if (!state.wifiConnected) {
+        sendMessage(409, "Not connected to WiFi");
+        return;
+    }
+    if (otaServerUrl.length() == 0) {
+        sendMessage(409, "Set the update server first");
+        return;
+    }
+    otaRequestCheck();
+    sendMessage(202, "Checking for updates...");
+}
+
+static void handleApiOtaInstall() {
+    if (!otaStatus.keySet) {
+        sendMessage(409, "This build has no update key");
+        return;
+    }
+    if (!otaStatus.available) {
+        sendMessage(409, "No update available, check first");
+        return;
+    }
+    if (otaStatus.size > otaFreeSpace()) {
+        sendMessage(409, "The update does not fit in the free flash, flash it over serial once");
+        return;
+    }
+    otaRequestInstall();
+    sendMessage(202, "Installing " + otaStatus.latestVersion + ". The display shows the progress; the device "
+                     "restarts when it is done (about a minute). This page reloads by itself.");
+}
+
+static void handleApiOtaSettings() {
+    String url = server.arg("url");
+    bool autoCheck = server.hasArg("autoCheck");
+    url.trim();
+    while (url.endsWith("/")) url.remove(url.length() - 1);
+    if (url.length() > 0 && !validUrl(url)) {
+        sendMessage(400, "The update server must start with http:// (max 128 characters; https is not supported)");
+        return;
+    }
+
+    bool saved = updateConfig([&](JsonDocument& doc) {
+        doc["ota"]["url"] = url;
+        doc["ota"]["autoCheck"] = autoCheck;
+    });
+    if (!saved) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    otaServerUrl = url;
+    otaAutoCheck = autoCheck;
+    sendMessage(200, "Update settings saved");
+}
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -1023,6 +1195,7 @@ void initWebServer() {
     server.on("/api/locations", guarded(handleApiLocations));
     server.on("/api/logs", guarded(handleApiLogs));
     server.on("/api/wifi/scan", guarded(handleApiWifiScan));
+    server.on("/api/ota", guarded(handleApiOta));
 
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
     server.on("/api/display", guardedPost(handleApiDisplay));
@@ -1032,6 +1205,9 @@ void initWebServer() {
     server.on("/api/ssidlocation", guardedPost(handleApiSsidLocation));
     server.on("/api/ssidlocation/delete", guardedPost(handleApiSsidLocationDelete));
     server.on("/api/password", guardedPost(handleApiPassword));
+    server.on("/api/ota/check", guardedPost(handleApiOtaCheck));
+    server.on("/api/ota/install", guardedPost(handleApiOtaInstall));
+    server.on("/api/ota/settings", guardedPost(handleApiOtaSettings));
 
     server.onNotFound([]() { sendMessage(404, "Not found"); });
     server.begin();

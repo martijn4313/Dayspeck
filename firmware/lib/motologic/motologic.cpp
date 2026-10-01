@@ -138,3 +138,48 @@ uint8_t dayOfWeek(long localMidnightUtc, long utcOffsetSeconds) {
 bool intervalElapsed(uint32_t now, uint32_t last, uint32_t interval) {
     return (now - last) >= interval;   // unsigned subtraction is correct across the 49 day rollover
 }
+
+bool parseVersion(const char* text, uint16_t out[3]) {
+    if (text == nullptr) return false;
+    if (*text == 'v') text++;
+    for (int part = 0; part < 3; part++) {
+        if (*text < '0' || *text > '9') return false;
+        uint32_t value = 0;
+        while (*text >= '0' && *text <= '9') {
+            value = value * 10 + (uint32_t)(*text - '0');
+            if (value > 65535) return false;
+            text++;
+        }
+        out[part] = (uint16_t)value;
+        if (part < 2 && *text++ != '.') return false;
+    }
+    return *text == '\0';
+}
+
+bool isNewerVersion(const char* candidate, const char* current) {
+    uint16_t a[3], b[3];
+    if (!parseVersion(candidate, a) || !parseVersion(current, b)) return false;
+    for (int i = 0; i < 3; i++) {
+        if (a[i] != b[i]) return a[i] > b[i];
+    }
+    return false;
+}
+
+static int hexDigit(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+bool hexToBytes(const char* hex, uint8_t* out, size_t len) {
+    if (hex == nullptr) return false;
+    for (size_t i = 0; i < len; i++) {
+        int hi = hexDigit(hex[2 * i]);
+        if (hi < 0) return false;
+        int lo = hexDigit(hex[2 * i + 1]);
+        if (lo < 0) return false;
+        out[i] = (uint8_t)(hi << 4 | lo);
+    }
+    return hex[2 * len] == '\0';
+}

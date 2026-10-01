@@ -23,7 +23,7 @@ jobs:
           restore-keys: pio-${{ runner.os }}-
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: pip install platformio cryptography
 
       - name: Unit tests (host)
         run: pio test -e native
@@ -39,6 +39,13 @@ jobs:
 
       - name: Build filesystem image
         run: pio run -e esp01_1m -t buildfs
+
+      - name: Firmware leaves room for an over-the-air update
+        run: |
+          ld=$(sed -n 's/^board_build.ldscript *= *//p' platformio.ini)
+          for env in esp01_1m esp01_1m_kids; do
+            python tools/ota_tool.py check-size --in .pio/build/$env/firmware.bin --ldscript "$ld"
+          done
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4

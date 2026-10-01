@@ -9,3 +9,6 @@ firmware/include/secrets.h
 # Python
 __pycache__/
 *.pyc
+
+# OTA signing key (tools/ota_tool.py keygen)
+*.pem

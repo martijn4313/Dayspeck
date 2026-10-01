@@ -19,6 +19,7 @@
 #include "touch.h"
 #include "webserver.h"
 #include "security.h"
+#include "ota.h"
 
 // Display object
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT);
@@ -172,6 +173,10 @@ void loadConfig() {
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
     if (doc["weatherDebug"].is<bool>()) weatherDebug = doc["weatherDebug"].as<bool>();
+
+    // Pull updates
+    if (doc["ota"]["url"].is<String>()) otaServerUrl = doc["ota"]["url"].as<String>();
+    if (doc["ota"]["autoCheck"].is<bool>()) otaAutoCheck = doc["ota"]["autoCheck"];
 
     // SSID locations
     if (doc["ssidLocations"].is<JsonArray>()) {
@@ -394,6 +399,12 @@ void render() {
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
         display.print("OLD");
+    } else if (state.weatherValid && otaStatus.available && state.displayMode == 0) {
+        // A firmware update is waiting in the web UI (the OLD mark wins the corner)
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        display.setCursor(0, 0);
+        display.print("UPD");
     }
 #endif
     display.display();
@@ -620,6 +631,21 @@ void handleWeatherFetch() {
 
 
 /**
+ * Pull update progress: the install blocks the loop, so draw straight to the panel
+ */
+void drawOtaProgress(int percent) {
+    if (state.displayOff) {
+        state.displayOff = false;
+        display.ssd1306_command(SSD1306_DISPLAYON);
+    }
+    char line[8];
+    snprintf(line, sizeof(line), "%d%%", percent);
+    renderLoadingView(display, "Updating", line, millis());
+    display.display();
+}
+
+
+/**
  * Setup function - boot sequence, NO BLOCKING
  */
 void setup() {
@@ -652,6 +678,9 @@ void setup() {
     static String otaUrl = webOtaPath();
     static String otaPass = effectivePassword();
     httpUpdater.setup(&server, otaUrl.c_str(), ADMIN_USER, otaPass.c_str());
+    // Every firmware update (pull or upload) must carry a valid signature, once a key is compiled in
+    otaInit();
+    otaProgressHook = drawOtaProgress;
 
     state.nextFetchIntervalMs = FETCH_INTERVAL_MS;
     state.fetchNow = true;           // fetch as soon as WiFi is up
@@ -677,6 +706,7 @@ void loop() {
     updateDayNight();
     managePower();
     handleWeatherFetch();
+    otaLoop(intervalPassed(state.lastActivityMs, 60000UL));   // a check pauses the display: not while in use
 
     if (state.weatherValid) {
         unsigned long sinceSuccess = millis() - state.lastSuccessMs;

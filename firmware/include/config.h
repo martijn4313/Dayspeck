@@ -58,6 +58,12 @@
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes
 
+// Pull updates: base URL of the release relay (tools/ota-relay), plain http:// only.
+// "" = not configured; it can also be set in the web UI (config.json "ota.url").
+#ifndef OTA_DEFAULT_URL
+#define OTA_DEFAULT_URL       ""
+#endif
+
 // Version of the config.json layout written by this firmware (bump when keys change)
 #define CONFIG_VERSION        1
 
