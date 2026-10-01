@@ -51,15 +51,18 @@ def test_weather_icons_differ():
     assert len(set(areas)) == 4
 
 
-def test_wind_effect_needs_25_kmh():
-    assert lit(render(weather="wind", wind_speed=24), 84, 5, 127, 5) == 0
-    assert lit(render(weather="wind", wind_speed=40), 84, 5, 127, 5) > 10
+def test_wind_draws_no_effect_in_the_sky():
+    windy = render(weather="wind", wind_speed=52)
+    calm = render(weather="clear", wind_speed=52)
+    assert lit(windy, 64, 0, 127, 40) == lit(calm, 64, 0, 127, 40)    # skyline card identical
 
 
-def test_wind_dashes_repeat_across_the_card_with_gaps():
-    # x 64-83 is covered by the temperature box (as on the device), so look at the second repeat
-    row = [render(weather="wind", wind_speed=40).pixels[5][x] for x in range(88, 100)]
-    assert row == [True] * 4 + [False] * 2 + [True] * 3 + [False] + [True] * 2
+def test_wind_icon_has_three_curled_gusts_and_leaves_room_for_the_text():
+    icon = render(weather="wind", wind_speed=52)
+    assert lit(icon, 66, 44, 88, 63) > 50
+    assert lit(icon, 89, 44, 92, 63) == 0                      # gap before the "km/h" text at x=93
+    for y in (50, 56, 62):                                       # one long line per gust
+        assert sum(icon.pixels[y][x] for x in range(66, 80)) >= 12
 
 
 def test_night_overlay_is_deterministic_like_the_firmware():

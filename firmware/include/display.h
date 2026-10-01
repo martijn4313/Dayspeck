@@ -88,7 +88,6 @@ void drawGiantBadge(Adafruit_SSD1306 &display, char type);
 void applyNightOverlay(Adafruit_SSD1306 &display);
 void drawProceduralRain(Adafruit_SSD1306 &display, int intensity);
 void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity);
-void drawProceduralWind(Adafruit_SSD1306 &display, int speed);
 
 // Composite renderers. They draw into the buffer only; the caller flushes with display.display().
 void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow);

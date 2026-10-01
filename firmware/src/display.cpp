@@ -148,30 +148,6 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
     }
 }
 
-// Procedural wind — horizontal swoosh dashes
-void drawProceduralWind(Adafruit_SSD1306 &display, int speed) {
-    // Only active when speed >= 25 km/h
-    if (speed < 25) return;
-    
-    // Three dashed horizontal lines at y: 5, 9, 14 across x: 64-127
-    int yPositions[] = {5, 9, 14};
-    // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on (12 px), repeated across the card
-    int pattern[] = {4, 2, 3, 1, 2};
-    for (int row = 0; row < 3; row++) {
-        int y = yPositions[row];
-        int x = 64;
-        while (x < 128) {
-            for (int p = 0; p < 5; p++) {
-                bool on = (p % 2 == 0);   // entries 0, 2, 4 are dashes, 1 and 3 are gaps
-                for (int i = 0; i < pattern[p]; i++) {
-                    if (on && x < 128) display.drawPixel(x, y, SSD1306_WHITE);
-                    x++;
-                }
-            }
-        }
-    }
-}
-
 // Reset a rain drop to random position at top
 // Reset a single rain drop to a new random position above the skyline
 void resetRainDrop(RainDrop &drop) {
@@ -397,9 +373,8 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
         }
     } else if (weatherCondition == WEATHER_SNOW) {
         drawProceduralSnow(display, intensity);
-    } else if (weatherCondition == WEATHER_WIND) {
-        drawProceduralWind(display, windSpeed);
     }
+    // Wind has no effect in the sky: its icon is in the bottom card
     
     // Layer 4: draw tempStr text at (TEMP_X, TEMP_Y) with black background box
     // First draw black box behind text for readability
@@ -457,12 +432,14 @@ void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windS
             }
         }
     } else if (weatherCondition == WEATHER_WIND) {
-        // Three gusting lines
+        // Three gusts of different lengths, each ending in a curl (a half circle rising from the line end)
+        static const int8_t gustY[3]   = { 6, 12, 18 };    // relative to iy
+        static const int8_t gustLen[3] = { 14, 20, 12 };
+        static const int8_t gustR[3]   = { 3, 2, 2 };
         for (int i = 0; i < 3; i++) {
-            int y = iy + 4 + i * 6;
-            int len = (i == 1) ? 22 : 16;
-            display.drawFastHLine(ix, y, len, SSD1306_WHITE);
-            display.drawCircleHelper(ix + len, y - 2, 2, 2, SSD1306_WHITE);
+            int y = iy + gustY[i];
+            display.drawFastHLine(ix, y, gustLen[i], SSD1306_WHITE);
+            display.drawCircleHelper(ix + gustLen[i], y - gustR[i], gustR[i], 2 | 4, SSD1306_WHITE);
         }
     } else {
         // Clear: sun with rays

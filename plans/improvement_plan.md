@@ -481,6 +481,9 @@ The point of the simulator is to design and verify before flashing. It has drift
       offset from the first forecast.
 - [x] Rain splashes landed up to 9 px below the horizon, inside the bottom card and over its text. The
       ground level is now 38-41, above the divider (firmware and simulator; found while making the leaflet).
+- [x] Wind: removed the dashed lines in the sky (they collided with the temperature box, skyline and moon
+      and duplicated the icon) and redrew the bottom-card wind icon as three gusts of different lengths with
+      curls, leaving a gap before the speed text. The `Wind Effect` entry is gone from the tool's GUI.
 - [ ] Remember the UTC offset across reboots (it is only learned from the first forecast, so the clock
       shows "Time not set yet" until then).
 - [ ] The clock is a static image for long periods: the sleep timer and quiet hours cover OLED burn-in, but a

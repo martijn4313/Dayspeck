@@ -168,8 +168,6 @@ class SceneComposer:
                 Procedural.draw_procedural_rain(canvas, state.intensity)
         elif state.weather == "snow":
             Procedural.draw_procedural_snow(canvas, state.intensity, state.seed)
-        elif state.weather == "wind":
-            Procedural.draw_procedural_wind(canvas, state.wind_speed)
 
         # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, BLACK)), then the trend arrow
         canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 20, 10, on=False)
@@ -196,11 +194,11 @@ class SceneComposer:
                     canvas.set_pixel(x, iy + 16)
                     canvas.set_pixel(x - 1, iy + 18)
         elif state.weather == "wind":
-            for i in range(3):
-                y = iy + 4 + i * 6
-                length = 22 if i == 1 else 16
+            # Three gusts of different lengths, each ending in a curl
+            for dy, length, r in ((6, 14, 3), (12, 20, 2), (18, 12, 2)):
+                y = iy + dy
                 canvas.draw_hline(ix, y, length)
-                canvas.draw_circle_helper(ix + length, y - 2, 2, 2)
+                canvas.draw_circle_helper(ix + length, y - r, r, 2 | 4)
         else:
             cx, cy = ix + 11, iy + 9
             canvas.fill_disc(cx, cy, 4)

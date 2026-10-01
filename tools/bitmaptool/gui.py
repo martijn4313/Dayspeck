@@ -231,7 +231,6 @@ class App(tk.Tk):
             "Giant Badge": ("firmware/src/display.cpp", "drawGiantBadge"),
             "Rain Effect": ("firmware/src/display.cpp", "drawProceduralRain"),
             "Snow Effect": ("firmware/src/display.cpp", "drawProceduralSnow"),
-            "Wind Effect": ("firmware/src/display.cpp", "drawProceduralWind"),
         }
 
         for name, (filepath, funcname) in self._procedural_functions.items():
