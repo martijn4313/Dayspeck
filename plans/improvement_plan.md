@@ -13,9 +13,9 @@ to the code at commit `15f953d`.
 
 ## Phase 1: Fix what is broken now (P0)
 
-> **Status:** implemented on branch `ccr-9c0b59d9-v315pr` but **not yet compiled or run on
-> hardware** (the PlatformIO registry is blocked in the review sandbox). Run `pio run` and the
-> hardware checklist before merging. Notes: a short tap in the weekly view now closes it;
+> **Status:** implemented on branch `ccr-9c0b59d9-v315pr`. `pio run` and `pio run -t buildfs` succeed
+> (flash 74 %, static RAM 47 %), but it has **not been run on hardware** yet. Run the hardware
+> checklist before merging. Notes: a short tap in the weekly view now closes it;
 > imperial mode only changes the temperature label; geolocation is wired in but only runs when a
 > real key is set in `config.h`; the "weekly view" auto-closes after 30 s.
 
@@ -142,8 +142,7 @@ to the code at commit `15f953d`.
 
 ## Phase 2: Security (P0)
 
-> **Status:** implemented on branch `ccr-9c0b59d9-v315pr`, **not compiled or run on hardware**
-> (PlatformIO registry blocked in the sandbox). Deviations from the original text, all deliberate:
+> **Status:** implemented on branch `ccr-9c0b59d9-v315pr`; builds, **not run on hardware**. Deviations from the original text, all deliberate:
 > - **Login:** HTTP Basic, user `admin`; the password is the device password below. 10 failed
 >   attempts lock the web UI for 60 s.
 > - **Device password:** `moto` + 6 hex digits of the chip ID until the user sets their own (8-63

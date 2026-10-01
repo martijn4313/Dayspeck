@@ -163,9 +163,9 @@ unsigned long fetchWeather(float lat, float lon) {
     String url = weatherApiUrl;
     bool hasKey = weatherApiKey.length() > 0;
     if (hasKey && url.startsWith("http://")) {
-        url.replace(0, 7, "https://");
+        url = "https://" + url.substring(7);
     } else if (!hasKey && url.startsWith("https://")) {
-        url.replace(0, 8, "http://");
+        url = "http://" + url.substring(8);
     }
     bool useTls = url.startsWith("https://");
 

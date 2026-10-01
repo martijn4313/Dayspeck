@@ -950,8 +950,7 @@ void initWebServer() {
     csrfToken = token;
     otaPath = "/update-" + csrfToken;
 
-    static const char* headerKeys[] = { "X-MotoClock" };
-    server.collectHeaders(headerKeys, 1);
+    server.collectHeaders("X-MotoClock");
 
     server.on("/", guarded(handleRoot));
     server.on("/api/token", guarded(handleApiToken));
