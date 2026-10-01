@@ -479,6 +479,8 @@ The point of the simulator is to design and verify before flashing. It has drift
 - [x] Next-hours view: label column (`h`, `°C`, `mm`, `%`, `kmh`) so the rows are self-explanatory.
 - [x] Clock screen: time and date (fourth long-press screen; stays until tapped). Needs NTP and the UTC
       offset from the first forecast.
+- [x] Rain splashes landed up to 9 px below the horizon, inside the bottom card and over its text. The
+      ground level is now 38-41, above the divider (firmware and simulator; found while making the leaflet).
 - [ ] Remember the UTC offset across reboots (it is only learned from the first forecast, so the clock
       shows "Time not set yet" until then).
 - [ ] The clock is a static image for long periods: the sleep timer and quiet hours cover OLED burn-in, but a

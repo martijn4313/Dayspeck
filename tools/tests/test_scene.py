@@ -165,3 +165,15 @@ def test_rain_sprites_are_in_the_header_and_used():
                        [Splash(x=100, y=41, frame_counter=3, active=True, sprite_variant=1)], drops, splashes)
     assert lit(c, 80, 5, 82, 10) == sum(map(sum, drops[0]))                 # drop sprite 1 drawn at its position
     assert lit(c, 97, 37, 103, 40) == sum(map(sum, splashes[1]))            # splash sprite 2 centred on x=100
+
+
+def test_rain_lands_above_the_card_divider():
+    """Splashes used to land up to 9 px below the horizon, i.e. inside the bottom card, over its text."""
+    from bitmaptool.rain import RainAnimation
+    import random
+    drops, splashes = RainAnimation.init_rain_animation(7, 41)
+    assert all(38 <= d.target_y <= 41 for d in drops)
+    rng = random.Random(3)
+    for _ in range(200):
+        RainAnimation.update(drops, splashes, rng, 41, 4, 10, 8.0)
+    assert all(38 <= s.y <= 41 for s in splashes if s.active) and all(38 <= d.target_y <= 41 for d in drops)

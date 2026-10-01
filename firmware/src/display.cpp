@@ -182,7 +182,7 @@ void resetRainDrop(RainDrop &drop) {
     
     drop.x = RAIN_AREA_X_START + random(RAIN_AREA_X_END - RAIN_AREA_X_START + 1 + xSpawnExtend);
     drop.y = random(-8, -1);  // Start just above top edge
-    drop.targetY = HORIZON_Y + random(10);  // Slight variation in ground level
+    drop.targetY = HORIZON_Y - random(4);  // Ground level varies by 3 px, always above the card divider
     drop.speed = 3 + random(4);  // Speed: 3-6 pixels per frame (matching Python)
     drop.spriteIdx = random(4);  // 0-3 sprite variants
     drop.active = true;
@@ -195,7 +195,7 @@ void initRainAnimation() {
         // Reset first to initialize all fields
         rainDrops[i].x = RAIN_AREA_X_START + random(64);
         rainDrops[i].y = random(-30, HORIZON_Y);  // Spread across screen vertically
-        rainDrops[i].targetY = HORIZON_Y + random(10);
+        rainDrops[i].targetY = HORIZON_Y - random(4);
         rainDrops[i].speed = 3 + random(4);  // 3-6 px/frame
         rainDrops[i].spriteIdx = random(4);
         rainDrops[i].active = true;
