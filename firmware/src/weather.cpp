@@ -164,7 +164,7 @@ unsigned long fetchWeather(float lat, float lon) {
 
     if (ESP.getFreeHeap() < MIN_FREE_HEAP_BYTES) {
         char buf[64];
-        snprintf(buf, sizeof(buf), "Weather fetch skipped, low heap: %u", ESP.getFreeHeap());
+        snprintf(buf, sizeof(buf), "Weather fetch skipped, low heap: %u (max block %u)", ESP.getFreeHeap(), ESP.getMaxFreeBlockSize());
         logMessage(buf);
         return 0;
     }
@@ -235,7 +235,7 @@ unsigned long fetchWeather(float lat, float lon) {
             ok = true;
             if (weatherDebug) {
                 char buf[64];
-                snprintf(buf, sizeof(buf), "Weather OK, free heap %u", ESP.getFreeHeap());
+                snprintf(buf, sizeof(buf), "Weather OK, free heap %u (max block %u)", ESP.getFreeHeap(), ESP.getMaxFreeBlockSize());
                 logMessage(buf);
             }
         }
@@ -320,6 +320,15 @@ void logMessage(const char* message) {
     } else {
         logHead = (logHead + 1) % MAX_LOG_ENTRIES;
     }
+}
+
+size_t getLogCount() {
+    return logCount;
+}
+
+// i = 0 is the oldest entry
+const char* getLogEntry(size_t i) {
+    return logBuffer[(logHead + MAX_LOG_ENTRIES - logCount + i) % MAX_LOG_ENTRIES];
 }
 
 void getLogs(char* output, size_t maxLen) {

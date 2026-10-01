@@ -47,8 +47,9 @@
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes
 
-// Display Debug Status
-// Uncomment this define to enable on-screen debug status messages during weather fetching
-#define DISPLAY_STATUS_DEBUG
+// Version of the config.json layout written by this firmware (bump when keys change)
+#define CONFIG_VERSION        1
+
+// On-screen debug status messages: build the esp01_1m_debug environment (-DDISPLAY_STATUS_DEBUG)
 
 #endif // CONFIG_H

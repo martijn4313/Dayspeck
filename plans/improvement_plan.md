@@ -195,7 +195,7 @@ to the code at commit `15f953d`.
 ## Phase 3: Robustness and performance (P1)
 
 ### Network and memory
-- [~] (timeout set to 8 s; the "updating" indicator is still open) Call `http.setTimeout(5000)`, and show a small "updating" indicator
+- [x] Call `http.setTimeout(5000)` (set to 8 s), and show a small "updating" indicator
       during the fetch, because the fetch blocks the loop.
 - [x] Stream-parse with an ArduinoJson **filter**
       (`DeserializationOption::Filter`) directly from `http.getStream()`
@@ -203,16 +203,16 @@ to the code at commit `15f953d`.
 - [x] Before each fetch, log free heap and max free block. Skip the fetch
       and log it if the heap is below about 12 KB.
 - [x] Move `locationsJson` to `PROGMEM` (currently about 2 KB of RAM).
-- [ ] `handleApiLogs`: stream logs into the JSON array directly instead of
+- [x] `handleApiLogs`: stream logs into the JSON array directly instead of
       using a 2 KB stack buffer plus `strtok`.
 - [x] Resolve the SSID location only on the connect event, not on every
       `loop()` iteration (`WiFi.SSID()` allocates a String each time).
 - [x] Run `updateDayNight()` about once per second, not every loop.
 
 ### Data freshness
-- [ ] Mark weather as stale after 2× the fetch interval, and show a stale or
-      offline icon on the OLED.
-- [ ] Back off exponentially on failures (1, 2, 4, 8 minutes, capped at
+- [x] Mark weather as stale after 2× the fetch interval, and show a stale marker on the OLED
+      (an "OLD" tag in the top-left corner).
+- [x] Back off exponentially on failures (1, 2, 4, 8 minutes, capped at
       15) instead of retrying every minute forever.
 - [x] Fix the night-time fetch interval so it depends on the fixed `isNight`
       value from 1.3.
@@ -222,12 +222,13 @@ to the code at commit `15f953d`.
       which exceeds the 66 ms frame budget.
 - [x] Remove the double `display.display()` (`renderPrimaryView` and
       `renderDisplay` both flush).
-- [ ] Replace the per-pixel float `sin`/`cos` circles in `drawGiantBadge` and
+- [x] Replace the per-pixel float `sin`/`cos` circles in `drawGiantBadge` and
       `renderLoadingView` with `drawCircle` or precomputed tables.
-- [ ] Night mode: call `display.dim(true)` or set contrast to 0 at night, and
-      optionally blank the screen after N minutes without a touch. This is a
+- [x] Night mode: `display.dim(true)` at night (done). Optionally blank the screen after N minutes without a touch. This is a
       bedside device.
-- [ ] Shift the layout by a pixel now and then to reduce OLED burn-in.
+- [ ] Shift the layout by a pixel now and then to reduce OLED burn-in. (Deferred: the SSD1306
+      display-offset command wraps a row to the opposite edge, so it needs a proper layout offset in the
+      renderers.)
 
 ### Config persistence
 - [x] Replace the six copy-pasted read-modify-write blocks in `webserver.cpp`
@@ -235,9 +236,9 @@ to the code at commit `15f953d`.
       `webserver.cpp`; a shared `Settings` module is still open.)
 - [x] Write atomically: write `/config.tmp`, then
       `LittleFS.rename()` it over `/config.json`.
-- [ ] If `config.json` fails to parse, log it, keep the defaults, and do not
-      overwrite the file.
-- [ ] Add a `version` field to config for future migrations.
+- [x] If `config.json` fails to parse, log it and keep the defaults. A save never destroys the
+      broken file: it is moved to `config.bad` first.
+- [x] Add a `version` field to config for future migrations.
 
 ### Web server
 - [x] Return 405 for wrong methods. Currently handlers send nothing and the
@@ -252,8 +253,8 @@ to the code at commit `15f953d`.
       `Serial.print` debug paths, or put them behind a build flag that
       disables touch. Route all diagnostics through `logMessage()` and
       `/api/logs`.
-- [ ] Record the reset reason (`ESP.getResetReason()`) in the log at boot.
-- [ ] Move `DISPLAY_STATUS_DEBUG` out of `config.h` into a debug build env.
+- [x] Record the reset reason (`ESP.getResetReason()`) in the log at boot.
+- [x] Move `DISPLAY_STATUS_DEBUG` out of `config.h` into a debug build env.
 
 ---
 

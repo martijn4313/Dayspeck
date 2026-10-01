@@ -18,6 +18,8 @@ struct SystemState {
     // Timing
     unsigned long lastFetchMs;
     unsigned long lastSuccessMs;
+    unsigned long lastGoodIntervalMs; // refresh interval of the last successful fetch
+    uint8_t       fetchFailures;      // consecutive failed fetches (drives the back-off)
     unsigned long nextFetchIntervalMs;
     unsigned long lastFrameMs;
     bool          fetchNow;           // force a fetch on the next loop iteration
@@ -38,6 +40,7 @@ struct SystemState {
     // Validity flags
     bool          weatherValid;
     unsigned int  weatherAge;         // minutes since last successful fetch
+    bool          weatherStale;       // data older than twice its refresh interval
     bool          timeSynced;         // NTP time is valid
 };
 

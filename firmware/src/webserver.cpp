@@ -544,13 +544,19 @@ static bool updateConfig(const std::function<void(JsonDocument&)>& mutate) {
     JsonDocument doc;
     File file = LittleFS.open("/config.json", "r");
     if (file) {
-        if (deserializeJson(doc, file)) {
-            doc.clear();   // unreadable config: start over rather than keep half of it
-        }
+        bool unreadable = (bool)deserializeJson(doc, file);
         file.close();
+        if (unreadable) {
+            // Keep the broken file for recovery instead of silently destroying it
+            doc.clear();
+            LittleFS.remove("/config.bad");
+            LittleFS.rename("/config.json", "/config.bad");
+            logMessage("config.json unreadable, saved as config.bad");
+        }
     }
 
     mutate(doc);
+    doc["version"] = CONFIG_VERSION;
 
     File out = LittleFS.open("/config.tmp", "w");
     if (!out) return false;
@@ -731,13 +737,8 @@ static void handleApiLogs() {
     JsonDocument doc;
     JsonArray logs = doc["logs"].to<JsonArray>();
 
-    char logsBuffer[2048];
-    getLogs(logsBuffer, sizeof(logsBuffer));
-
-    char* line = strtok(logsBuffer, "\n");
-    while (line != NULL) {
-        logs.add(line);
-        line = strtok(NULL, "\n");
+    for (size_t i = 0; i < getLogCount(); i++) {
+        logs.add(String(getLogEntry(i)));
     }
 
     logs.add("[SYS] Free heap: " + String(system_get_free_heap_size()) + " bytes");

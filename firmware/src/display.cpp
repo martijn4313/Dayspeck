@@ -52,15 +52,9 @@ void drawDebugStatus(Adafruit_SSD1306 &display, const char* message) {
 void drawGiantBadge(Adafruit_SSD1306 &display, char type) {
     int cx = 32, cy = 32;
     
-    // Draw three concentric circles for thick border ring
+    // Three concentric circles for a thick border ring
     for (int r = 28; r >= 26; r--) {
-        // Draw circle using points
-        for (int angle = 0; angle < 360; angle += 2) {
-            float rad = angle * 3.14159 / 180.0;
-            int x = cx + (int)(r * cos(rad));
-            int y = cy + (int)(r * sin(rad));
-            display.drawPixel(x, y, SSD1306_WHITE);
-        }
+        display.drawCircle(cx, cy, r, SSD1306_WHITE);
     }
     
     // Draw the badge symbol inside based on type
@@ -580,13 +574,22 @@ void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char*
     int startAngle = (timeMs % 1000) * 360 / 1000;
     int endAngle = startAngle + 270; // 270 degree arc
     
+    // Sine/cosine table in 4 degree steps (x256), built once: float trig per pixel is slow
+    static int16_t cosTable[90], sinTable[90];
+    static bool tablesReady = false;
+    if (!tablesReady) {
+        for (int i = 0; i < 90; i++) {
+            float rad = i * 4 * 3.14159f / 180.0f;
+            cosTable[i] = (int16_t)(cos(rad) * 256);
+            sinTable[i] = (int16_t)(sin(rad) * 256);
+        }
+        tablesReady = true;
+    }
+
     for (int r = 28; r >= 26; r--) {
         for (int angle = startAngle; angle < endAngle; angle += 4) {
-            int a = angle % 360;
-            float rad = a * 3.14159 / 180.0;
-            int x = cx + (int)(r * cos(rad));
-            int y = cy + (int)(r * sin(rad));
-            display.drawPixel(x, y, SSD1306_WHITE);
+            int i = (angle % 360) / 4;
+            display.drawPixel(cx + ((r * cosTable[i]) >> 8), cy + ((r * sinTable[i]) >> 8), SSD1306_WHITE);
         }
     }
     

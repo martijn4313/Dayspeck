@@ -73,6 +73,8 @@ char getTomorrowRating();  // morning window tomorrow
 // Logging system
 #define MAX_LOG_ENTRIES 16
 void logMessage(const char* message);
+size_t getLogCount();
+const char* getLogEntry(size_t i);   // i = 0 is the oldest entry
 void getLogs(char* output, size_t maxLen);
 
 #endif // WEATHER_H

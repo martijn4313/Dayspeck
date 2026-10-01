@@ -124,6 +124,12 @@ void loadConfig() {
     }
     if (doc["manualLocation"].is<bool>()) manualLocation = doc["manualLocation"];
 
+    // Config schema version (see CONFIG_VERSION in config.h)
+    int version = doc["version"] | 0;
+    if (version > CONFIG_VERSION) {
+        logMessage("config.json is from a newer firmware, some settings may be ignored");
+    }
+
     // Thresholds
     if (doc["thresholds"].is<JsonObject>()) {
         if (doc["thresholds"]["maxRainMm"].is<float>()) maxRainMm = doc["thresholds"]["maxRainMm"];
@@ -199,6 +205,7 @@ void updateDayNight() {
 
     if (night != state.isNight) {
         state.isNight = night;
+        display.dim(night);   // lowest contrast at night: this is a bedside display
         state.displayDirty = true;
     }
 }
@@ -267,6 +274,13 @@ void render() {
         renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow);
     } else {
         renderDisplay();
+    }
+    if (state.weatherValid && state.weatherStale) {
+        // Data is old (offline or the API keeps failing): mark it in the free top-left corner
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        display.setCursor(0, 0);
+        display.print("OLD");
     }
     display.display();
     state.displayDirty = false;
@@ -401,6 +415,12 @@ void handleWeatherFetch() {
 
     if (!state.fetchNow && !intervalPassed(state.lastFetchMs, state.nextFetchIntervalMs)) return;
 
+    // The fetch blocks for up to a few seconds: show a dot in the corner while it runs
+    if (state.weatherValid) {
+        display.fillRect(124, 60, 3, 3, SSD1306_WHITE);
+        display.display();
+    }
+
     unsigned long serverInterval = fetchWeather(configLat, configLon);
 
     if (serverInterval > 0) {
@@ -419,10 +439,14 @@ void handleWeatherFetch() {
 
         state.weatherValid = true;
         state.lastSuccessMs = millis();
+        state.lastGoodIntervalMs = state.nextFetchIntervalMs;   // incl. jitter and the night multiplier
         state.weatherAge = 0;
+        state.fetchFailures = 0;
     } else {
-        // On failure: retry in 1 minute; keep showing the last good data
-        state.nextFetchIntervalMs = 60000UL;
+        // On failure keep showing the last good data and back off: 1, 2, 4, 8, then 15 minutes
+        if (state.fetchFailures < 250) state.fetchFailures++;
+        unsigned long backoff = 60000UL << min((int)state.fetchFailures - 1, 4);
+        state.nextFetchIntervalMs = min(backoff, 900000UL);
     }
 
     state.fetchNow = false;
@@ -437,6 +461,7 @@ void handleWeatherFetch() {
  */
 void setup() {
     LittleFS.begin();
+    logMessage(("Boot: " + ESP.getResetReason()).c_str());
     loadConfig();
 
     // Initialize I2C with ESP01 pins; fast mode so a frame flush fits the animation budget
@@ -489,7 +514,13 @@ void loop() {
     handleWeatherFetch();
 
     if (state.weatherValid) {
-        state.weatherAge = (millis() - state.lastSuccessMs) / 60000UL;
+        unsigned long sinceSuccess = millis() - state.lastSuccessMs;
+        state.weatherAge = sinceSuccess / 60000UL;
+        bool stale = sinceSuccess > 2 * state.lastGoodIntervalMs;
+        if (stale != state.weatherStale) {
+            state.weatherStale = stale;
+            state.displayDirty = true;
+        }
     }
 
     // Animation frame tick (15 FPS)
