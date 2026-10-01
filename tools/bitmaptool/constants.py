@@ -14,7 +14,7 @@ CHURCH_ROOF_Y = 41     # Bottom of 30px town area (y=12 to y=41)
 SUN_X, SUN_Y = 116, 2
 MOON_X, MOON_Y = 116, 2
 TEMP_X, TEMP_Y = 65, 1
-ARROW_X, ARROW_Y = 87, 1
+ARROW_X, ARROW_Y = 91, 1
 WIND_THRESHOLD = 25
 
 # Rain animation constants

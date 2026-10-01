@@ -7,17 +7,21 @@ It answers one question at a glance: **can I ride today?**
 - **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
   animation when it rains.
 - **Right half, bottom:** weather icon, wind speed and precipitation.
-- **Touch:** a short tap switches *today / tomorrow*. A long press steps through the detail views:
-  the *7-day AM/PM grid*, then the *next hours*, then back to the main screen. The detail views
-  close by themselves after 30 s; a tap closes them too.
+- **Touch:** a short tap switches *today / tomorrow*. A long press steps through the other screens:
+  the *7-day AM/PM grid*, the *next hours*, the *clock*, then back to the main screen. The week and
+  hours views close by themselves after 30 s; the clock stays until you tap. A tap always returns to the
+  main screen.
 - **Status marks:** a signal-bars icon (bottom of the left half; a cross when offline), a `TMR` tag
   while tomorrow is shown, and an `OLD` tag when the data is stale (older than twice its refresh
   interval).
 - **Week grid:** the best day (see the ride score below) is shown in inverse video.
-- **Next hours:** six columns with the hour, the temperature, a bar for the rain amount (taller = more
-  mm), a dotted line for the chance of rain (higher = likelier) and the gusts in km/h. The bottom line
-  shows the best time to leave in the next 12 hours (a 2 hour daytime ride) and when the data was
-  last updated.
+- **Next hours:** six columns, with a label on the left naming each row: `h` the hour, `°C` the
+  temperature, `mm` a bar for the rain amount (taller = more), `%` a dotted line for the chance of rain
+  (higher = likelier) and `kmh` the strongest gust. The bottom line shows the best time to leave in the
+  next 12 hours (a 2 hour daytime ride) and when the data was last updated.
+- **Clock:** the time in large digits with a blinking colon, then the weekday and date, then the year.
+  It needs the network time and the first weather update (which tells the device its time zone), and
+  says "Time not set yet" until then.
 - **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates.
 

@@ -298,6 +298,10 @@ bool forecastIsFromPastDay() {
     return state.timeSynced && forecastDay0 > 0 && time(nullptr) >= forecastDay0 + 86400;
 }
 
+bool timezoneKnown() {
+    return forecastDay0 > 0;
+}
+
 int localHourOf(time_t t) {
     return (int)(((t + utcOffsetSeconds) / 3600) % 24);
 }

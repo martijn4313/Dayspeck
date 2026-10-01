@@ -11,7 +11,7 @@
 struct SystemState {
     // Display state
     bool          showTomorrow;
-    uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix, 2 = next hours
+    uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix, 2 = next hours, 3 = clock
     bool          displayDirty;
     unsigned long weeklyEnteredMs;    // when the weekly / hourly view was opened
     unsigned long lastActivityMs;     // last touch (for the sleep timer)

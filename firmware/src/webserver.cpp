@@ -118,6 +118,7 @@ static const char index_html[] PROGMEM = R"HTML(
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>MotoWeather Status</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -614,7 +615,7 @@ static bool validUrl(const String& url) {
 // ---------------------------------------------------------------------------
 
 static void handleRoot() {
-    server.send_P(200, "text/html", index_html);
+    server.send_P(200, "text/html; charset=utf-8", index_html);
 }
 
 static void handleApiLocations() {

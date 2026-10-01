@@ -323,6 +323,21 @@ int wifiBars() {
 
 
 /**
+ * Draw the clock screen from NTP time and the location's UTC offset
+ */
+void renderClock() {
+    bool valid = state.timeSynced && timezoneKnown();
+    struct tm t = {};
+    if (valid) {
+        time_t local = time(nullptr) + utcOffsetSeconds;
+        gmtime_r(&local, &t);
+    }
+    renderClockView(display, valid, t.tm_hour, t.tm_min, (t.tm_sec % 2) == 0,
+                    t.tm_wday, t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+}
+
+
+/**
  * Draw the hourly view from the stored forecast
  */
 void renderHourly() {
@@ -351,6 +366,8 @@ void renderHourly() {
 void render() {
     if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
+    } else if (state.displayMode == 3) {
+        renderClock();
     } else if (!state.weatherValid) {
         const char* line1;
         const char* line2;
@@ -371,7 +388,7 @@ void render() {
 #endif
     }
 #ifndef KIDS_MODE
-    if (state.weatherValid && state.weatherStale) {
+    if (state.weatherValid && state.weatherStale && state.displayMode != 3) {
         // Data is old (offline or the API keeps failing): mark it in the free top-left corner
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
@@ -386,7 +403,7 @@ void render() {
 
 /**
  * Touch: short tap = today/tomorrow (or leave a detail view), long press = next view
- * (primary -> week -> next hours -> primary).
+ * (primary -> week -> next hours -> clock -> primary).
  * touch_get_event() consumes the event, so it must be read exactly once per iteration.
  */
 void handleTouch() {
@@ -421,15 +438,15 @@ void handleTouch() {
         }
         state.displayDirty = true;
     } else if (event == TOUCH_LONG) {
-        state.displayMode = (state.displayMode + 1) % 3;
+        state.displayMode = (state.displayMode + 1) % 4;
         if (state.displayMode != 0) {
             state.weeklyEnteredMs = millis();
         }
         state.displayDirty = true;
     }
 
-    // The detail views close themselves
-    if (state.displayMode != 0 && intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
+    // The week and hours views close themselves; the clock stays until a tap
+    if (state.displayMode != 0 && state.displayMode != 3 && intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
         state.displayMode = 0;
         state.displayDirty = true;
     }
@@ -667,6 +684,16 @@ void loop() {
         bool stale = sinceSuccess > 2 * state.lastGoodIntervalMs;
         if (stale != state.weatherStale) {
             state.weatherStale = stale;
+            state.displayDirty = true;
+        }
+    }
+
+    // The clock redraws every second (blinking colon)
+    if (state.displayMode == 3 && !state.displayOff) {
+        static time_t lastSecond = 0;
+        time_t nowSecond = time(nullptr);
+        if (nowSecond != lastSecond) {
+            lastSecond = nowSecond;
             state.displayDirty = true;
         }
     }

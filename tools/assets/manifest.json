@@ -4,7 +4,7 @@
   "assets": {
     "sun": {
       "png": "sun.png",
-      "header": "sun  10x10"
+      "header": "sun  10x10 sun with rays"
     },
     "skyline_base": {
       "png": "skyline_base.png",
@@ -25,6 +25,38 @@
     "arrow_r": {
       "png": "arrow_r.png",
       "header": "trend arrow flat  7x7 (temperature steady)"
+    },
+    "rain_drop_1": {
+      "png": "rain_drop_1.png",
+      "comment": "slanted streak"
+    },
+    "rain_drop_2": {
+      "png": "rain_drop_2.png",
+      "comment": "upright streak"
+    },
+    "rain_drop_3": {
+      "png": "rain_drop_3.png",
+      "comment": "short slanted streak"
+    },
+    "rain_drop_4": {
+      "png": "rain_drop_4.png",
+      "comment": "short fast streak"
+    },
+    "splash_1": {
+      "png": "splash_1.png",
+      "comment": "crown"
+    },
+    "splash_2": {
+      "png": "splash_2.png",
+      "comment": "wide ripple"
+    },
+    "splash_3": {
+      "png": "splash_3.png",
+      "comment": "small"
+    },
+    "splash_4": {
+      "png": "splash_4.png",
+      "comment": "droplets"
     }
   }
 }
