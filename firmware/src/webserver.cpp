@@ -211,7 +211,8 @@ static const char index_html[] PROGMEM = R"HTML(
         <h3>Display</h3>
         <form id="displayForm">
             <span class="label">Tomorrow from (hour):</span> <input name="previewHr" type="number" min="0" max="24" title="24 = never"> <small>24 = never</small><br>
-            <span class="label">Dim at night:</span> <input name="dimAtNight" type="checkbox"><br>
+            <span class="label">Dim at night:</span> <input name="dimAtNight" type="checkbox"> <small>a touch gives full brightness for 30 s</small><br>
+            <span class="label">Night brightness (%):</span> <input name="nightBrightness" type="number" min="1" max="100"> <small>raise it if the screen looks blank at night</small><br>
             <span class="label">Sleep at night after (min):</span> <input name="sleepMinutes" type="number" min="0" max="600"> <small>0 = never; a touch wakes it</small><br>
             <span class="label">Always sleep:</span> <input name="alwaysSleep" type="checkbox"> <small>screen off; a touch wakes it for 30 s</small><br>
             <span class="label">Language (kids build):</span> <select name="language"><option value="en">English</option><option value="nl">Nederlands</option></select><br>
@@ -359,6 +360,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     const d = document.forms.displayForm;
                     d.previewHr.value = s.display.previewHr;
                     d.dimAtNight.checked = s.display.dimAtNight;
+                    d.nightBrightness.value = s.display.nightBrightness;
                     d.sleepMinutes.value = s.display.sleepMinutes;
                     d.alwaysSleep.checked = s.display.alwaysSleep;
                     d.language.value = s.display.language;
@@ -660,6 +662,7 @@ static void handleApiStatus() {
     JsonObject display = doc["display"].to<JsonObject>();
     display["previewHr"] = previewHr;
     display["dimAtNight"] = displayDimAtNight;
+    display["nightBrightness"] = displayNightBrightness;
     display["sleepMinutes"] = displaySleepMinutes;
     display["alwaysSleep"] = displayAlwaysSleep;
     display["language"] = displayLanguage;
@@ -739,10 +742,11 @@ static bool argInt(const char* name, int lo, int hi, int& out) {
 }
 
 static void handleApiDisplay() {
-    int preview, sleepMin, qStart, qEnd;
+    int preview, sleepMin, qStart, qEnd, nightPct;
     if (!argInt("previewHr", 0, 24, preview) || !argInt("sleepMinutes", 0, 600, sleepMin) ||
-        !argInt("quietStart", -1, 23, qStart) || !argInt("quietEnd", -1, 23, qEnd)) {
-        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes");
+        !argInt("quietStart", -1, 23, qStart) || !argInt("quietEnd", -1, 23, qEnd) ||
+        !argInt("nightBrightness", 1, 100, nightPct)) {
+        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes, night brightness 1-100 %");
         return;
     }
     if ((qStart < 0) != (qEnd < 0)) {
@@ -757,6 +761,7 @@ static void handleApiDisplay() {
     bool saved = updateConfig([&](JsonDocument& doc) {
         doc["previewHr"] = preview;
         doc["display"]["dimAtNight"] = dim;
+        doc["display"]["nightBrightness"] = nightPct;
         doc["display"]["sleepMinutes"] = sleepMin;
         doc["display"]["alwaysSleep"] = alwaysSleep;
         doc["display"]["language"] = language;
@@ -769,6 +774,7 @@ static void handleApiDisplay() {
     }
     previewHr = preview;
     displayDimAtNight = dim;
+    displayNightBrightness = nightPct;
     displaySleepMinutes = sleepMin;
     displayAlwaysSleep = alwaysSleep;
     displayLanguage = language;
