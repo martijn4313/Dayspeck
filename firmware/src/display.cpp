@@ -607,3 +607,21 @@ void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char*
     }
     
 }
+
+// Render setup AP instructions — full 128x64 text screen
+void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.print("Setup: join WiFi");
+    display.setCursor(0, 14);
+    display.print(ssid);
+    display.setCursor(0, 26);
+    display.print("pw ");
+    display.print(password);
+    display.setCursor(0, 40);
+    display.print("then open");
+    display.setCursor(0, 52);
+    display.print(ip);
+}

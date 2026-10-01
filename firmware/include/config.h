@@ -4,9 +4,19 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// WiFi credentials
-#define WIFI_SSID       "YOUR_SSID"
-#define WIFI_PASS       "YOUR_PASSWORD"
+// Secrets: copy secrets.h.example to secrets.h (git-ignored) and edit it.
+// Without it the device boots with no WiFi credentials and starts its setup access point;
+// WiFi can then be configured from the web UI.
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+
+#ifndef WIFI_SSID
+#define WIFI_SSID       ""
+#endif
+#ifndef WIFI_PASS
+#define WIFI_PASS       ""
+#endif
 
 // Open-Meteo API
 #define API_BASE_URL        "http://api.open-meteo.com/v1/forecast"
@@ -17,8 +27,11 @@
 #define DEFAULT_WEATHER_UNITS    "metric"
 #define DEFAULT_WEATHER_DEBUG    false
 
-// Google Geolocation API key (optional - automatic geolocation)
-#define GEOLOCATION_API_KEY "YOUR_GOOGLE_API_KEY"
+// Google Geolocation API key (optional). Leave empty to disable automatic geolocation.
+// Privacy: when enabled, the BSSID and signal strength of nearby WiFi access points are sent to Google.
+#ifndef GEOLOCATION_API_KEY
+#define GEOLOCATION_API_KEY ""
+#endif
 
 // Display (SSD1306 I2C)
 #define OLED_WIDTH      128

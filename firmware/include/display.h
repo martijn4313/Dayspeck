@@ -94,6 +94,8 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
 void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm);
 void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow);
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm);
+// Setup access point instructions (full width): network name, password and IP address
+void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip);
 void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs);
 
 #endif // DISPLAY_H

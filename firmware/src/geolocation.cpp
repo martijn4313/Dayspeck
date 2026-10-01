@@ -11,7 +11,7 @@
 #define GEOLOCATION_API "https://www.googleapis.com/geolocation/v1/geolocate?key="
 
 bool geolocationConfigured() {
-    return strlen(GEOLOCATION_API_KEY) > 0 && strcmp(GEOLOCATION_API_KEY, "YOUR_GOOGLE_API_KEY") != 0;
+    return strlen(GEOLOCATION_API_KEY) > 0;
 }
 
 bool geolocateDevice(float &outLat, float &outLon) {

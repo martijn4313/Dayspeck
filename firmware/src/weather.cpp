@@ -4,15 +4,18 @@
 #include "weather.h"
 #include "config.h"
 #include <math.h>
+#include <memory>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
 #define FORECAST_DAYS        7
 #define FORECAST_HOURS       (FORECAST_DAYS * 24)
 #define MAX_WINDOW_HOURS     24
-#define MIN_FREE_HEAP_BYTES  20000
+#define MIN_FREE_HEAP_BYTES      20000
+#define MIN_FREE_HEAP_TLS_BYTES  32000   // a TLS session needs considerably more RAM
 #define DEFAULT_FETCH_MS     900000UL
 
 // Weekly state arrays
@@ -155,20 +158,37 @@ static bool parseForecast(JsonDocument& doc) {
 // One request for everything: current conditions, 7 days of hourly data, sunrise/sunset.
 // The response is stream-parsed through an ArduinoJson filter (no String payload).
 unsigned long fetchWeather(float lat, float lon) {
-    if (ESP.getFreeHeap() < MIN_FREE_HEAP_BYTES) {
+    // Transport: an API key is never sent in clear text. Without a key the public data is
+    // fetched over plain HTTP to save RAM (an https:// URL is downgraded).
+    String url = weatherApiUrl;
+    bool hasKey = weatherApiKey.length() > 0;
+    if (hasKey && url.startsWith("http://")) {
+        url.replace(0, 7, "https://");
+    } else if (!hasKey && url.startsWith("https://")) {
+        url.replace(0, 8, "http://");
+    }
+    bool useTls = url.startsWith("https://");
+
+    uint32_t minHeap = useTls ? MIN_FREE_HEAP_TLS_BYTES : MIN_FREE_HEAP_BYTES;
+    if (ESP.getFreeHeap() < minHeap) {
         char buf[64];
         snprintf(buf, sizeof(buf), "Weather fetch skipped, low heap: %u", ESP.getFreeHeap());
         logMessage(buf);
         return 0;
     }
 
-    WiFiClient client;
+    std::unique_ptr<WiFiClient> client;
+    if (useTls) {
+        // Encrypts the request, but does not verify the server certificate (no CA store on device)
+        WiFiClientSecure* secure = new WiFiClientSecure();
+        secure->setInsecure();
+        secure->setBufferSizes(1024, 512);
+        client.reset(secure);
+    } else {
+        client.reset(new WiFiClient());
+    }
     HTTPClient http;
 
-    String url = weatherApiUrl;
-    if (url.startsWith("https://")) {
-        url.replace(0, 8, "http://");
-    }
     url += "?latitude=";
     url += String(lat, 6);
     url += "&longitude=";
@@ -179,7 +199,7 @@ unsigned long fetchWeather(float lat, float lon) {
     url += "&forecast_days=7&timezone=auto&timeformat=unixtime";
     // Data is always requested in metric units (thresholds are metric); the display converts
 
-    if (weatherApiKey.length() > 0) {
+    if (hasKey) {
         url += "&apikey=" + weatherApiKey;
     }
 
@@ -193,7 +213,7 @@ unsigned long fetchWeather(float lat, float lon) {
     const char* headerKeys[] = { "Cache-Control" };
     http.collectHeaders(headerKeys, 1);
 
-    if (!http.begin(client, url)) {
+    if (!http.begin(*client, url)) {
         logMessage("Weather API: begin() failed");
         return 0;
     }

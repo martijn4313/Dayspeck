@@ -142,33 +142,58 @@ to the code at commit `15f953d`.
 
 ## Phase 2: Security (P0)
 
-- [ ] **Stop leaking secrets:** remove `wifi.password` and `weatherApi.key`
+> **Status:** implemented on branch `ccr-9c0b59d9-v315pr`, **not compiled or run on hardware**
+> (PlatformIO registry blocked in the sandbox). Deviations from the original text, all deliberate:
+> - **Login:** HTTP Basic, user `admin`; the password is the device password below. 10 failed
+>   attempts lock the web UI for 60 s.
+> - **Device password:** `moto` + 6 hex digits of the chip ID until the user sets their own (8-63
+>   chars, via the new "Admin Password" card; the device restarts afterwards). The same password
+>   protects the setup access point, the web UI and OTA. While the setup AP is active the OLED
+>   shows the AP name, the password and the IP. The chip ID is derivable from the MAC address, so
+>   this is a per-device default, not a secret: the web UI nags until it is changed.
+> - **CSRF:** instead of a fixed `X-MotoClock: 1` header (which a cross-site *form* post cannot send,
+>   but is guessable), every POST must carry a random per-boot token in `X-MotoClock`, readable only
+>   by same-origin script via `GET /api/token`. Writes also reject non-POST requests with 405.
+> - **OTA path:** `/update-<token>` (token changes every boot) behind the password, so a cross-site
+>   form post cannot reach it.
+> - **`data/config.json`** is kept, with empty WiFi credentials. To avoid committing your own, run
+>   `git update-index --skip-worktree firmware/data/config.json`.
+> - **API key:** when a key is set the request goes over HTTPS (never HTTP), with
+>   `setInsecure()` (no certificate check). That protects against passive sniffing only.
+
+- [x] **Stop leaking secrets:** remove `wifi.password` and `weatherApi.key`
       from `/api/status`. Return `"passwordSet": true/false` instead.
-- [ ] **Authentication:** protect all `/api/*` write endpoints and `/update`
+- [x] **Authentication:** protect all `/api/*` write endpoints and `/update`
       with `server.authenticate(user, pass)`. Set the admin password in the
       web UI and store it in config.
-- [ ] **OTA:** use `httpUpdater.setup(&server, "/update", user, pass)`.
-- [ ] **AP password:** derive a password per device (for example from the
+- [x] **OTA:** use `httpUpdater.setup(&server, "/update", user, pass)`.
+- [x] **AP password:** derive a password per device (for example from the
       chip ID) instead of the hard-coded `password123`, and show it on the
       OLED while in AP mode. Optionally add a captive portal with
       `DNSServer`.
-- [ ] **XSS:** use `textContent` or DOM nodes instead of `innerHTML` for
+- [x] **XSS:** use `textContent` or DOM nodes instead of `innerHTML` for
       SSIDs, logs and SSID-location lists (web UI JS, around lines 398, 477
       and 506). A neighbour's AP name must not be able to run script.
-- [ ] **CSRF:** require a custom header (for example `X-MotoClock: 1`) on POSTs.
+- [x] **CSRF:** require a custom header (for example `X-MotoClock: 1`) on POSTs.
       Browsers cannot send it cross-origin without a preflight.
-- [ ] **Input validation:** check lat ∈ [-90, 90], lon ∈ [-180, 180],
+- [x] **Input validation:** check lat ∈ [-90, 90], lon ∈ [-180, 180],
       thresholds within sane ranges, SSID ≤ 32 chars, a maximum of about 10
       SSID locations. Return 400 with a message on error.
-- [ ] **Secrets in the repo:**
-  - [ ] Move `WIFI_SSID`, `WIFI_PASS` and `GEOLOCATION_API_KEY` to a
+- [x] **Secrets in the repo:**
+  - [x] Move `WIFI_SSID`, `WIFI_PASS` and `GEOLOCATION_API_KEY` to a
         git-ignored `include/secrets.h`, and commit a `secrets.h.example`.
-  - [ ] Rename `data/config.json` to `data/config.example.json` and git-ignore
+  - [x] Rename `data/config.json` to `data/config.example.json` and git-ignore
         the real one. Alternatively, keep it with empty credentials only.
-- [ ] **API key transport:** stop downgrading `https://` to `http://` in
+- [ ] **Verify TLS certificates:** `fetchWeather()` and geolocation use `setInsecure()`. Pin the
+      server certificate fingerprint or ship a small CA bundle so an active attacker on the LAN cannot
+      impersonate the API.
+- [x] **API key transport:** stop downgrading `https://` to `http://` in
       `fetchWeather()`. Either use HTTPS with a pinned fingerprint or CA, or
       drop the `apikey` feature, since free Open-Meteo needs no key.
-- [ ] Document the privacy impact of Google geolocation, which sends nearby
+- [ ] Known limits to document in the README: Basic auth is unencrypted on the LAN (use a trusted
+      network), and DNS rebinding is not blocked (consider checking the `Host` header against the
+      device IP or `motoclock.local`).
+- [x] Document the privacy impact of Google geolocation, which sends nearby
       BSSIDs, if that feature is kept.
 
 ---
@@ -176,32 +201,32 @@ to the code at commit `15f953d`.
 ## Phase 3: Robustness and performance (P1)
 
 ### Network and memory
-- [ ] Call `http.setTimeout(5000)`, and show a small "updating" indicator
+- [~] (timeout set to 8 s; the "updating" indicator is still open) Call `http.setTimeout(5000)`, and show a small "updating" indicator
       during the fetch, because the fetch blocks the loop.
-- [ ] Stream-parse with an ArduinoJson **filter**
+- [x] Stream-parse with an ArduinoJson **filter**
       (`DeserializationOption::Filter`) directly from `http.getStream()`
       instead of `getString()`.
-- [ ] Before each fetch, log free heap and max free block. Skip the fetch
+- [x] Before each fetch, log free heap and max free block. Skip the fetch
       and log it if the heap is below about 12 KB.
-- [ ] Move `locationsJson` to `PROGMEM` (currently about 2 KB of RAM).
+- [x] Move `locationsJson` to `PROGMEM` (currently about 2 KB of RAM).
 - [ ] `handleApiLogs`: stream logs into the JSON array directly instead of
       using a 2 KB stack buffer plus `strtok`.
-- [ ] Resolve the SSID location only on the connect event, not on every
+- [x] Resolve the SSID location only on the connect event, not on every
       `loop()` iteration (`WiFi.SSID()` allocates a String each time).
-- [ ] Run `updateDayNight()` about once per second, not every loop.
+- [x] Run `updateDayNight()` about once per second, not every loop.
 
 ### Data freshness
 - [ ] Mark weather as stale after 2× the fetch interval, and show a stale or
       offline icon on the OLED.
 - [ ] Back off exponentially on failures (1, 2, 4, 8 minutes, capped at
       15) instead of retrying every minute forever.
-- [ ] Fix the night-time fetch interval so it depends on the fixed `isNight`
+- [x] Fix the night-time fetch interval so it depends on the fixed `isNight`
       value from 1.3.
 
 ### Display
-- [ ] Call `Wire.setClock(400000)`. At 100 kHz a full frame takes about 90 ms,
+- [x] Call `Wire.setClock(400000)`. At 100 kHz a full frame takes about 90 ms,
       which exceeds the 66 ms frame budget.
-- [ ] Remove the double `display.display()` (`renderPrimaryView` and
+- [x] Remove the double `display.display()` (`renderPrimaryView` and
       `renderDisplay` both flush).
 - [ ] Replace the per-pixel float `sin`/`cos` circles in `drawGiantBadge` and
       `renderLoadingView` with `drawCircle` or precomputed tables.
@@ -211,24 +236,25 @@ to the code at commit `15f953d`.
 - [ ] Shift the layout by a pixel now and then to reduce OLED burn-in.
 
 ### Config persistence
-- [ ] Replace the six copy-pasted read-modify-write blocks in `webserver.cpp`
-      with a single `Settings::save()`.
-- [ ] Write atomically: write `/config.tmp`, then
+- [x] Replace the six copy-pasted read-modify-write blocks in `webserver.cpp`
+      with a single `Settings::save()`. (Done as an `updateConfig()` helper in
+      `webserver.cpp`; a shared `Settings` module is still open.)
+- [x] Write atomically: write `/config.tmp`, then
       `LittleFS.rename()` it over `/config.json`.
 - [ ] If `config.json` fails to parse, log it, keep the defaults, and do not
       overwrite the file.
 - [ ] Add a `version` field to config for future migrations.
 
 ### Web server
-- [ ] Return 405 for wrong methods. Currently handlers send nothing and the
+- [x] Return 405 for wrong methods. Currently handlers send nothing and the
       client hangs.
-- [ ] Return 500 when a file write fails, and a JSON body on success.
+- [x] Return 500 when a file write fails, and a JSON body on success.
 - [ ] Serve the UI from LittleFS (`data/index.html.gz`) instead of a
       roughly 400-line string in C++. Add cache headers.
 - [ ] Add a config export and import endpoint.
 
 ### Debugging
-- [ ] `Serial` is never started, and GPIO3/RX is the touch pin. Remove the
+- [x] `Serial` is never started, and GPIO3/RX is the touch pin. Remove the
       `Serial.print` debug paths, or put them behind a build flag that
       disables touch. Route all diagnostics through `logMessage()` and
       `/api/logs`.

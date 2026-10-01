@@ -18,6 +18,7 @@
 #include "weather.h"
 #include "touch.h"
 #include "webserver.h"
+#include "security.h"
 
 // Display object
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT);
@@ -53,6 +54,7 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 #define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
 #define WEEKLY_VIEW_TIMEOUT_MS    30000UL
+#define AP_SSID                   "MotoWeather"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
 
 
@@ -82,6 +84,11 @@ static void loadWindow(JsonVariant v, RideWindow &w) {
  * Load config from LittleFS. Missing or invalid files leave the defaults in place.
  */
 void loadConfig() {
+    // Recover from an interrupted atomic save (see webserver.cpp: updateConfig)
+    if (!LittleFS.exists("/config.json") && LittleFS.exists("/config.tmp")) {
+        LittleFS.rename("/config.tmp", "/config.json");
+    }
+
     File file = LittleFS.open("/config.json", "r");
     if (!file) {
         logMessage("config.json not found, using defaults");
@@ -99,9 +106,17 @@ void loadConfig() {
     }
 
     // WiFi credentials
-    if (doc["wifi"].is<JsonObject>()) {
+    if (doc["wifi"]["ssid"].is<String>() && doc["wifi"]["ssid"].as<String>().length() > 0) {
         wifiSsid = doc["wifi"]["ssid"].as<String>();
         wifiPassword = doc["wifi"]["password"].as<String>();
+    }
+
+    // Admin / setup AP password (empty or invalid = device default)
+    if (doc["auth"]["password"].is<String>()) {
+        String pw = doc["auth"]["password"].as<String>();
+        if (pw.length() >= PASSWORD_MIN_LEN && pw.length() <= PASSWORD_MAX_LEN) {
+            adminPassword = pw;
+        }
     }
 
     // Location
@@ -245,7 +260,9 @@ void getInitStatus(const char* &line1, const char* &line2) {
  * Flush the right view to the display
  */
 void render() {
-    if (!state.weatherValid) {
+    if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
+        renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
+    } else if (!state.weatherValid) {
         const char* line1;
         const char* line2;
         getInitStatus(line1, line2);
@@ -380,7 +397,7 @@ void manageWifi() {
     unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS : WIFI_AP_DELAY_FIRST_MS;
     if (!state.apModeStarted && (now - state.disconnectedSinceMs) > delayMs) {
         WiFi.mode(WIFI_AP_STA);   // keep the station side alive so it can still reconnect
-        WiFi.softAP("MotoWeather", "password123");
+        WiFi.softAP(AP_SSID, effectivePassword().c_str());
         state.apModeStarted = true;
         // AP IP will be 192.168.4.1
     }
@@ -454,10 +471,15 @@ void setup() {
     WiFi.persistent(false);          // don't wear the flash with credential writes
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_STA);
-    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    if (wifiSsid.length() > 0) {
+        WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    }
 
     initWebServer();
-    httpUpdater.setup(&server);
+    // OTA lives on an unguessable path behind the admin password (see webserver.cpp)
+    static String otaUrl = webOtaPath();
+    static String otaPass = effectivePassword();
+    httpUpdater.setup(&server, otaUrl.c_str(), ADMIN_USER, otaPass.c_str());
 
     state.nextFetchIntervalMs = FETCH_INTERVAL_MS;
     state.fetchNow = true;           // fetch as soon as WiFi is up
