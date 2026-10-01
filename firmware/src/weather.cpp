@@ -48,19 +48,9 @@ time_t sunriseTime = 0;
 time_t sunsetTime = 0;
 long   utcOffsetSeconds = 0;
 
-// Map an Open-Meteo WMO weather code (plus wind) to a display condition
-static int mapCondition(int code, float windKmh) {
-    int condition = WEATHER_CLEAR;
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) {
-        condition = WEATHER_RAIN;      // drizzle, rain, showers, thunderstorm
-    } else if ((code >= 71 && code <= 77) || code == 85 || code == 86) {
-        condition = WEATHER_SNOW;      // snow, snow grains, snow showers
-    }
-    // Clear, cloudy (1-3) and fog (45, 48) fall through; show wind if it is strong
-    if (condition == WEATHER_CLEAR && windKmh > warnWindKmh) {
-        condition = WEATHER_WIND;
-    }
-    return condition;
+// Thresholds as the pure logic wants them
+static RideThresholds thresholds() {
+    return RideThresholds{ maxRainMm, maxWindKmh, minTempC, warnWindKmh };
 }
 
 // Read element i of a numeric JSON array, NAN when missing or null
@@ -83,7 +73,7 @@ static char rateWindow(JsonArray temps, JsonArray precips, JsonArray gusts, int 
         p[i] = valueAt(precips, first + i);
         g[i] = valueAt(gusts, first + i);
     }
-    return evaluateWindow(t, p, g, n);
+    return rateWindow(thresholds(), t, p, g, n);
 }
 
 // Parse the combined response. Commits to the globals only when the data is usable.
@@ -102,7 +92,7 @@ static bool parseForecast(JsonDocument& doc) {
     if (current["wind_speed_10m"].is<float>())   w.windKmh = current["wind_speed_10m"].as<float>();
     if (current["wind_gusts_10m"].is<float>())   w.gustKmh = current["wind_gusts_10m"].as<float>();
     if (current["weather_code"].is<int>()) {
-        w.condition = mapCondition(current["weather_code"].as<int>(), w.windKmh);
+        w.condition = mapWeatherCode(current["weather_code"].as<int>(), w.windKmh, warnWindKmh);
     } else {
         logMessage("Weather API: weather_code missing, keeping previous condition");
     }
@@ -127,15 +117,10 @@ static bool parseForecast(JsonDocument& doc) {
         time_t nowEpoch = state.timeSynced ? time(nullptr) : (time_t)(current["time"] | 0L);
         long nowIdx = nowEpoch > day0 ? (long)((nowEpoch - day0) / 3600) : 0;
         if (nowIdx + 3 < (long)temps.size()) {
-            float now = valueAt(temps, nowIdx);
-            float later = valueAt(temps, nowIdx + 3);
-            if (!isnan(now) && !isnan(later)) {
-                if (later - now >= 1.0f) w.trend = 'u';
-                else if (now - later >= 1.0f) w.trend = 'd';
-            }
+            w.trend = temperatureTrend(valueAt(temps, nowIdx), valueAt(temps, nowIdx + 3));
         }
 
-        uint8_t dow0 = (uint8_t)((((long)day0 + offset) / 86400 + 4) % 7);   // 1970-01-01 was a Thursday
+        uint8_t dow0 = dayOfWeek((long)day0, offset);
         for (int d = 0; d < FORECAST_DAYS; d++) {
             bool weekend = isWeekend((dow0 + d) % 7);
             weekAM[d] = rateWindow(temps, precips, gusts, d, weekend ? weekendAM : weekdayAM);
@@ -247,33 +232,6 @@ unsigned long fetchWeather(float lat, float lon) {
 
     http.end();
     return ok ? nextFetchMs : 0;
-}
-
-// Ride decision algorithm
-char evaluateRide(float precipMm, float gustKmh, float tempC, float windKmh) {
-    (void)windKmh;
-    if (precipMm > maxRainMm || gustKmh > maxWindKmh) {
-        return RIDE_DONT;
-    }
-    if (precipMm > 0 || tempC < minTempC || gustKmh > warnWindKmh) {
-        return RIDE_CAUTION;
-    }
-    return RIDE_GOOD;
-}
-
-// Worst case over a window: total rain, strongest gust, coldest temperature
-char evaluateWindow(const float* temp, const float* precip, const float* gust, size_t count) {
-    float rain = 0, maxGust = 0, minTemp = 100;
-    bool any = false;
-    for (size_t i = 0; i < count; i++) {
-        if (!isnan(precip[i])) { rain += precip[i]; any = true; }
-        if (!isnan(gust[i]) && gust[i] > maxGust) { maxGust = gust[i]; any = true; }
-        if (!isnan(temp[i]) && temp[i] < minTemp) { minTemp = temp[i]; any = true; }
-    }
-    if (!any) {
-        return RIDE_UNKNOWN;
-    }
-    return evaluateRide(rain, maxGust, minTemp, 0);
 }
 
 // Hour of day (0-23) at the configured location; only meaningful when NTP has synced

@@ -8,17 +8,7 @@
 #include <time.h>
 #include "app_state.h"
 
-// Weather conditions
-#define WEATHER_CLEAR   0
-#define WEATHER_RAIN    1
-#define WEATHER_SNOW    2
-#define WEATHER_WIND    3
-
-// Ride ratings
-#define RIDE_GOOD       'G'
-#define RIDE_CAUTION    '!'
-#define RIDE_DONT       'X'
-#define RIDE_UNKNOWN    '?'
+#include "motologic.h"   // RIDE_* ratings, WEATHER_* conditions and the pure logic
 
 // Weekly state arrays (index 0 = today)
 extern char weekAM[7];
@@ -54,11 +44,7 @@ extern long   utcOffsetSeconds;
 // Fetches current weather and the 7-day forecast in a single request.
 // Returns the recommended delay until the next fetch in ms, or 0 on failure.
 unsigned long fetchWeather(float lat, float lon);
-char evaluateRide(float precipMm, float gustKmh, float tempC, float windKmh);
 
-// Rate a ride window from its hourly values (worst case over the window).
-// Missing hours are NAN. Returns RIDE_UNKNOWN if there is no data at all.
-char evaluateWindow(const float* temp, const float* precip, const float* gust, size_t count);
 
 // Local time helpers (valid only when NTP has synced, see state.timeSynced)
 int  localHour();

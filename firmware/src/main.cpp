@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include "app_state.h"
+#include "motologic.h"   // direct include so PlatformIO links the library (headers in firmware/include are not scanned)
 #include "bitmaps.h"
 #include "display.h"
 #include "weather.h"
@@ -59,7 +60,7 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
  * Rollover-safe timing check (unsigned subtraction handles millis() wrap at 49 days)
  */
 bool intervalPassed(unsigned long lastRun, unsigned long interval) {
-    return (millis() - lastRun) >= interval;
+    return intervalElapsed(millis(), lastRun, interval);
 }
 
 
@@ -192,11 +193,7 @@ void updateDayNight() {
     bool night = false;
     if (state.timeSynced) {
         if (sunriseTime > 0 && sunsetTime > 0) {
-            // Sunrise/sunset are for the forecast's first day; roll them forward by whole days
-            long days = (now >= sunriseTime) ? (long)((now - sunriseTime) / 86400) : 0;
-            time_t rise = sunriseTime + days * 86400;
-            time_t set = sunsetTime + days * 86400;
-            night = (now < rise || now > set);
+            night = isNightAt((long)now, (long)sunriseTime, (long)sunsetTime);
         } else {
             int hour = localHour();
             night = (hour >= 21 || hour < 6);

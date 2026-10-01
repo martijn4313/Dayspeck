@@ -14,6 +14,7 @@
 #include "weather.h"
 #include "app_state.h"
 #include "security.h"
+#include "version.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
@@ -231,6 +232,7 @@ static const char index_html[] PROGMEM = R"HTML(
 
     <div class="card">
         <h3>Debug Info</h3>
+        <span class="label">Firmware:</span> <span id="firmware"></span><br>
         <span class="label">Weather Valid:</span> <span id="weatherValid"></span><br>
         <span class="label">Weather Age:</span> <span id="weatherAge"></span> minutes<br>
         <span class="label">mDNS Started:</span> <span id="mdnsStarted"></span><br>
@@ -347,6 +349,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     document.forms.wifiForm.ssid.value = s.wifi.ssid;
                     document.forms.wifiForm.password.placeholder = s.wifi.passwordSet ? '(unchanged)' : '(none)';
 
+                    document.getElementById('firmware').textContent = s.firmware;
                     document.getElementById('weatherValid').textContent = s.debug.weatherValid ? 'Yes' : 'No';
                     document.getElementById('weatherAge').textContent = s.debug.weatherAge;
                     document.getElementById('mdnsStarted').textContent = s.debug.mdnsStarted ? 'Yes' : 'No';
@@ -606,6 +609,7 @@ static void handleApiToken() {
 static void handleApiStatus() {
     JsonDocument doc;
 
+    doc["firmware"] = FW_VERSION " (" FW_GIT_HASH ")";
     doc["lat"] = configLat;
     doc["lon"] = configLon;
 
