@@ -14,7 +14,7 @@ from .canvas import OLEDCanvas
 from .constants import *  # noqa: F403
 from .convert import Converter, render_header, upsert_entry, write_atomic
 from .rain import RainAnimation
-from .scene import SceneState, SceneComposer, VIEW_TODAY, VIEW_WEEKLY
+from .scene import SceneState, SceneComposer, VIEW_HOURLY, VIEW_TODAY, VIEW_WEEKLY
 from .slots import *  # noqa: F403
 from . import theme
 
@@ -535,7 +535,7 @@ class App(tk.Tk):
         # View mode
         tk.Label(frame, text="View mode:", bg=BG_COLOR, fg=FG_COLOR).pack(anchor=tk.W, pady=(12, 2))
         self.view_var = tk.StringVar(value=VIEW_TODAY)
-        for val, label in [(VIEW_TODAY, "Today"), (VIEW_WEEKLY, "Weekly")]:
+        for val, label in [(VIEW_TODAY, "Today"), (VIEW_WEEKLY, "Weekly"), (VIEW_HOURLY, "Hours")]:
             tk.Radiobutton(frame, text=label, variable=self.view_var, value=val,
                            command=self._on_view_change, bg=BG_COLOR, fg=FG_COLOR,
                            selectcolor=BG_COLOR, activebackground=BG_COLOR, activeforeground=FG_COLOR).pack(anchor=tk.W)

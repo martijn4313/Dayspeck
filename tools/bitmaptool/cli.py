@@ -49,7 +49,7 @@ def cmd_export(args) -> int:
 
 def cmd_render(args) -> int:
     from .canvas import OLEDCanvas
-    from .scene import SceneComposer, SceneState, VIEW_TODAY, VIEW_WEEKLY
+    from .scene import SceneComposer, SceneState, VIEW_HOURLY, VIEW_TODAY, VIEW_WEEKLY
 
     state = SceneState()
     state.weather = args.weather
@@ -57,7 +57,10 @@ def cmd_render(args) -> int:
     state.badge_type = args.badge
     state.temp_str = args.temp
     state.wind_speed = args.wind
-    state.view_mode = VIEW_WEEKLY if args.view == "weekly" else VIEW_TODAY
+    state.view_mode = {"weekly": VIEW_WEEKLY, "hourly": VIEW_HOURLY}.get(args.view, VIEW_TODAY)
+    state.week_best_day = args.best_day
+    state.tomorrow = args.tomorrow
+    state.stale = args.stale
     firmware_header = Path(args.bitmaps)
     if firmware_header.exists():
         by_name = {e.name: e.pixels for e in Converter.parse_entries(firmware_header.read_text(encoding="utf-8"))}
@@ -105,7 +108,10 @@ def main(argv=None) -> int:
     p = sub.add_parser("render", help="render the OLED scene to a PNG without a GUI")
     p.add_argument("--out", required=True)
     p.add_argument("--bitmaps", default="firmware/include/bitmaps.h")
-    p.add_argument("--view", choices=["today", "weekly"], default="today")
+    p.add_argument("--view", choices=["today", "weekly", "hourly"], default="today")
+    p.add_argument("--best-day", type=int, default=-1, help="weekly view: column to highlight")
+    p.add_argument("--tomorrow", action="store_true", help="show the TMR tag")
+    p.add_argument("--stale", action="store_true", help="show the OLD tag")
     p.add_argument("--weather", choices=["clear", "rain", "snow", "wind"], default="clear")
     p.add_argument("--night", action="store_true")
     p.add_argument("--badge", choices=["check", "warn", "x"], default="check")

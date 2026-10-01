@@ -40,6 +40,13 @@ bool manualConfigPresent = false;   // config.json defines a location
 bool manualLocation = false;        // user picked a location in the web UI
 bool ssidBasedLocation = false;
 
+// Display options (loaded from config.json)
+int  previewHr = DEFAULT_PREVIEW_HR;
+bool displayDimAtNight = true;
+int  displaySleepMinutes = 0;
+int  quietStartHr = -1;
+int  quietEndHr = -1;
+
 // WiFi configuration (loaded from config.json)
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
 String wifiPassword = WIFI_PASS;
@@ -137,6 +144,7 @@ void loadConfig() {
         if (doc["thresholds"]["maxWindKmh"].is<float>()) maxWindKmh = doc["thresholds"]["maxWindKmh"];
         if (doc["thresholds"]["minTempC"].is<float>()) minTempC = doc["thresholds"]["minTempC"];
         if (doc["thresholds"]["warnWindKmh"].is<float>()) warnWindKmh = doc["thresholds"]["warnWindKmh"];
+        if (doc["thresholds"]["rainProbPct"].is<float>()) rainProbPct = doc["thresholds"]["rainProbPct"];
     }
 
     // Ride windows: [start hour, length in hours]
@@ -144,6 +152,13 @@ void loadConfig() {
     loadWindow(doc["wd_pm"], weekdayPM);
     loadWindow(doc["we_am"], weekendAM);
     loadWindow(doc["we_pm"], weekendPM);
+
+    // Display options
+    if (doc["previewHr"].is<int>()) previewHr = constrain((int)doc["previewHr"], 0, 24);
+    if (doc["display"]["dimAtNight"].is<bool>()) displayDimAtNight = doc["display"]["dimAtNight"];
+    if (doc["display"]["sleepMinutes"].is<int>()) displaySleepMinutes = constrain((int)doc["display"]["sleepMinutes"], 0, 600);
+    if (doc["display"]["quietStart"].is<int>()) quietStartHr = constrain((int)doc["display"]["quietStart"], -1, 23);
+    if (doc["display"]["quietEnd"].is<int>()) quietEndHr = constrain((int)doc["display"]["quietEnd"], -1, 23);
 
     // Weather API config
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
@@ -202,7 +217,22 @@ void updateDayNight() {
 
     if (night != state.isNight) {
         state.isNight = night;
-        display.dim(night);   // lowest contrast at night: this is a bedside display
+        state.displayDirty = true;
+    }
+
+    // Lowest contrast at night: this is a bedside display
+    static bool dimmed = false;
+    bool wantDim = state.isNight && displayDimAtNight;
+    if (wantDim != dimmed) {
+        display.dim(wantDim);
+        dimmed = wantDim;
+    }
+
+    // After previewHr the default view is tomorrow; a tap flips it relative to that default
+    bool preview = state.timeSynced && previewHr < 24 && localHour() >= previewHr;
+    if (preview != state.previewActive) {
+        state.previewActive = preview;
+        state.showTomorrow = false;
         state.displayDirty = true;
     }
 }
@@ -214,7 +244,7 @@ void updateDayNight() {
 void renderDisplay() {
     WeatherData weather = getCurrentWeather();
 
-    char rating = state.showTomorrow ? getTomorrowRating() : getTodayRating();
+    char rating = (state.showTomorrow != state.previewActive) ? getTomorrowRating() : getTodayRating();
     char badgeType = 0;   // unknown rating: ring only
     if (rating == RIDE_GOOD) badgeType = BADGE_CHECK;
     else if (rating == RIDE_CAUTION) badgeType = BADGE_WARN;
@@ -257,6 +287,39 @@ void getInitStatus(const char* &line1, const char* &line2) {
 
 
 /**
+ * WiFi signal as 0-4 bars, -1 when not connected
+ */
+int wifiBars() {
+    if (!state.wifiConnected) return -1;
+    int rssi = state.wifiSignal;
+    return rssi > -55 ? 4 : rssi > -65 ? 3 : rssi > -75 ? 2 : rssi > -85 ? 1 : 0;
+}
+
+
+/**
+ * Draw the hourly view from the stored forecast
+ */
+void renderHourly() {
+    const HourSlice* hours = nullptr;
+    time_t firstEpoch = 0;
+    size_t count = getUpcomingHours(hours, firstEpoch);
+    if (count > 6) count = 6;
+
+    int leaveHour = 0;
+    bool leaveNow = false;
+    bool hasLeave = state.timeSynced && getBestLeave(leaveHour, leaveNow);
+
+    int updHour = -1, updMin = 0;
+    if (lastUpdateEpoch > 0) {
+        time_t local = lastUpdateEpoch + utcOffsetSeconds;
+        updHour = (int)((local / 3600) % 24);
+        updMin = (int)((local / 60) % 60);
+    }
+    renderHourlyView(display, hours, count, localHourOf(firstEpoch), hasLeave, leaveHour, leaveNow, updHour, updMin);
+}
+
+
+/**
  * Flush the right view to the display
  */
 void render() {
@@ -268,9 +331,12 @@ void render() {
         getInitStatus(line1, line2);
         renderLoadingView(display, line1, line2, millis());
     } else if (state.displayMode == 1) {
-        renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow);
+        renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay);
+    } else if (state.displayMode == 2) {
+        renderHourly();
     } else {
         renderDisplay();
+        renderStatusMarks(display, state.showTomorrow != state.previewActive, wifiBars());
     }
     if (state.weatherValid && state.weatherStale) {
         // Data is old (offline or the API keeps failing): mark it in the free top-left corner
@@ -285,31 +351,70 @@ void render() {
 
 
 /**
- * Touch: short tap = today/tomorrow (or leave weekly view), long press = weekly view.
+ * Touch: short tap = today/tomorrow (or leave a detail view), long press = next view
+ * (primary -> week -> next hours -> primary).
  * touch_get_event() consumes the event, so it must be read exactly once per iteration.
  */
 void handleTouch() {
     int event = touch_get_event();
 
+    if (event != TOUCH_NONE) {
+        state.lastActivityMs = millis();
+        if (state.displayOff) {
+            // The first touch only wakes the panel
+            state.displayOff = false;
+            display.ssd1306_command(SSD1306_DISPLAYON);
+            state.displayDirty = true;
+            return;
+        }
+    }
+
     if (event == TOUCH_SHORT) {
-        if (state.displayMode == 1) {
+        if (state.displayMode != 0) {
             state.displayMode = 0;
         } else {
             state.showTomorrow = !state.showTomorrow;
         }
         state.displayDirty = true;
     } else if (event == TOUCH_LONG) {
-        state.displayMode = (state.displayMode == 0) ? 1 : 0;
-        if (state.displayMode == 1) {
+        state.displayMode = (state.displayMode + 1) % 3;
+        if (state.displayMode != 0) {
             state.weeklyEnteredMs = millis();
         }
         state.displayDirty = true;
     }
 
-    // The weekly view closes itself
-    if (state.displayMode == 1 && intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
+    // The detail views close themselves
+    if (state.displayMode != 0 && intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
         state.displayMode = 0;
         state.displayDirty = true;
+    }
+}
+
+
+/**
+ * Switch the panel off during quiet hours and after an idle period at night
+ */
+void managePower() {
+    static unsigned long lastCheckMs = 0;
+    if (!intervalPassed(lastCheckMs, 1000)) return;
+    lastCheckMs = millis();
+
+    bool awake = !intervalPassed(state.lastActivityMs, 30000UL);   // 30 s after a touch it stays on
+    bool quiet = false;
+    if (state.timeSynced && quietStartHr >= 0 && quietEndHr >= 0) {
+        int h = localHour();
+        quiet = (quietStartHr <= quietEndHr) ? (h >= quietStartHr && h < quietEndHr)
+                                             : (h >= quietStartHr || h < quietEndHr);
+    }
+    bool sleepy = displaySleepMinutes > 0 && state.isNight &&
+                  intervalPassed(state.lastActivityMs, (unsigned long)displaySleepMinutes * 60000UL);
+    bool off = (quiet && !awake) || sleepy;
+
+    if (off != state.displayOff) {
+        state.displayOff = off;
+        display.ssd1306_command(off ? SSD1306_DISPLAYOFF : SSD1306_DISPLAYON);
+        if (!off) state.displayDirty = true;
     }
 }
 
@@ -490,6 +595,7 @@ void setup() {
     state.nextFetchIntervalMs = FETCH_INTERVAL_MS;
     state.fetchNow = true;           // fetch as soon as WiFi is up
     state.lastFrameMs = millis();
+    state.lastActivityMs = millis();
     state.displayDirty = true;
 }
 
@@ -508,6 +614,7 @@ void loop() {
     }
 
     updateDayNight();
+    managePower();
     handleWeatherFetch();
 
     if (state.weatherValid) {
@@ -520,8 +627,8 @@ void loop() {
         }
     }
 
-    // Animation frame tick (15 FPS)
-    if (intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
+    // Animation frame tick (15 FPS); nothing to draw while the panel is off
+    if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
         if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
         } else if (state.displayMode == 0) {
@@ -542,7 +649,7 @@ void loop() {
     }
 
     // Render ONLY if something actually changed
-    if (state.displayDirty) {
+    if (state.displayDirty && !state.displayOff) {
         render();
     }
 

@@ -508,7 +508,7 @@ static void drawRatingGlyph(Adafruit_SSD1306 &display, int cx, int cy, char rati
 }
 
 // Render weekly matrix — full-screen 7-column AM/PM grid, first column is today
-void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow) {
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay) {
     static const char dayLetters[7] = { 'S', 'M', 'T', 'W', 'T', 'F', 'S' };   // Sunday first
     const int labelW = 16, colW = 16;
 
@@ -516,13 +516,19 @@ void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const c
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
 
-    // Day headers (today underlined)
+    // Day headers (today underlined, best day in inverse video)
     for (int i = 0; i < 7; i++) {
         int x = labelW + i * colW + colW / 2 - 3;
+        bool best = (i == bestDay);
+        if (best) {
+            display.fillRect(labelW + i * colW, 0, colW, 11, SSD1306_WHITE);
+        }
+        display.setTextColor(best ? SSD1306_BLACK : SSD1306_WHITE);
         display.setCursor(x, 1);
         display.print(dayLetters[(startDow + i) % 7]);
     }
-    display.drawFastHLine(labelW + 2, 10, colW - 4, SSD1306_WHITE);   // underline today
+    display.setTextColor(SSD1306_WHITE);
+    display.drawFastHLine(labelW + 2, 10, colW - 4, bestDay == 0 ? SSD1306_BLACK : SSD1306_WHITE);   // underline today
     display.drawFastHLine(0, 12, 128, SSD1306_WHITE);
 
     // Row labels
@@ -624,4 +630,101 @@ void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* p
     display.print("then open");
     display.setCursor(0, 52);
     display.print(ip);
+}
+
+// Centre a short number in a column of width w starting at x
+static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const char* text) {
+    int textW = (int)strlen(text) * 6 - 1;
+    display.setCursor(x + (w - textW) / 2, y);
+    display.print(text);
+}
+
+// Render the next hours as a strip of columns
+void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
+                      bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+
+    if (count == 0) {
+        display.setCursor(16, 28);
+        display.print("No hourly data");
+        return;
+    }
+
+    const int colW = 21, barBottom = 44, barMax = 24;
+    size_t cols = count < 6 ? count : 6;
+    char buf[20];
+    for (size_t i = 0; i < cols; i++) {
+        const HourSlice& h = hours[i];
+        int x = (int)i * colW + 1;
+
+        snprintf(buf, sizeof(buf), "%02d", (firstHour + (int)i) % 24);
+        printCentered(display, x, colW, 0, buf);
+
+        if (!h.valid) {
+            printCentered(display, x, colW, 22, "--");
+            continue;
+        }
+        snprintf(buf, sizeof(buf), "%d", h.tempC);
+        printCentered(display, x, colW, 10, buf);
+
+        // Rain: bar for the amount, dotted line at the chance of rain
+        if (h.rainTenthMm > 0) {
+            int barH = 2 + (int)h.rainTenthMm * 6 / 10;
+            if (barH > barMax) barH = barMax;
+            display.fillRect(x + 6, barBottom - barH + 1, 9, barH, SSD1306_WHITE);
+        }
+        if (h.rainProb != 255 && h.rainProb > 0) {
+            int y = barBottom - (int)h.rainProb * barMax / 100;
+            for (int dx = 2; dx < 19; dx += 2) {
+                display.drawPixel(x + dx, y, SSD1306_WHITE);
+            }
+        }
+
+        snprintf(buf, sizeof(buf), "%d", h.gustKmh);
+        printCentered(display, x, colW, 47, buf);
+    }
+    display.drawFastHLine(0, barBottom + 1, 128, SSD1306_WHITE);
+
+    // Footer: best time to leave, time of the last update
+    display.setCursor(0, 57);
+    if (hasLeave) {
+        if (leaveNow) {
+            display.print("Leave now");
+        } else {
+            snprintf(buf, sizeof(buf), "Best %02d:00", leaveHour % 24);
+            display.print(buf);
+        }
+    }
+    if (updHour >= 0) {
+        snprintf(buf, sizeof(buf), "upd %02d:%02d", updHour % 24, updMinute % 60);
+        display.setCursor(128 - (int)strlen(buf) * 6 + 1, 57);
+        display.print(buf);
+    }
+}
+
+// Status marks in the free corners of the primary view's left half
+void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars) {
+    if (showTomorrow) {
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        display.setCursor(0, 57);
+        display.print("TMR");
+    }
+    if (wifiBars < 0) {
+        // Not connected: a small cross where the bars would be
+        display.drawLine(55, 57, 61, 63, SSD1306_WHITE);
+        display.drawLine(61, 57, 55, 63, SSD1306_WHITE);
+        return;
+    }
+    for (int i = 0; i < 4; i++) {
+        int x = 51 + i * 3;
+        int h = 2 + i * 2;
+        if (i < wifiBars) {
+            display.fillRect(x, 64 - h, 2, h, SSD1306_WHITE);
+        } else {
+            display.drawPixel(x, 63, SSD1306_WHITE);
+        }
+    }
 }

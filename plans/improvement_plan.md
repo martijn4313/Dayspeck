@@ -441,15 +441,32 @@ The point of the simulator is to design and verify before flashing. It has drift
 
 ## Phase 6: Features (P2, after phases 1–5)
 
-- [ ] Ride score (0–100) as described in `plans/memo_09042026.md`: a baseline of 100,
+> **Status:** implemented; firmware builds, 20 host tests and 25 tool tests pass, but nothing has run on
+> hardware. Design decisions:
+> - **Score:** per ride window, from its hourly values (average temperature, total rain, strongest gust);
+>   a day is its better window plus 15 on weekends (so it can exceed 100); windows rated X or without data
+>   do not count. Best day = highest score, earliest on ties.
+> - **Rain chance:** `thresholds.rainProbPct` (default 50, 101 = off) makes a window at least "caution".
+>   This makes default ratings more cautious than before. The forecast request now includes
+>   `precipitation_probability`.
+> - **Next hours / best time to leave:** the next 24 hours are kept in 5 bytes each (120 bytes). The advice
+>   is the best 2 hour daytime (06:00-20:00 local start) window in the next 12 hours.
+> - **Navigation:** long press cycles main -> week -> next hours; tap leaves a detail view (so "view on tap"
+>   from the original list became "view on long press").
+> - **Status marks:** WiFi bars and the `TMR` tag are on the main screen; "last updated HH:MM" is in the
+>   next-hours footer (there was no room on the main screen).
+> - **Screen power:** dim at night, optional sleep after idle minutes at night, optional quiet hours; the
+>   first touch only wakes the panel. Needs NTP.
+
+- [x] Ride score (0–100) as described in `plans/memo_09042026.md`: a baseline of 100,
       minus penalties for deviation from 20 °C, rain, and wind above 20 km/h, plus a
       weekend bonus. Highlight the best day in the weekly view.
-- [ ] Rain thresholds based on precipitation probability, not only mm.
-- [ ] A "best time to leave" hint from the hourly data.
-- [ ] A third view on tap: a strip showing the next 6 hours.
-- [ ] "Last updated HH:MM" and a WiFi signal icon on the OLED.
-- [ ] Configurable brightness schedule and auto-off.
-- [ ] Use the preview hour: after `previewHr`, default the display to
+- [x] Rain thresholds based on precipitation probability, not only mm.
+- [x] A "best time to leave" hint from the hourly data.
+- [x] A third view on tap: a strip showing the next 6 hours.
+- [x] "Last updated HH:MM" and a WiFi signal icon on the OLED.
+- [x] Configurable brightness schedule and auto-off.
+- [x] Use the preview hour: after `previewHr`, default the display to
       tomorrow. The setting is in `config.json` but never read.
 
 ---
@@ -481,3 +498,8 @@ green before merging.
 - [ ] Day/night switches at the real sunset.
 - [ ] OTA update works with credentials and is rejected without them.
 - [ ] Free heap stays stable over 24 hours (check `/api/logs`).
+- [ ] Long press cycles main, week, next hours; the detail views close after 30 s.
+- [ ] The best day is highlighted in the week grid and matches a manual check of the forecast.
+- [ ] The next-hours view matches Open-Meteo for the same hours; the "Best HH:00" advice is sensible.
+- [ ] Quiet hours switch the panel off and a touch wakes it for 30 s; sleep-at-night works.
+- [ ] After `previewHr` the main screen shows tomorrow (`TMR` tag); a tap shows today.

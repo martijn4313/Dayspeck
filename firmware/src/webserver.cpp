@@ -201,6 +201,19 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Max Wind (km/h):</span> <input name="maxWind" type="number" step="1" min="0" max="200"><br>
             <span class="label">Min Temp (°C):</span> <input name="minTemp" type="number" step="1" min="-50" max="50"><br>
             <span class="label">Warn Wind (km/h):</span> <input name="warnWind" type="number" step="1" min="0" max="200"><br>
+            <span class="label">Caution rain chance (%):</span> <input name="rainProb" type="number" step="5" min="0" max="101" title="101 = off"><br>
+            <button type="submit">Save Settings</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>Display</h3>
+        <form id="displayForm">
+            <span class="label">Tomorrow from (hour):</span> <input name="previewHr" type="number" min="0" max="24" title="24 = never"> <small>24 = never</small><br>
+            <span class="label">Dim at night:</span> <input name="dimAtNight" type="checkbox"><br>
+            <span class="label">Sleep at night after (min):</span> <input name="sleepMinutes" type="number" min="0" max="600"> <small>0 = never; a touch wakes it</small><br>
+            <span class="label">Screen off from (hour):</span> <input name="quietStart" type="number" min="-1" max="23"> <small>-1 = off</small><br>
+            <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
             <button type="submit">Save Settings</button>
         </form>
     </div>
@@ -338,6 +351,14 @@ static const char index_html[] PROGMEM = R"HTML(
                     t.maxWind.value = s.thresholds.maxWindKmh;
                     t.minTemp.value = s.thresholds.minTempC;
                     t.warnWind.value = s.thresholds.warnWindKmh;
+                    t.rainProb.value = s.thresholds.rainProbPct;
+
+                    const d = document.forms.displayForm;
+                    d.previewHr.value = s.display.previewHr;
+                    d.dimAtNight.checked = s.display.dimAtNight;
+                    d.sleepMinutes.value = s.display.sleepMinutes;
+                    d.quietStart.value = s.display.quietStart;
+                    d.quietEnd.value = s.display.quietEnd;
 
                     const w = document.forms.weatherApiForm;
                     w.apiUrl.value = s.weatherApi.url;
@@ -386,6 +407,7 @@ static const char index_html[] PROGMEM = R"HTML(
         loadStatus(true);
 
         submitForm('thresholdsForm', '/api/thresholds', 'Thresholds saved');
+        submitForm('displayForm', '/api/display', 'Display settings saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
         submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
         submitForm('locationForm', '/api/location', 'Location set', () => loadStatus(false));
@@ -628,6 +650,14 @@ static void handleApiStatus() {
     thresholds["maxWindKmh"] = maxWindKmh;
     thresholds["minTempC"] = minTempC;
     thresholds["warnWindKmh"] = warnWindKmh;
+    thresholds["rainProbPct"] = rainProbPct;
+
+    JsonObject display = doc["display"].to<JsonObject>();
+    display["previewHr"] = previewHr;
+    display["dimAtNight"] = displayDimAtNight;
+    display["sleepMinutes"] = displaySleepMinutes;
+    display["quietStart"] = quietStartHr;
+    display["quietEnd"] = quietEndHr;
 
     WeatherData current = getCurrentWeather();
     doc["current"]["tempC"] = current.tempC;
@@ -662,10 +692,11 @@ static void handleApiStatus() {
 }
 
 static void handleApiThresholds() {
-    float rain, wind, temp, warn;
+    float rain, wind, temp, warn, prob;
     if (!argFloat("maxRain", 0, 100, rain) || !argFloat("maxWind", 0, 200, wind) ||
-        !argFloat("minTemp", -50, 50, temp) || !argFloat("warnWind", 0, 200, warn)) {
-        sendMessage(400, "Invalid value: rain 0-100 mm, winds 0-200 km/h, temperature -50 to 50 C");
+        !argFloat("minTemp", -50, 50, temp) || !argFloat("warnWind", 0, 200, warn) ||
+        !argFloat("rainProb", 0, 101, prob)) {
+        sendMessage(400, "Invalid value: rain 0-100 mm, winds 0-200 km/h, temperature -50 to 50 C, rain chance 0-101 %");
         return;
     }
     if (warn > wind) {
@@ -678,6 +709,7 @@ static void handleApiThresholds() {
         doc["thresholds"]["maxWindKmh"] = wind;
         doc["thresholds"]["minTempC"] = temp;
         doc["thresholds"]["warnWindKmh"] = warn;
+        doc["thresholds"]["rainProbPct"] = prob;
     });
     if (!saved) {
         sendMessage(500, "Could not save configuration");
@@ -687,7 +719,49 @@ static void handleApiThresholds() {
     maxWindKmh = wind;
     minTempC = temp;
     warnWindKmh = warn;
+    rainProbPct = prob;
+    state.fetchNow = true;   // ratings are computed from the forecast: refresh with the new limits
     sendMessage(200, "Thresholds saved");
+}
+
+static bool argInt(const char* name, int lo, int hi, int& out) {
+    float v;
+    if (!argFloat(name, (float)lo, (float)hi, v) || v != (float)(int)v) return false;
+    out = (int)v;
+    return true;
+}
+
+static void handleApiDisplay() {
+    int preview, sleepMin, qStart, qEnd;
+    if (!argInt("previewHr", 0, 24, preview) || !argInt("sleepMinutes", 0, 600, sleepMin) ||
+        !argInt("quietStart", -1, 23, qStart) || !argInt("quietEnd", -1, 23, qEnd)) {
+        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes");
+        return;
+    }
+    if ((qStart < 0) != (qEnd < 0)) {
+        sendMessage(400, "Set both the start and the end of the quiet hours, or neither (-1)");
+        return;
+    }
+    bool dim = server.hasArg("dimAtNight");
+
+    bool saved = updateConfig([&](JsonDocument& doc) {
+        doc["previewHr"] = preview;
+        doc["display"]["dimAtNight"] = dim;
+        doc["display"]["sleepMinutes"] = sleepMin;
+        doc["display"]["quietStart"] = qStart;
+        doc["display"]["quietEnd"] = qEnd;
+    });
+    if (!saved) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    previewHr = preview;
+    displayDimAtNight = dim;
+    displaySleepMinutes = sleepMin;
+    quietStartHr = qStart;
+    quietEndHr = qEnd;
+    state.displayDirty = true;
+    sendMessage(200, "Display settings saved");
 }
 
 static void handleApiLocation() {
@@ -937,6 +1011,7 @@ void initWebServer() {
     server.on("/api/wifi/scan", guarded(handleApiWifiScan));
 
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
+    server.on("/api/display", guardedPost(handleApiDisplay));
     server.on("/api/location", guardedPost(handleApiLocation));
     server.on("/api/wifi/config", guardedPost(handleApiWifiConfig));
     server.on("/api/weatherconfig", guardedPost(handleApiWeatherConfig));

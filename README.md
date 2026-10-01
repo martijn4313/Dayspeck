@@ -7,8 +7,17 @@ It answers one question at a glance: **can I ride today?**
 - **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
   animation when it rains.
 - **Right half, bottom:** weather icon, wind speed and precipitation.
-- **Touch:** short tap switches *today / tomorrow*, long press opens the *7-day AM/PM grid*
-  (it closes by itself after 30 s; a tap closes it too).
+- **Touch:** a short tap switches *today / tomorrow*. A long press steps through the detail views:
+  the *7-day AM/PM grid*, then the *next hours*, then back to the main screen. The detail views
+  close by themselves after 30 s; a tap closes them too.
+- **Status marks:** a signal-bars icon (bottom of the left half; a cross when offline), a `TMR` tag
+  while tomorrow is shown, and an `OLD` tag when the data is stale (older than twice its refresh
+  interval).
+- **Week grid:** the best day (see the ride score below) is shown in inverse video.
+- **Next hours:** six columns with the hour, the temperature, a bar for the rain amount (taller = more
+  mm), a dotted line for the chance of rain (higher = likelier) and the gusts in km/h. The bottom line
+  shows the best time to leave in the next 12 hours (a 2 hour daytime ride) and when the data was
+  last updated.
 - **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates.
 
@@ -82,11 +91,25 @@ rated by its **worst hour**:
 | Rating | Condition (defaults) |
 |--------|----------------------|
 | ✗ don't ride | rain over the window > 2.0 mm, or gusts > 45 km/h |
-| ! caution | any rain, temperature < 5 °C, or gusts > 25 km/h |
+| ! caution | any rain, temperature < 5 °C, gusts > 25 km/h, or a chance of rain of 50 % or more |
 | ✓ good | none of the above |
 
 *Today* shows the morning ride until its window is over, then the evening ride. *Tomorrow* shows
-tomorrow's morning. The week grid shows both rides for seven days, starting at today.
+tomorrow's morning. The week grid shows both rides for seven days, starting at today. With
+`previewHr` set, the main screen shows tomorrow by default from that hour on (a tap then shows today).
+
+### Ride score and best day
+
+Each window also gets a score from 0 to 100: 100 points, minus 3 per degree away from 20 °C, minus 20
+per mm of rain, minus 2 per km/h of gusts above 20 km/h. A day scores as its better window, plus 15 on
+Saturday and Sunday so that weekend rides are preferred. Windows rated "don't ride" do not count. The
+highest-scoring day is highlighted in the week grid.
+
+### Screen power
+
+The panel can be dimmed at night, switched off after some idle minutes at night, and switched off
+during fixed quiet hours (for example 23 to 6). A touch wakes it (the first touch only wakes it, and it
+then stays on for 30 s even in quiet hours). All of this needs the clock to be synced.
 
 ## Configuration reference (`config.json`)
 
@@ -103,13 +126,17 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `thresholds.maxWindKmh` | gust speed above which you should not ride |
 | `thresholds.minTempC` | below this the rating is "caution" |
 | `thresholds.warnWindKmh` | gusts above this give "caution" (also shows the wind symbol) |
+| `thresholds.rainProbPct` | a chance of rain from this percentage on gives "caution"; 101 switches it off |
 | `wd_am`, `wd_pm` | weekday morning / evening ride window: `[start hour, hours]` |
 | `we_am`, `we_pm` | the same for Saturday and Sunday |
 | `ssidLocations` | `[{"ssid", "lat", "lon"}]` — use this location when connected to that network |
 | `weatherApiUrl` | forecast endpoint, `http://` only (default Open-Meteo) |
 | `weatherUnits` | `metric` or `imperial`; imperial only changes the temperature shown on the display |
 | `weatherDebug` | log extra detail to the web UI log |
-| `previewHr` | reserved, not used yet |
+| `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
+| `display.dimAtNight` | lowest brightness at night |
+| `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
+| `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
 
 Thresholds are always metric (mm, km/h, °C).
 

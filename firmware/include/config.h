@@ -46,6 +46,8 @@
 #define DEFAULT_MAX_WIND_KMH  45
 #define DEFAULT_MIN_TEMP_C    5
 #define DEFAULT_WARN_WIND_KMH 25
+#define DEFAULT_PREVIEW_HR    24   // 24 = never switch the default view to tomorrow
+#define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes

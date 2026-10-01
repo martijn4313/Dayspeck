@@ -16,8 +16,28 @@ from .rain import RainAnimation
 # View modes
 VIEW_TODAY = "today"      # Current day with giant badge
 VIEW_WEEKLY = "weekly"    # 7-day AM/PM matrix
+VIEW_HOURLY = "hourly"    # next hours strip
 
 DAY_LETTERS = "SMTWTFS"   # Sunday first, like the firmware
+
+
+@dataclass
+class Hour:
+    """One forecast hour (mirrors the firmware's HourSlice)."""
+    temp: int = 15
+    rain10: int = 0       # precipitation in 0.1 mm
+    gust: int = 10        # km/h
+    prob: int = 255       # chance of rain in %, 255 = unknown
+    valid: bool = True
+
+
+def demo_hours() -> list:
+    """Sample forecast for previews: dry, then a rain shower, then dry again."""
+    temps = [14, 15, 15, 14, 13, 12]
+    rain = [0, 0, 6, 25, 8, 0]
+    prob = [5, 20, 60, 90, 50, 10]
+    gust = [18, 22, 31, 40, 28, 20]
+    return [Hour(t, r, g, p) for t, r, g, p in zip(temps, rain, gust, prob)]
 
 
 @dataclass
@@ -46,6 +66,16 @@ class SceneState:
     week_am: list = field(default_factory=lambda: ["check", "check", "warn", "x", "check", "warn", ""])
     week_pm: list = field(default_factory=lambda: ["warn", "check", "x", "check", "check", "", ""])
     week_start_dow: int = 4     # weekday of the first column, 0 = Sunday (4 = Thursday)
+    week_best_day: int = -1     # column highlighted as the best day, -1 = none
+    # Next-hours view
+    hours: list = field(default_factory=demo_hours)
+    first_hour: int = 17        # local hour of hours[0]
+    leave_text: str = "Best 17:00"   # "Leave now", "Best HH:00" or ""
+    updated_text: str = "upd 14:05"  # "" = unknown
+    # Status marks
+    tomorrow: bool = False      # showing tomorrow's ride (the "TMR" tag)
+    wifi_bars: int = 4          # 0-4, -1 = not connected
+    stale: bool = False         # data older than twice its refresh interval ("OLD" tag)
     # ── Rain animation state ────────────────────────────────────────────────
     use_sprite_rain: bool = True          # True = sprite-based, False = procedural lines
     rain_drops: list = field(default_factory=list)   # List[RainDrop]
@@ -65,8 +95,13 @@ class SceneComposer:
         canvas.clear()
         if state.view_mode == VIEW_WEEKLY:
             SceneComposer._compose_weekly_view(canvas, state)
+        elif state.view_mode == VIEW_HOURLY:
+            SceneComposer._compose_hourly_view(canvas, state)
         else:
             SceneComposer._compose_today_view(canvas, state)
+            SceneComposer._draw_status_marks(canvas, state)
+        if state.stale:
+            canvas.draw_text(0, 0, "OLD")
 
     # ── Today view ──────────────────────────────────────────────────────────
 
@@ -189,8 +224,11 @@ class SceneComposer:
         """renderWeeklyMatrix: 7 columns of 16 px starting with today, AM and PM rows."""
         label_w, col_w = 16, 16
         for i in range(7):
-            canvas.draw_text(label_w + i * col_w + col_w // 2 - 3, 1, DAY_LETTERS[(state.week_start_dow + i) % 7])
-        canvas.draw_hline(label_w + 2, 10, col_w - 4)    # underline today
+            best = (i == state.week_best_day)
+            if best:
+                canvas.fill_rect(label_w + i * col_w, 0, col_w, 11)     # best day in inverse video
+            canvas.draw_text(label_w + i * col_w + col_w // 2 - 3, 1, DAY_LETTERS[(state.week_start_dow + i) % 7], on=not best)
+        canvas.draw_hline(label_w + 2, 10, col_w - 4, on=state.week_best_day != 0)    # underline today
         canvas.draw_hline(0, 12, 128)
 
         canvas.draw_text(1, 24, "AM")
@@ -201,3 +239,55 @@ class SceneComposer:
             cx = label_w + i * col_w + col_w // 2
             SceneComposer._draw_rating_glyph(canvas, cx, 26, state.week_am[i] if i < len(state.week_am) else "")
             SceneComposer._draw_rating_glyph(canvas, cx, 51, state.week_pm[i] if i < len(state.week_pm) else "")
+
+    # ── Hourly view and status marks ────────────────────────────────────────
+
+    @staticmethod
+    def _draw_centered(canvas: OLEDCanvas, x: int, w: int, y: int, text: str):
+        text_w = len(text) * 6 - 1
+        canvas.draw_text(x + (w - text_w) // 2, y, text)
+
+    @staticmethod
+    def _compose_hourly_view(canvas: OLEDCanvas, state: SceneState):
+        """renderHourlyView: up to 6 columns of hour, temperature, rain bar and chance tick, gusts."""
+        hours = state.hours
+        if not hours:
+            canvas.draw_text(16, 28, "No hourly data")
+            return
+        col_w, bar_bottom, bar_max = 21, 44, 24
+        for i, h in enumerate(hours[:6]):
+            x = i * col_w + 1
+            SceneComposer._draw_centered(canvas, x, col_w, 0, f"{(state.first_hour + i) % 24:02d}")
+            if not h.valid:
+                SceneComposer._draw_centered(canvas, x, col_w, 22, "--")
+                continue
+            SceneComposer._draw_centered(canvas, x, col_w, 10, str(h.temp))
+            if h.rain10 > 0:
+                bar_h = min(2 + h.rain10 * 6 // 10, bar_max)
+                canvas.fill_rect(x + 6, bar_bottom - bar_h + 1, 9, bar_h)
+            if h.prob != 255 and h.prob > 0:
+                y = bar_bottom - h.prob * bar_max // 100
+                for dx in range(2, 19, 2):
+                    canvas.set_pixel(x + dx, y)
+            SceneComposer._draw_centered(canvas, x, col_w, 47, str(h.gust))
+        canvas.draw_hline(0, bar_bottom + 1, 128)
+        if state.leave_text:
+            canvas.draw_text(0, 57, state.leave_text)
+        if state.updated_text:
+            canvas.draw_text(128 - len(state.updated_text) * 6 + 1, 57, state.updated_text)
+
+    @staticmethod
+    def _draw_status_marks(canvas: OLEDCanvas, state: SceneState):
+        """renderStatusMarks: "TMR" tag and WiFi signal bars in the corners of the left half."""
+        if state.tomorrow:
+            canvas.draw_text(0, 57, "TMR")
+        if state.wifi_bars < 0:
+            canvas.draw_line(55, 57, 61, 63)
+            canvas.draw_line(61, 57, 55, 63)
+            return
+        for i in range(4):
+            x, h = 51 + i * 3, 2 + i * 2
+            if i < state.wifi_bars:
+                canvas.fill_rect(x, 64 - h, 2, h)
+            else:
+                canvas.set_pixel(x, 63)

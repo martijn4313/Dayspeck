@@ -16,7 +16,8 @@
       "maxRainMm": 2.0,
       "maxWindKmh": 45,
       "minTempC": 5,
-      "warnWindKmh": 25
+      "warnWindKmh": 25,
+      "rainProbPct": 50
    },
    "ssidLocations": []
 }

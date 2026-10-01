@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 from bitmaptool.canvas import OLEDCanvas
-from bitmaptool.scene import SceneComposer, SceneState, VIEW_WEEKLY
+from bitmaptool.scene import SceneComposer, SceneState, VIEW_HOURLY, VIEW_WEEKLY
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -85,3 +85,36 @@ def test_cli_render_writes_png(tmp_path):
         cwd=ROOT / "tools", check=True, capture_output=True,
     )
     assert out.stat().st_size > 0
+
+
+def test_best_day_is_shown_in_inverse_video():
+    plain = render(view_mode=VIEW_WEEKLY)
+    best = render(view_mode=VIEW_WEEKLY, week_best_day=2)
+    assert lit(best, 48, 0, 63, 10) > 100          # column 2 header is a solid block with the letter cut out
+    assert lit(plain, 48, 0, 63, 10) < 40
+
+
+def test_hourly_view_draws_columns_bars_and_footer():
+    c = render(view_mode=VIEW_HOURLY)
+    assert lit(c, 1, 0, 20, 7) > 5                 # first hour label
+    # the shower in column 3 (index 3, 2.5 mm) is a tall bar, the dry first column has none
+    assert lit(c, 64 + 6, 20, 64 + 14, 44) > 100
+    assert lit(c, 1 + 6, 25, 1 + 14, 40) == 0
+    assert lit(c, 0, 57, 64, 63) > 20 and lit(c, 70, 57, 127, 63) > 20   # leave advice and update time
+    assert all(c.pixels[45][x] for x in range(128))                       # baseline
+
+
+def test_hourly_view_without_data_and_with_missing_hours():
+    assert lit(render(view_mode=VIEW_HOURLY, hours=[]), 16, 28, 112, 36) > 20
+    from bitmaptool.scene import Hour
+    c = render(view_mode=VIEW_HOURLY, hours=[Hour(valid=False)])
+    assert lit(c, 1, 22, 20, 29) > 5               # "--"
+
+
+def test_status_marks():
+    assert lit(render(tomorrow=True), 0, 57, 17, 63) > 10
+    assert lit(render(tomorrow=False), 0, 57, 17, 63) == 0
+    full, none = render(wifi_bars=4), render(wifi_bars=0)
+    assert lit(full, 51, 55, 62, 63) > lit(none, 51, 55, 62, 63)
+    assert lit(render(wifi_bars=-1), 55, 57, 61, 63) > 8       # cross when not connected
+    assert lit(render(stale=True), 0, 0, 17, 7) > 10           # OLD tag

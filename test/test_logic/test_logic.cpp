@@ -3,7 +3,7 @@
 #include <math.h>
 #include "motologic.h"
 
-static const RideThresholds T = { 2.0f, 45.0f, 5.0f, 25.0f };   // the config.h defaults
+static const RideThresholds T = { 2.0f, 45.0f, 5.0f, 25.0f, 50.0f };   // the config.h defaults
 
 void setUp() {}
 void tearDown() {}
@@ -32,14 +32,14 @@ void test_rate_window_uses_worst_hour() {
     float temp[3] = { 12, 4, 12 };
     float rain[3] = { 0, 0, 0 };
     float gust[3] = { 10, 10, 10 };
-    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateWindow(T, temp, rain, gust, 3));   // one cold hour
+    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateWindow(T, temp, rain, gust, nullptr, 3));   // one cold hour
 }
 
 void test_rate_window_sums_rain() {
     float temp[2] = { 12, 12 };
     float rain[2] = { 1.5f, 1.5f };   // 3 mm in total
     float gust[2] = { 10, 10 };
-    TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateWindow(T, temp, rain, gust, 2));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateWindow(T, temp, rain, gust, nullptr, 2));
 }
 
 void test_rate_window_missing_hours() {
@@ -47,11 +47,74 @@ void test_rate_window_missing_hours() {
     float temp[2] = { nan, 12 };
     float rain[2] = { nan, 0 };
     float gust[2] = { nan, 10 };
-    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateWindow(T, temp, rain, gust, 2));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateWindow(T, temp, rain, gust, nullptr, 2));
 
     float allNan[2] = { nan, nan };
-    TEST_ASSERT_EQUAL_CHAR(RIDE_UNKNOWN, rateWindow(T, allNan, allNan, allNan, 2));
-    TEST_ASSERT_EQUAL_CHAR(RIDE_UNKNOWN, rateWindow(T, allNan, allNan, allNan, 0));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_UNKNOWN, rateWindow(T, allNan, allNan, allNan, nullptr, 2));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_UNKNOWN, rateWindow(T, allNan, allNan, allNan, nullptr, 0));
+}
+
+void test_rain_probability_makes_it_caution() {
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateRide(T, 0, 10, 15, 30));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateRide(T, 0, 10, 15, 50));    // at the threshold
+    TEST_ASSERT_EQUAL_CHAR(RIDE_DONT, rateRide(T, 3, 10, 15, 90));       // mm still wins
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateRide(T, 0, 10, 15, NAN));      // unknown probability is ignored
+    RideThresholds off = T;
+    off.rainProbPct = 101;                                               // disabled
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateRide(off, 0, 10, 15, 100));
+}
+
+void test_rate_window_uses_the_highest_probability() {
+    float temp[3] = { 15, 15, 15 }, rain[3] = { 0, 0, 0 }, gust[3] = { 10, 10, 10 };
+    float prob[3] = { 10, 70, 20 };
+    TEST_ASSERT_EQUAL_CHAR(RIDE_CAUTION, rateWindow(T, temp, rain, gust, prob, 3));
+    TEST_ASSERT_EQUAL_CHAR(RIDE_GOOD, rateWindow(T, temp, rain, gust, nullptr, 3));
+}
+
+void test_score_window() {
+    TEST_ASSERT_EQUAL(100, scoreWindow(20, 0, 10));          // ideal
+    TEST_ASSERT_EQUAL(91, scoreWindow(23, 0, 10));           // -3 per degree
+    TEST_ASSERT_EQUAL(91, scoreWindow(17, 0, 10));           // either side of 20
+    TEST_ASSERT_EQUAL(80, scoreWindow(20, 1.0f, 10));        // -20 per mm
+    TEST_ASSERT_EQUAL(80, scoreWindow(20, 0, 30));           // -2 per km/h above 20
+    TEST_ASSERT_EQUAL(0, scoreWindow(-10, 5, 80));           // clamped
+    TEST_ASSERT_EQUAL(100, scoreWindow(20, 0, 20));          // exactly 20 km/h costs nothing
+}
+
+void test_score_window_hours() {
+    float nan = NAN;
+    float temp[3] = { 18, 22, nan }, rain[3] = { 0.5f, 0.5f, nan }, gust[3] = { 25, 35, nan };
+    // avg 20 C, 1.0 mm, max gust 35 -> 100 - 20 - 30 = 50
+    TEST_ASSERT_EQUAL(50, scoreWindowHours(temp, rain, gust, 3));
+    float none[2] = { nan, nan };
+    TEST_ASSERT_EQUAL(-1, scoreWindowHours(none, none, none, 2));
+}
+
+void test_score_day_and_best_day() {
+    TEST_ASSERT_EQUAL(90, scoreDay(90, 60, false));
+    TEST_ASSERT_EQUAL(105, scoreDay(60, 90, true));          // weekend bonus, may exceed 100
+    TEST_ASSERT_EQUAL(70, scoreDay(-1, 70, false));          // one window can be ridden
+    TEST_ASSERT_EQUAL(-1, scoreDay(-1, -1, true));           // nothing to ride, no bonus
+    int scores[5] = { 80, -1, 95, 95, 40 };
+    TEST_ASSERT_EQUAL(2, bestDay(scores, 5));                // ties go to the earliest
+    int none[2] = { -1, -1 };
+    TEST_ASSERT_EQUAL(-1, bestDay(none, 2));
+}
+
+void test_best_start_hour() {
+    HourSlice h[8];
+    for (int i = 0; i < 8; i++) h[i] = HourSlice{ 20, 0, 10, 0, true };
+    h[2].rainTenthMm = 20;    // rain in hours 2 and 3
+    h[3].rainTenthMm = 20;
+    TEST_ASSERT_EQUAL(0, bestStartHour(h, 8, 2, 0, 7));      // dry window, earliest wins
+    TEST_ASSERT_EQUAL(4, bestStartHour(h, 8, 2, 2, 7));      // from hour 2 the rain is avoided at 4
+    TEST_ASSERT_EQUAL(-1, bestStartHour(h, 8, 9, 0, 7));     // window longer than the data
+    h[0].valid = false;                                      // windows containing a missing hour are skipped...
+    h[4].rainTenthMm = 50;                                   // ...and rain at 4 and 5 now beats the dry hour 1
+    h[5].rainTenthMm = 50;
+    TEST_ASSERT_EQUAL(6, bestStartHour(h, 8, 2, 0, 7));      // window 0-1 is skipped, 1-2 and 2-3 are wet, 6-7 is dry
+    for (int i = 0; i < 8; i++) h[i].valid = false;
+    TEST_ASSERT_EQUAL(-1, bestStartHour(h, 8, 2, 0, 7));
 }
 
 void test_weather_codes() {
@@ -119,6 +182,12 @@ int main(int, char**) {
     RUN_TEST(test_rate_ride_caution);
     RUN_TEST(test_rate_ride_dont);
     RUN_TEST(test_rate_ride_thresholds_are_exclusive);
+    RUN_TEST(test_rain_probability_makes_it_caution);
+    RUN_TEST(test_rate_window_uses_the_highest_probability);
+    RUN_TEST(test_score_window);
+    RUN_TEST(test_score_window_hours);
+    RUN_TEST(test_score_day_and_best_day);
+    RUN_TEST(test_best_start_hour);
     RUN_TEST(test_rate_window_uses_worst_hour);
     RUN_TEST(test_rate_window_sums_rain);
     RUN_TEST(test_rate_window_missing_hours);

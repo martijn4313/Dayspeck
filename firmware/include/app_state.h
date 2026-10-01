@@ -11,9 +11,12 @@
 struct SystemState {
     // Display state
     bool          showTomorrow;
-    uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix
+    uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix, 2 = next hours
     bool          displayDirty;
-    unsigned long weeklyEnteredMs;    // when the weekly view was opened
+    unsigned long weeklyEnteredMs;    // when the weekly / hourly view was opened
+    unsigned long lastActivityMs;     // last touch (for the sleep timer)
+    bool          displayOff;         // panel switched off (quiet hours / sleep timer)
+    bool          previewActive;      // after previewHr the default view is tomorrow
 
     // Timing
     unsigned long lastFetchMs;
@@ -66,6 +69,13 @@ extern float configLon;
 extern bool  manualConfigPresent;
 extern bool  manualLocation;
 extern bool  ssidBasedLocation;
+
+// Display options (config.json "display" and "previewHr")
+extern int  previewHr;            // from this local hour the default view is tomorrow; 24 = never
+extern bool displayDimAtNight;
+extern int  displaySleepMinutes;  // switch the panel off after this many idle minutes at night; 0 = never
+extern int  quietStartHr;         // quiet hours: panel off from start (inclusive) to end (exclusive); -1 = off
+extern int  quietEndHr;
 
 // WiFi credentials (config.json / web UI)
 extern String wifiSsid;
