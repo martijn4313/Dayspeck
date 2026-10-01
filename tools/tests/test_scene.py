@@ -51,15 +51,18 @@ def test_weather_icons_differ():
     assert len(set(areas)) == 4
 
 
-def test_wind_effect_needs_25_kmh():
-    assert lit(render(weather="wind", wind_speed=24), 84, 5, 127, 5) == 0
-    assert lit(render(weather="wind", wind_speed=40), 84, 5, 127, 5) > 10
+def test_wind_draws_no_effect_in_the_sky():
+    windy = render(weather="wind", wind_speed=52)
+    calm = render(weather="clear", wind_speed=52)
+    assert lit(windy, 64, 0, 127, 40) == lit(calm, 64, 0, 127, 40)    # skyline card identical
 
 
-def test_wind_dashes_repeat_across_the_card_with_gaps():
-    # x 64-83 is covered by the temperature box (as on the device), so look at the second repeat
-    row = [render(weather="wind", wind_speed=40).pixels[5][x] for x in range(88, 100)]
-    assert row == [True] * 4 + [False] * 2 + [True] * 3 + [False] + [True] * 2
+def test_wind_icon_has_three_curled_gusts_and_leaves_room_for_the_text():
+    icon = render(weather="wind", wind_speed=52)
+    assert lit(icon, 66, 44, 88, 63) > 50
+    assert lit(icon, 89, 44, 92, 63) == 0                      # gap before the "km/h" text at x=93
+    for y in (50, 56, 62):                                       # one long line per gust
+        assert sum(icon.pixels[y][x] for x in range(66, 80)) >= 12
 
 
 def test_night_overlay_is_deterministic_like_the_firmware():
@@ -96,12 +99,23 @@ def test_best_day_is_shown_in_inverse_video():
 
 def test_hourly_view_draws_columns_bars_and_footer():
     c = render(view_mode=VIEW_HOURLY)
-    assert lit(c, 1, 0, 20, 7) > 5                 # first hour label
+    assert lit(c, 20, 0, 37, 7) > 5                # first hour label (columns start after the 20 px label area)
     # the shower in column 3 (index 3, 2.5 mm) is a tall bar, the dry first column has none
-    assert lit(c, 64 + 6, 20, 64 + 14, 44) > 100
-    assert lit(c, 1 + 6, 25, 1 + 14, 40) == 0
+    assert lit(c, 74 + 5, 20, 74 + 12, 44) > 100
+    assert lit(c, 20 + 5, 25, 20 + 12, 40) == 0
     assert lit(c, 0, 57, 64, 63) > 20 and lit(c, 70, 57, 127, 63) > 20   # leave advice and update time
     assert all(c.pixels[45][x] for x in range(128))                       # baseline
+
+
+def test_hourly_view_labels_name_every_row():
+    c = render(view_mode=VIEW_HOURLY)
+    assert lit(c, 0, 0, 5, 7) > 3                  # h
+    assert lit(c, 0, 10, 11, 17) > 8               # degree sign and C
+    assert lit(c, 0, 21, 11, 28) > 8               # mm
+    assert lit(c, 14, 22, 17, 27) == 24            # sample bar
+    assert lit(c, 0, 32, 5, 39) > 3                # %
+    assert [c.pixels[35][x] for x in range(8, 18)] == [True, False] * 5   # sample dotted line
+    assert lit(c, 0, 47, 17, 54) > 8               # kmh
 
 
 def test_hourly_view_without_data_and_with_missing_hours():
@@ -118,3 +132,63 @@ def test_status_marks():
     assert lit(full, 51, 55, 62, 63) > lit(none, 51, 55, 62, 63)
     assert lit(render(wifi_bars=-1), 55, 57, 61, 63) > 8       # cross when not connected
     assert lit(render(stale=True), 0, 0, 17, 7) > 10           # OLD tag
+
+
+def test_clock_view_shows_time_date_and_year():
+    from bitmaptool.scene import VIEW_CLOCK
+    c = render(view_mode=VIEW_CLOCK)
+    assert lit(c, 20, 6, 107, 26) > 150          # 07:45 in 3x type
+    assert lit(c, 5, 37, 122, 52) > 100          # "Thu 1 Oct" in 2x type
+    assert lit(c, 50, 56, 78, 63) > 20           # year
+    assert lit(c, 0, 0, 127, 5) == 0             # nothing above the clock
+
+
+def test_clock_colon_blinks_and_missing_time_is_explained():
+    from bitmaptool.scene import VIEW_CLOCK
+    on, off = render(view_mode=VIEW_CLOCK), render(view_mode=VIEW_CLOCK, clock_colon=False)
+    assert lit(on, 56, 6, 72, 26) > lit(off, 56, 6, 72, 26)     # the colon sits between the digit pairs
+    unset = render(view_mode=VIEW_CLOCK, clock_valid=False)
+    assert lit(unset, 22, 22, 118, 29) > 20 and lit(unset, 20, 6, 107, 20) == 0
+
+
+def test_clock_has_no_stale_tag():
+    from bitmaptool.scene import VIEW_CLOCK
+    assert lit(render(view_mode=VIEW_CLOCK, stale=True), 0, 0, 17, 5) == 0
+
+
+def test_rain_sprites_are_in_the_header_and_used():
+    from bitmaptool.convert import Converter
+    entries = {e.name: e for e in Converter.parse_entries((ROOT / "firmware/include/bitmaps.h").read_text())}
+    drops = [entries[f"rain_drop_{i}_bmp"].pixels for i in range(1, 5)]
+    splashes = [entries[f"splash_{i}_bmp"].pixels for i in range(1, 5)]
+    assert len({str(d) for d in drops}) == 4 and len({str(s) for s in splashes}) == 4   # four different variants
+    from bitmaptool.rain import RainAnimation, RainDrop, Splash
+    c = OLEDCanvas()
+    RainAnimation.draw(c, [RainDrop(x=80, y=5, target_y=41, active=True, sprite_variant=0)],
+                       [Splash(x=100, y=41, frame_counter=3, active=True, sprite_variant=1)], drops, splashes)
+    assert lit(c, 80, 5, 82, 10) == sum(map(sum, drops[0]))                 # drop sprite 1 drawn at its position
+    assert lit(c, 97, 37, 103, 40) == sum(map(sum, splashes[1]))            # splash sprite 2 centred on x=100
+
+
+def test_rain_lands_above_the_card_divider():
+    """Splashes used to land up to 9 px below the horizon, i.e. inside the bottom card, over its text."""
+    from bitmaptool.rain import RainAnimation
+    import random
+    drops, splashes = RainAnimation.init_rain_animation(7, 41)
+    assert all(38 <= d.target_y <= 41 for d in drops)
+    rng = random.Random(3)
+    for _ in range(200):
+        RainAnimation.update(drops, splashes, rng, 41, 4, 10, 8.0)
+    assert all(38 <= s.y <= 41 for s in splashes if s.active) and all(38 <= d.target_y <= 41 for d in drops)
+
+
+def test_clear_night_shows_a_moon_not_a_sun_in_the_bottom_card():
+    day, night = render(weather="clear"), render(weather="clear", night=True)
+    assert lit(day, 66, 44, 90, 63) != lit(night, 66, 44, 90, 63)
+    # a crescent: the left half is solid, the right half is mostly cut away
+    left, right = lit(night, 68, 46, 76, 62), lit(night, 77, 46, 85, 62)
+    assert left > 2 * right
+    # no sun rays: the sun's top ray sits at (77, 45)-(77, 46)
+    assert not night.pixels[45][77]
+    # rain and snow keep their cloud at night
+    assert lit(render(weather="rain", night=True), 66, 44, 90, 63) == lit(render(weather="rain"), 66, 44, 90, 63)

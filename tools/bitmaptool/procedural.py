@@ -75,17 +75,3 @@ class Procedural:
         if intensity >= 2:
             for x in range(64, 127):
                 canvas.set_pixel(x, CHURCH_ROOF_Y)
-
-    @staticmethod
-    def draw_procedural_wind(canvas: OLEDCanvas, speed: int):
-        """drawProceduralWind: three dashed lines (only at >= 25 km/h)."""
-        if speed < 25:
-            return
-        for y in (5, 9, 14):
-            x = 64
-            while x < 128:   # the 12 px pattern repeats across the card
-                for p, count in enumerate((4, 2, 3, 1, 2)):   # dash, gap, dash, gap, dash
-                    for _ in range(count):
-                        if p % 2 == 0 and x < 128:
-                            canvas.set_pixel(x, y)
-                        x += 1

@@ -148,30 +148,6 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
     }
 }
 
-// Procedural wind — horizontal swoosh dashes
-void drawProceduralWind(Adafruit_SSD1306 &display, int speed) {
-    // Only active when speed >= 25 km/h
-    if (speed < 25) return;
-    
-    // Three dashed horizontal lines at y: 5, 9, 14 across x: 64-127
-    int yPositions[] = {5, 9, 14};
-    // Dash pattern: 4 on, 2 off, 3 on, 1 off, 2 on (12 px), repeated across the card
-    int pattern[] = {4, 2, 3, 1, 2};
-    for (int row = 0; row < 3; row++) {
-        int y = yPositions[row];
-        int x = 64;
-        while (x < 128) {
-            for (int p = 0; p < 5; p++) {
-                bool on = (p % 2 == 0);   // entries 0, 2, 4 are dashes, 1 and 3 are gaps
-                for (int i = 0; i < pattern[p]; i++) {
-                    if (on && x < 128) display.drawPixel(x, y, SSD1306_WHITE);
-                    x++;
-                }
-            }
-        }
-    }
-}
-
 // Reset a rain drop to random position at top
 // Reset a single rain drop to a new random position above the skyline
 void resetRainDrop(RainDrop &drop) {
@@ -182,7 +158,7 @@ void resetRainDrop(RainDrop &drop) {
     
     drop.x = RAIN_AREA_X_START + random(RAIN_AREA_X_END - RAIN_AREA_X_START + 1 + xSpawnExtend);
     drop.y = random(-8, -1);  // Start just above top edge
-    drop.targetY = HORIZON_Y + random(10);  // Slight variation in ground level
+    drop.targetY = HORIZON_Y - random(4);  // Ground level varies by 3 px, always above the card divider
     drop.speed = 3 + random(4);  // Speed: 3-6 pixels per frame (matching Python)
     drop.spriteIdx = random(4);  // 0-3 sprite variants
     drop.active = true;
@@ -195,7 +171,7 @@ void initRainAnimation() {
         // Reset first to initialize all fields
         rainDrops[i].x = RAIN_AREA_X_START + random(64);
         rainDrops[i].y = random(-30, HORIZON_Y);  // Spread across screen vertically
-        rainDrops[i].targetY = HORIZON_Y + random(10);
+        rainDrops[i].targetY = HORIZON_Y - random(4);
         rainDrops[i].speed = 3 + random(4);  // 3-6 px/frame
         rainDrops[i].spriteIdx = random(4);
         rainDrops[i].active = true;
@@ -397,13 +373,12 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
         }
     } else if (weatherCondition == WEATHER_SNOW) {
         drawProceduralSnow(display, intensity);
-    } else if (weatherCondition == WEATHER_WIND) {
-        drawProceduralWind(display, windSpeed);
     }
+    // Wind has no effect in the sky: its icon is in the bottom card
     
     // Layer 4: draw tempStr text at (TEMP_X, TEMP_Y) with black background box
     // First draw black box behind text for readability
-    display.fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, SSD1306_BLACK);
+    display.fillRect(TEMP_X - 1, TEMP_Y - 1, 26, 10, SSD1306_BLACK);
     
     // Draw temperature text
     display.setTextSize(1);
@@ -437,7 +412,7 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
 }
 
 // Render bottom card — weather icon, wind and precipitation text (x: 64-127, y: 42-63)
-void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm) {
+void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm, bool isNight) {
     // Icon area: x 66-90, y 44-62
     const int ix = 66, iy = 44;
     if (weatherCondition == WEATHER_RAIN || weatherCondition == WEATHER_SNOW) {
@@ -457,13 +432,23 @@ void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windS
             }
         }
     } else if (weatherCondition == WEATHER_WIND) {
-        // Three gusting lines
+        // Three gusts of different lengths, each ending in a curl (a half circle rising from the line end)
+        static const int8_t gustY[3]   = { 6, 12, 18 };    // relative to iy
+        static const int8_t gustLen[3] = { 14, 20, 12 };
+        static const int8_t gustR[3]   = { 3, 2, 2 };
         for (int i = 0; i < 3; i++) {
-            int y = iy + 4 + i * 6;
-            int len = (i == 1) ? 22 : 16;
-            display.drawFastHLine(ix, y, len, SSD1306_WHITE);
-            display.drawCircleHelper(ix + len, y - 2, 2, 2, SSD1306_WHITE);
+            int y = iy + gustY[i];
+            display.drawFastHLine(ix, y, gustLen[i], SSD1306_WHITE);
+            display.drawCircleHelper(ix + gustLen[i], y - gustR[i], gustR[i], 2 | 4, SSD1306_WHITE);
         }
+    } else if (isNight) {
+        // Clear night: crescent moon (a disc with a second disc cut out) and three stars
+        const int cx = ix + 10, cy = iy + 10;
+        display.fillCircle(cx, cy, 8, SSD1306_WHITE);
+        display.fillCircle(cx + 5, cy - 3, 7, SSD1306_BLACK);
+        display.drawPixel(ix + 18, iy + 4, SSD1306_WHITE);                 // stars (single pixels: a "+" next
+        display.drawPixel(ix + 21, iy + 11, SSD1306_WHITE);                // to the speed would read as text)
+        display.drawPixel(ix + 3, iy + 1, SSD1306_WHITE);
     } else {
         // Clear: sun with rays
         const int cx = ix + 11, cy = iy + 9;
@@ -564,7 +549,7 @@ void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, 
     display.drawLine(64, 41, 127, 41, SSD1306_WHITE);
     
     // Right bottom: renderBottomCard(...)
-    renderBottomCard(display, weatherCondition, windSpeed, precipMm);
+    renderBottomCard(display, weatherCondition, windSpeed, precipMm, isNight);
 }
 
 // Render loading view — rotating badge circle and status text
@@ -639,7 +624,8 @@ static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const 
     display.print(text);
 }
 
-// Render the next hours as a strip of columns
+// Render the next hours as a strip of columns. A label column on the left names the rows:
+// h (hour), degree C, mm (rain amount, solid bar), % (chance of rain, dotted line), kmh (gusts).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
                       bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute) {
     display.clearDisplay();
@@ -652,12 +638,30 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
         return;
     }
 
-    const int colW = 21, barBottom = 44, barMax = 24;
+    const int labelW = 20, colW = 18, barBottom = 44, barMax = 24;
+
+    // Row labels
+    display.setCursor(0, 0);
+    display.print("h");
+    display.drawRect(0, 10, 3, 3, SSD1306_WHITE);             // degree sign
+    display.setCursor(5, 10);
+    display.print("C");
+    display.setCursor(0, 21);
+    display.print("mm");
+    display.fillRect(14, 22, 4, 6, SSD1306_WHITE);            // sample bar
+    display.setCursor(0, 32);
+    display.print("%");
+    for (int dx = 8; dx <= 16; dx += 2) {
+        display.drawPixel(dx, 35, SSD1306_WHITE);             // sample dotted line
+    }
+    display.setCursor(0, 47);
+    display.print("kmh");
+
     size_t cols = count < 6 ? count : 6;
     char buf[20];
     for (size_t i = 0; i < cols; i++) {
         const HourSlice& h = hours[i];
-        int x = (int)i * colW + 1;
+        int x = labelW + (int)i * colW;
 
         snprintf(buf, sizeof(buf), "%02d", (firstHour + (int)i) % 24);
         printCentered(display, x, colW, 0, buf);
@@ -673,11 +677,11 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
         if (h.rainTenthMm > 0) {
             int barH = 2 + (int)h.rainTenthMm * 6 / 10;
             if (barH > barMax) barH = barMax;
-            display.fillRect(x + 6, barBottom - barH + 1, 9, barH, SSD1306_WHITE);
+            display.fillRect(x + 5, barBottom - barH + 1, 8, barH, SSD1306_WHITE);
         }
         if (h.rainProb != 255 && h.rainProb > 0) {
             int y = barBottom - (int)h.rainProb * barMax / 100;
-            for (int dx = 2; dx < 19; dx += 2) {
+            for (int dx = 2; dx <= 16; dx += 2) {
                 display.drawPixel(x + dx, y, SSD1306_WHITE);
             }
         }
@@ -728,3 +732,40 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
         }
     }
 }
+
+// Clock screen: HH:MM in large type, weekday and date below, year at the bottom
+void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
+                     int weekday, int day, int month, int year) {
+    static const char* const DAYS[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static const char* const MONTHS[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+
+    if (!timeValid) {
+        display.setTextSize(1);
+        display.setCursor(22, 22);
+        display.print("Time not set yet");
+        display.setCursor(10, 36);
+        display.print("waiting for WiFi...");
+        return;
+    }
+
+    char buf[24];
+    display.setTextSize(3);                         // 18 px per character
+    snprintf(buf, sizeof(buf), colon ? "%02d:%02d" : "%02d %02d", hour % 24, minute % 60);
+    display.setCursor((128 - ((int)strlen(buf) * 18 - 3)) / 2, 6);
+    display.print(buf);
+
+    display.setTextSize(2);                         // 12 px per character
+    snprintf(buf, sizeof(buf), "%s %d %s", DAYS[weekday % 7], day, MONTHS[(month + 11) % 12]);
+    int w = (int)strlen(buf) * 12 - 2;
+    display.setCursor((128 - w) / 2, 37);
+    display.print(buf);
+
+    display.setTextSize(1);
+    snprintf(buf, sizeof(buf), "%d", year);
+    display.setCursor((128 - ((int)strlen(buf) * 6 - 1)) / 2, 56);
+    display.print(buf);
+}
+

@@ -49,7 +49,7 @@ class RainAnimation:
             x = rng.randint(RAIN_AREA_X_START, RAIN_AREA_X_END)
             # Start drops at different vertical positions so screen fills immediately
             y = rng.randint(-30, horizon_y - 1)
-            target_y = rng.randint(horizon_y, CANVAS_H - 1)
+            target_y = rng.randint(horizon_y - 3, horizon_y)
             speed = rng.randint(3, 6)
             variant = rng.randint(0, 3)
             drops.append(RainDrop(x=x, y=y, target_y=target_y, speed=speed, sprite_variant=variant, active=True))
@@ -72,7 +72,7 @@ class RainAnimation:
         
         drop.x = rng.randint(RAIN_AREA_X_START, spawn_x_max)
         drop.y = rng.randint(-8, -1)   # just above the top edge
-        drop.target_y = rng.randint(horizon_y, CANVAS_H - 1)
+        drop.target_y = rng.randint(horizon_y - 3, horizon_y)
         drop.speed = rng.randint(3, 6)
         drop.sprite_variant = rng.randint(0, 3)
         drop.active = True

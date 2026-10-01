@@ -64,7 +64,9 @@ extern time_t lastUpdateEpoch;
 
 // Local time helpers (valid only when NTP has synced, see state.timeSynced)
 int  localHour();
-int  localHourOf(time_t t);   // local hour (0-23) of a unix time
+int  localHourOf(time_t t);
+// True once a forecast has told us the location's UTC offset (needed to show local time)
+bool timezoneKnown();   // local hour (0-23) of a unix time
 // True when the forecast was fetched on a previous local day (week arrays are shifted)
 bool forecastIsFromPastDay();
 

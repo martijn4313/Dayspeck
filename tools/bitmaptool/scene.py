@@ -17,6 +17,7 @@ from .rain import RainAnimation
 VIEW_TODAY = "today"      # Current day with giant badge
 VIEW_WEEKLY = "weekly"    # 7-day AM/PM matrix
 VIEW_HOURLY = "hourly"    # next hours strip
+VIEW_CLOCK = "clock"      # time and date
 
 DAY_LETTERS = "SMTWTFS"   # Sunday first, like the firmware
 
@@ -72,6 +73,15 @@ class SceneState:
     first_hour: int = 17        # local hour of hours[0]
     leave_text: str = "Best 17:00"   # "Leave now", "Best HH:00" or ""
     updated_text: str = "upd 14:05"  # "" = unknown
+    # Clock screen
+    clock_valid: bool = True    # False: "Time not set yet"
+    clock_hour: int = 7
+    clock_minute: int = 45
+    clock_colon: bool = True    # the colon blinks once a second on the device
+    clock_weekday: int = 4      # 0 = Sunday
+    clock_day: int = 1
+    clock_month: int = 10
+    clock_year: int = 2026
     # Status marks
     tomorrow: bool = False      # showing tomorrow's ride (the "TMR" tag)
     wifi_bars: int = 4          # 0-4, -1 = not connected
@@ -97,10 +107,12 @@ class SceneComposer:
             SceneComposer._compose_weekly_view(canvas, state)
         elif state.view_mode == VIEW_HOURLY:
             SceneComposer._compose_hourly_view(canvas, state)
+        elif state.view_mode == VIEW_CLOCK:
+            SceneComposer._compose_clock_view(canvas, state)
         else:
             SceneComposer._compose_today_view(canvas, state)
             SceneComposer._draw_status_marks(canvas, state)
-        if state.stale:
+        if state.stale and state.view_mode != VIEW_CLOCK:
             canvas.draw_text(0, 0, "OLD")
 
     # ── Today view ──────────────────────────────────────────────────────────
@@ -156,11 +168,9 @@ class SceneComposer:
                 Procedural.draw_procedural_rain(canvas, state.intensity)
         elif state.weather == "snow":
             Procedural.draw_procedural_snow(canvas, state.intensity, state.seed)
-        elif state.weather == "wind":
-            Procedural.draw_procedural_wind(canvas, state.wind_speed)
 
-        # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 20, 10, BLACK)), then the trend arrow
-        canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 20, 10, on=False)
+        # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 26, 10, BLACK)), then the trend arrow
+        canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 26, 10, on=False)
         if state.temp_str:
             canvas.draw_text(TEMP_X, TEMP_Y, state.temp_str)
         arrow = {"up": state.arrow_ur_bmp, "down": state.arrow_dr_bmp}.get(state.trend, state.arrow_r_bmp)
@@ -184,11 +194,18 @@ class SceneComposer:
                     canvas.set_pixel(x, iy + 16)
                     canvas.set_pixel(x - 1, iy + 18)
         elif state.weather == "wind":
-            for i in range(3):
-                y = iy + 4 + i * 6
-                length = 22 if i == 1 else 16
+            # Three gusts of different lengths, each ending in a curl
+            for dy, length, r in ((6, 14, 3), (12, 20, 2), (18, 12, 2)):
+                y = iy + dy
                 canvas.draw_hline(ix, y, length)
-                canvas.draw_circle_helper(ix + length, y - 2, 2, 2)
+                canvas.draw_circle_helper(ix + length, y - r, r, 2 | 4)
+        elif state.night:
+            # Clear night: crescent moon (a disc with a second disc cut out) and three stars
+            cx, cy = ix + 10, iy + 10
+            canvas.fill_disc(cx, cy, 8)
+            canvas.fill_disc(cx + 5, cy - 3, 7, on=False)
+            for sx, sy in ((18, 4), (21, 11), (3, 1)):    # stars
+                canvas.set_pixel(ix + sx, iy + sy)
         else:
             cx, cy = ix + 11, iy + 9
             canvas.fill_disc(cx, cy, 4)
@@ -249,14 +266,27 @@ class SceneComposer:
 
     @staticmethod
     def _compose_hourly_view(canvas: OLEDCanvas, state: SceneState):
-        """renderHourlyView: up to 6 columns of hour, temperature, rain bar and chance tick, gusts."""
+        """renderHourlyView: row labels on the left, up to 6 columns of hour, temperature, rain bar and
+        chance-of-rain line, gusts."""
         hours = state.hours
         if not hours:
             canvas.draw_text(16, 28, "No hourly data")
             return
-        col_w, bar_bottom, bar_max = 21, 44, 24
+        label_w, col_w, bar_bottom, bar_max = 20, 18, 44, 24
+
+        # Row labels: h, degree C, mm (solid bar), % (dotted line), kmh
+        canvas.draw_text(0, 0, "h")
+        canvas.draw_rect(0, 10, 3, 3)                 # degree sign
+        canvas.draw_text(5, 10, "C")
+        canvas.draw_text(0, 21, "mm")
+        canvas.fill_rect(14, 22, 4, 6)                # sample bar
+        canvas.draw_text(0, 32, "%")
+        for dx in range(8, 17, 2):
+            canvas.set_pixel(dx, 35)                  # sample dotted line
+        canvas.draw_text(0, 47, "kmh")
+
         for i, h in enumerate(hours[:6]):
-            x = i * col_w + 1
+            x = label_w + i * col_w
             SceneComposer._draw_centered(canvas, x, col_w, 0, f"{(state.first_hour + i) % 24:02d}")
             if not h.valid:
                 SceneComposer._draw_centered(canvas, x, col_w, 22, "--")
@@ -264,10 +294,10 @@ class SceneComposer:
             SceneComposer._draw_centered(canvas, x, col_w, 10, str(h.temp))
             if h.rain10 > 0:
                 bar_h = min(2 + h.rain10 * 6 // 10, bar_max)
-                canvas.fill_rect(x + 6, bar_bottom - bar_h + 1, 9, bar_h)
+                canvas.fill_rect(x + 5, bar_bottom - bar_h + 1, 8, bar_h)
             if h.prob != 255 and h.prob > 0:
                 y = bar_bottom - h.prob * bar_max // 100
-                for dx in range(2, 19, 2):
+                for dx in range(2, 17, 2):
                     canvas.set_pixel(x + dx, y)
             SceneComposer._draw_centered(canvas, x, col_w, 47, str(h.gust))
         canvas.draw_hline(0, bar_bottom + 1, 128)
@@ -291,3 +321,27 @@ class SceneComposer:
                 canvas.fill_rect(x, 64 - h, 2, h)
             else:
                 canvas.set_pixel(x, 63)
+
+    # ── Clock ───────────────────────────────────────────────────────────────
+
+    DAYS = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    @staticmethod
+    def _compose_clock_view(canvas: OLEDCanvas, state: SceneState):
+        """renderClockView: HH:MM in large type, weekday and date below, year at the bottom."""
+        if not state.clock_valid:
+            canvas.draw_text(22, 22, "Time not set yet")
+            canvas.draw_text(10, 36, "waiting for WiFi...")
+            return
+        sep = ":" if state.clock_colon else " "
+        time_text = f"{state.clock_hour % 24:02d}{sep}{state.clock_minute % 60:02d}"
+        canvas.draw_text((128 - (len(time_text) * 18 - 3)) // 2, 6, time_text, size=3)
+
+        date_text = (f"{SceneComposer.DAYS[state.clock_weekday % 7]} {state.clock_day} "
+                     f"{SceneComposer.MONTHS[(state.clock_month + 11) % 12]}")
+        canvas.draw_text((128 - (len(date_text) * 12 - 2)) // 2, 37, date_text, size=2)
+
+        year_text = str(state.clock_year)
+        canvas.draw_text((128 - (len(year_text) * 6 - 1)) // 2, 56, year_text)
+
