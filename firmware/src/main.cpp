@@ -264,6 +264,18 @@ void renderDisplay() {
                      (int)weather.windKmh, tempStr, weather.trend, weather.precipMm);
 }
 
+#ifdef KIDS_MODE
+/**
+ * Kids variant: what to wear, from the current temperature
+ */
+void renderKids() {
+    float tempC = getCurrentWeather().tempC;
+    int clothing = clothingFor(tempC, DEFAULT_SHORTS_FROM_C, DEFAULT_SWEATER_BELOW_C);
+    float shown = (weatherUnits == "imperial") ? tempC * 9.0f / 5.0f + 32.0f : tempC;
+    renderKidsView(display, clothing, isnan(shown) ? 0 : (int)lroundf(shown));
+}
+#endif
+
 /**
  * Get initialization status text for loading screen
  */
@@ -335,9 +347,14 @@ void render() {
     } else if (state.displayMode == 2) {
         renderHourly();
     } else {
+#ifdef KIDS_MODE
+        renderKids();
+#else
         renderDisplay();
         renderStatusMarks(display, state.showTomorrow != state.previewActive, wifiBars());
+#endif
     }
+#ifndef KIDS_MODE
     if (state.weatherValid && state.weatherStale) {
         // Data is old (offline or the API keeps failing): mark it in the free top-left corner
         display.setTextSize(1);
@@ -345,6 +362,7 @@ void render() {
         display.setCursor(0, 0);
         display.print("OLD");
     }
+#endif
     display.display();
     state.displayDirty = false;
 }
@@ -368,6 +386,11 @@ void handleTouch() {
             return;
         }
     }
+
+#ifdef KIDS_MODE
+    // The kids view is the only view: a touch only wakes the panel
+    event = TOUCH_NONE;
+#endif
 
     if (event == TOUCH_SHORT) {
         if (state.displayMode != 0) {
@@ -631,6 +654,7 @@ void loop() {
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
         if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
+#ifndef KIDS_MODE
         } else if (state.displayMode == 0) {
             WeatherData weather = getCurrentWeather();
             if (weather.condition == WEATHER_RAIN) {
@@ -644,6 +668,7 @@ void loop() {
                 state.rainAnimationActive = false;
                 state.displayDirty = true;
             }
+#endif
         }
         state.lastFrameMs = millis();
     }

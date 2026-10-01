@@ -62,6 +62,15 @@ struct HourSlice {
 // contain an invalid hour are skipped; -1 when there is none. Ties go to the earliest start.
 int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to);
 
+// Kids variant: what to wear. Warm = t-shirt and shorts, mild = t-shirt, cool = sweater.
+#define CLOTHES_WARM    0
+#define CLOTHES_MILD    1
+#define CLOTHES_COOL    2
+
+// `shortsFromC`: from this temperature on shorts are fine; below `sweaterBelowC` a sweater is needed.
+// An unknown temperature (NAN) gives the middle option.
+int clothingFor(float tempC, float shortsFromC, float sweaterBelowC);
+
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 

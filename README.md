@@ -23,6 +23,27 @@ It answers one question at a glance: **can I ride today?**
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
+## Kids variant: what do I wear today?
+
+A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
+rating it shows what to wear, with big shapes and as little text as possible:
+
+| Temperature | Picture | Word |
+|-------------|---------|------|
+| 20 °C and up | t-shirt and shorts | `WARM` |
+| 15 to under 20 °C | t-shirt | `MILD` |
+| under 15 °C | sweater | `COOL` |
+
+The left half shows the clothes, the right half the current temperature as a big number (a number
+to read, no unit) and a four-letter word. Touch only wakes the panel; there are no other views.
+Wifi, location, the web UI and OTA work as before. The limits are `DEFAULT_SHORTS_FROM_C` and
+`DEFAULT_SWEATER_BELOW_C` in `firmware/include/config.h` (compile-time; the web UI does not change
+them). The rain animation and the `OLD` tag are left out in this build.
+
+```sh
+pio run -e esp01_1m_kids -t upload
+```
+
 ## Hardware
 
 | Part | Notes |
@@ -61,6 +82,7 @@ pio run -t upload             # flash the firmware
 pio run -t uploadfs           # flash firmware/data (config.json) to the filesystem
 pio test -e native            # host unit tests for the pure logic
 pio run -e esp01_1m_debug     # development build with on-screen debug status
+pio run -e esp01_1m_kids      # kids variant (what to wear)
 ```
 
 Optional compile-time defaults (WiFi credentials) go in `firmware/include/secrets.h`; copy

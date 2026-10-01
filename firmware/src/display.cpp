@@ -728,3 +728,75 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
         }
     }
 }
+
+// ---- Kids variant: what to wear -------------------------------------------------------------------
+
+// Filled convex quadrilateral
+static void fillQuad(Adafruit_SSD1306 &d, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3) {
+    d.fillTriangle(x0, y0, x1, y1, x2, y2, SSD1306_WHITE);
+    d.fillTriangle(x0, y0, x2, y2, x3, y3, SSD1306_WHITE);
+}
+
+// T-shirt silhouette. Coordinates are given for a 48x30 box and scaled by num/den.
+static void drawShirt(Adafruit_SSD1306 &d, int ox, int oy, int num, int den) {
+    #define SX(v) (ox + (v) * num / den)
+    #define SY(v) (oy + (v) * num / den)
+    d.fillRect(SX(12), SY(1), SX(36) - SX(12), SY(30) - SY(1), SSD1306_WHITE);
+    fillQuad(d, SX(13), SY(1), SX(0), SY(9), SX(5), SY(17), SX(13), SY(12));
+    fillQuad(d, SX(35), SY(1), SX(48), SY(9), SX(43), SY(17), SX(35), SY(12));
+    d.fillTriangle(SX(19), SY(0), SX(29), SY(0), SX(24), SY(8), SSD1306_BLACK);   // neck
+    #undef SX
+    #undef SY
+}
+
+// Sweater silhouette with long sleeves and a ribbed hem, in a 56x52 box
+static void drawSweater(Adafruit_SSD1306 &d, int ox, int oy) {
+    d.fillRect(ox + 14, oy + 1, 28, 50, SSD1306_WHITE);
+    fillQuad(d, ox + 15, oy + 1, ox + 6, oy + 6, ox + 1, oy + 40, ox + 9, oy + 42);
+    fillQuad(d, ox + 41, oy + 1, ox + 50, oy + 6, ox + 55, oy + 40, ox + 47, oy + 42);
+    d.fillTriangle(ox + 22, oy, ox + 34, oy, ox + 28, oy + 8, SSD1306_BLACK);     // neck
+    d.drawFastHLine(ox + 14, oy + 45, 28, SSD1306_BLACK);                          // hem
+    d.drawLine(ox + 1, oy + 36, ox + 8, oy + 38, SSD1306_BLACK);                   // cuffs
+    d.drawLine(ox + 55, oy + 36, ox + 48, oy + 38, SSD1306_BLACK);
+}
+
+// Shorts silhouette, 34x24
+static void drawShorts(Adafruit_SSD1306 &d, int ox, int oy) {
+    d.fillRect(ox, oy, 34, 24, SSD1306_WHITE);
+    d.fillTriangle(ox + 17, oy + 11, ox + 13, oy + 24, ox + 21, oy + 24, SSD1306_BLACK);   // gap between the legs
+    d.drawFastHLine(ox, oy + 3, 34, SSD1306_BLACK);                                        // waistband
+}
+
+// Centre text (size `size`) in the right half
+static void printRightHalf(Adafruit_SSD1306 &d, const char* text, int size, int y) {
+    int w = (int)strlen(text) * 6 * size;
+    d.setTextSize(size);
+    d.setCursor(64 + (64 - w) / 2, y);
+    d.print(text);
+}
+
+void renderKidsView(Adafruit_SSD1306 &d, int clothing, int tempShown) {
+    d.clearDisplay();
+    d.setTextColor(SSD1306_WHITE);
+    d.setTextWrap(false);
+
+    const char* word;
+    if (clothing == CLOTHES_WARM) {
+        drawShirt(d, 8, 2, 1, 1);
+        drawShorts(d, 15, 36);
+        word = "WARM";
+    } else if (clothing == CLOTHES_COOL) {
+        drawSweater(d, 4, 6);
+        word = "COOL";
+    } else {
+        drawShirt(d, 2, 13, 5, 4);
+        word = "MILD";
+    }
+
+    d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
+
+    char num[8];
+    snprintf(num, sizeof(num), "%d", tempShown);
+    printRightHalf(d, num, strlen(num) > 2 ? 3 : 4, strlen(num) > 2 ? 10 : 6);   // big digits, easy to read
+    printRightHalf(d, word, 2, 44);
+}
