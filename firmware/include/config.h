@@ -35,6 +35,9 @@
 
 // Touch sensor (GPIO3 = RX pin)
 #define TOUCH_PIN       3
+// Sensor polarity: 0 = pin is pulled LOW when touched (button/switch to ground, internal pull-up; original behaviour),
+// 1 = output goes HIGH when touched (e.g. TTP223 modules in their default mode)
+#define TOUCH_ACTIVE_HIGH   0
 #define TOUCH_DEBOUNCE_MS   50
 #define TOUCH_LONG_PRESS_MS 1000
 

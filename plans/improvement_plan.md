@@ -411,19 +411,22 @@ The point of the simulator is to design and verify before flashing. It has drift
 
 ## Phase 5: Documentation (P1)
 
-- [ ] Expand `README.md` with:
-  - [ ] Photo or render, and a feature list.
-  - [ ] Bill of materials: ESP-01, SSD1306 128×64 I²C, touch module (type and
+> **Status:** `README.md` rewritten. The "Python tool" README is part of Phase 4b. Touch polarity
+> defaults to the original behaviour (active low); set `TOUCH_ACTIVE_HIGH 1` for TTP223 modules.
+
+- [x] Expand `README.md` with:
+  - [x] Photo or render, and a feature list.
+  - [x] Bill of materials: ESP-01, SSD1306 128×64 I²C, touch module (type and
         polarity), 3.3 V regulator.
-  - [ ] Wiring diagram: SDA=GPIO0, SCL=GPIO2, touch=GPIO3 (RX). Note the
+  - [x] Wiring diagram: SDA=GPIO0, SCL=GPIO2, touch=GPIO3 (RX). Note the
         GPIO0/2 boot-strap pull-up requirements, and that serial is
         unavailable while touch is connected.
-  - [ ] Build and flash steps: `pio run -t upload`, `pio run -t uploadfs`.
-  - [ ] First boot: AP name and password, and the web UI at `motoclock.local`.
-  - [ ] Config reference for every `config.json` key.
-  - [ ] How the ride rating works (thresholds, windows).
-  - [ ] OTA update procedure.
-- [ ] Make touch polarity configurable (`TOUCH_ACTIVE_LOW`). Common TTP223
+  - [x] Build and flash steps: `pio run -t upload`, `pio run -t uploadfs`.
+  - [x] First boot: AP name and password, and the web UI at `motoclock.local`.
+  - [x] Config reference for every `config.json` key.
+  - [x] How the ride rating works (thresholds, windows).
+  - [x] OTA update procedure.
+- [x] Make touch polarity configurable (`TOUCH_ACTIVE_LOW`). Common TTP223
       modules are active-high.
 
 ---
