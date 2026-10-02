@@ -33,7 +33,7 @@ It comes in two flavours, built from the same code:
   It needs the network time and the first weather update (which tells the device its time zone), and
   says "Time not set yet" until then.
 - **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
-  firmware updates.
+  firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
 
 The other screens, in order: the week grid, the next hours and the clock.
 
@@ -231,19 +231,71 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `display.language` | `en` (default) or `nl`; currently without visible effect (the kids screens show no words) |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
 | `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
+| `ota.url` | update server (the relay), `http://` only; default `OTA_DEFAULT_URL` in `config.h` |
+| `ota.autoCheck` | check for a new release once a day (default `true`) |
 
 Thresholds are always metric (mm, km/h, °C).
 
 ## Updating the firmware over the air
 
-In the web UI, *OTA Update*: choose the `firmware.bin` from `pio run`
-(`.pio/build/esp01_1m/firmware.bin`) and upload. The device restarts. CI also publishes it as a
-build artifact.
+The device checks the latest GitHub Release once a day. When a newer version is out, the main screen
+shows `UPD` in the top-left corner, and the web UI's *Firmware Update* card offers **Install X.Y.Z**.
+Nothing installs by itself. The install takes about a minute (the display shows the progress), then
+the device restarts. Settings are kept.
+
+How it fits on an ESP-01 with 1 MB flash (details in `plans/ota_plan.md`):
+
+- **No TLS on the device**: it would not fit next to a second firmware image. A small relay
+  (`tools/ota-relay`, a free Cloudflare Worker, or any plain HTTP server) passes the release on
+  over HTTP.
+- **Signed images**: the release workflow signs the manifest and every image with an RSA key.
+  The device only installs an image whose signature matches the public key compiled into it, and
+  only the exact image the signed manifest names. The relay does not need to be trusted.
+- **Compressed images**: updates are gzip-compressed; the bootloader unpacks them.
+- **64 KB filesystem** (`board_build.ldscript` in `platformio.ini`), so a compressed update fits next
+  to the running firmware. CI fails if the firmware grows too large for that.
+
+### One-time setup
+
+1. **Signing key.** Run `python tools/ota_tool.py keygen` (needs `pip install cryptography`). Keep
+   `ota_private.pem` safe and out of git (`*.pem` is ignored), add it as the repository secret
+   `OTA_SIGNING_KEY` (`gh secret set OTA_SIGNING_KEY < ota_private.pem`), and commit the generated
+   `firmware/include/ota_pubkey.h`. A build without that file cannot install pull updates.
+   If the key is lost, generate a new one; devices then need one manual upload (or a serial flash)
+   of a build with the new public key.
+2. **Relay.** Deploy `tools/ota-relay` (see its README) and put its `http://` address in the web UI
+   under *Update server*, or in `OTA_DEFAULT_URL` in `config.h`.
+3. **Serial flash, once.** Devices built before the 64 KB filesystem layout have too little free
+   flash for any over-the-air update: flash them over serial (`pio run -t upload` and
+   `pio run -t uploadfs`, or `motoclock-rider-serial.bin` and `motoclock-fs-serial.bin` from a
+   release). The filesystem moves, so the WiFi settings, location and password start from scratch.
+
+### Publishing a release
+
+1. Set `FW_VERSION` in `firmware/include/version.h` to the new version and commit.
+2. Tag it: `git tag -a v0.3.0 -m "One-line release notes shown in the web UI"` and push the tag.
+3. `.github/workflows/release.yml` checks that the tag matches `FW_VERSION` and that the secret
+   matches the committed public key, runs the tests, builds the rider and kids firmware, signs them
+   and publishes the release. Devices see it within a day (or at once with *Check now*).
+
+Only tag versions you have tried on a device: the ESP8266 cannot roll back to the old firmware if
+a new one installs fine but then misbehaves (a serial flash fixes it).
+
+### Manual upload
+
+The *Manual upload* form in the web UI takes a signed `motoclock-rider.bin.gz` (or `-kids`) from a
+release. To upload your own build, sign it with your key first:
+`python tools/ota_tool.py sign --key ota_private.pem --in .pio/build/esp01_1m/firmware.bin --out fw.bin.gz`.
+A build without a key accepts unsigned images; upload a compressed one
+(`gzip -9 -k .pio/build/esp01_1m/firmware.bin`), as an uncompressed image does not fit.
 
 ## Security notes
 
 - The web UI, the API and OTA all need the admin password (HTTP Basic). Basic auth is **not
   encrypted**: use a network you trust, and change the default password.
+- Firmware updates travel over plain HTTP but must carry a valid RSA signature from the release key
+  (once `ota_pubkey.h` holds a key). Someone between the device and the relay can delay or block
+  updates, but cannot install their own firmware or an older release.
 - The ESP8266 is too slow for TLS, so weather requests are plain HTTP. No account, key or
   personal data is sent — only your configured coordinates.
 - Writes need a per-boot token, which protects against forged requests from other web pages.
@@ -258,10 +310,13 @@ firmware/data           files for the LittleFS filesystem (config.json)
 docs/images             the screenshots used in this README
 test/                   host-side unit tests
 tools/                  png_to_bitmap.py — bitmap converter and OLED simulator (see tools/README.md)
+tools/ota_tool.py       signing key, image signing and release manifest for OTA updates
+tools/ota-relay         Cloudflare Worker that serves releases to the device over HTTP
 plans/                  improvement plan and design notes
 ```
 
 ## Contributing
 
-CI (`.github/workflows/ci.yml`) runs the unit tests, builds both firmware environments and the
-filesystem image, and lints the Python tool. See `plans/improvement_plan.md` for the roadmap.
+CI (`.github/workflows/ci.yml`) runs the unit tests, builds all firmware environments and the
+filesystem image, checks that the firmware leaves room for an update, and lints and tests the Python
+tools. Tags `vX.Y.Z` publish a signed release (`.github/workflows/release.yml`). See `plans/improvement_plan.md` for the roadmap.

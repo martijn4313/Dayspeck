@@ -271,6 +271,48 @@ void test_kids_weather() {
     TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(61, 50, 40));   // but not rain
 }
 
+void test_parse_version() {
+    uint16_t v[3];
+    TEST_ASSERT_TRUE(parseVersion("0.2.0", v));
+    TEST_ASSERT_EQUAL(0, v[0]);
+    TEST_ASSERT_EQUAL(2, v[1]);
+    TEST_ASSERT_EQUAL(0, v[2]);
+    TEST_ASSERT_TRUE(parseVersion("v12.34.56", v));
+    TEST_ASSERT_EQUAL(56, v[2]);
+    TEST_ASSERT_FALSE(parseVersion("", v));
+    TEST_ASSERT_FALSE(parseVersion(nullptr, v));
+    TEST_ASSERT_FALSE(parseVersion("1.2", v));
+    TEST_ASSERT_FALSE(parseVersion("1.2.3.4", v));
+    TEST_ASSERT_FALSE(parseVersion("1.2.3-rc1", v));
+    TEST_ASSERT_FALSE(parseVersion("1..3", v));
+    TEST_ASSERT_FALSE(parseVersion("1.2.x", v));
+    TEST_ASSERT_FALSE(parseVersion("1.2.65536", v));
+    TEST_ASSERT_FALSE(parseVersion(" 1.2.3", v));
+}
+
+void test_newer_version() {
+    TEST_ASSERT_TRUE(isNewerVersion("0.3.0", "0.2.0"));
+    TEST_ASSERT_TRUE(isNewerVersion("0.10.0", "0.9.9"));   // numeric, not string order
+    TEST_ASSERT_TRUE(isNewerVersion("1.0.0", "0.99.99"));
+    TEST_ASSERT_TRUE(isNewerVersion("v0.2.1", "0.2.0"));
+    TEST_ASSERT_FALSE(isNewerVersion("0.2.0", "0.2.0"));
+    TEST_ASSERT_FALSE(isNewerVersion("0.1.9", "0.2.0"));    // never a downgrade
+    TEST_ASSERT_FALSE(isNewerVersion("garbage", "0.2.0"));
+    TEST_ASSERT_FALSE(isNewerVersion("9.9.9", "garbage"));
+}
+
+void test_hex_to_bytes() {
+    uint8_t b[3];
+    TEST_ASSERT_TRUE(hexToBytes("00aFff", b, 3));
+    TEST_ASSERT_EQUAL_HEX8(0x00, b[0]);
+    TEST_ASSERT_EQUAL_HEX8(0xaf, b[1]);
+    TEST_ASSERT_EQUAL_HEX8(0xff, b[2]);
+    TEST_ASSERT_FALSE(hexToBytes("00af", b, 3));      // too short
+    TEST_ASSERT_FALSE(hexToBytes("00afff00", b, 3));  // too long
+    TEST_ASSERT_FALSE(hexToBytes("00agff", b, 3));    // not hex
+    TEST_ASSERT_FALSE(hexToBytes(nullptr, b, 3));
+}
+
 void test_contrast_for_percent() {
     TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(1));
     TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(0));      // never 0 (dark on some panels)
@@ -308,5 +350,8 @@ int main(int, char**) {
     RUN_TEST(test_night_detection_rolls_forward_by_days);
     RUN_TEST(test_day_of_week);
     RUN_TEST(test_interval_elapsed);
+    RUN_TEST(test_parse_version);
+    RUN_TEST(test_newer_version);
+    RUN_TEST(test_hex_to_bytes);
     return UNITY_END();
 }

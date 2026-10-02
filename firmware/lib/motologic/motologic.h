@@ -163,4 +163,14 @@ uint8_t dayOfWeek(long localMidnightUtc, long utcOffsetSeconds);
 // Rollover-safe "has `interval` ms passed since `last`" for a 32-bit millis() style counter
 bool intervalElapsed(uint32_t now, uint32_t last, uint32_t interval);
 
+// Parse a "major.minor.patch" version (an optional leading 'v' is allowed, each part 0-65535).
+// Anything else, including a suffix such as "-rc1", is rejected.
+bool parseVersion(const char* text, uint16_t out[3]);
+
+// True when `candidate` is a strictly newer version than `current`; false if either is invalid
+bool isNewerVersion(const char* candidate, const char* current);
+
+// Decode exactly `len` bytes from `2 * len` hex digits (either case) and nothing more
+bool hexToBytes(const char* hex, uint8_t* out, size_t len);
+
 #endif // MOTOLOGIC_H

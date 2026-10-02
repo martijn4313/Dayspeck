@@ -1,132 +1,117 @@
 # Plan: pull-based OTA updates from GitHub Releases
 
-**Decisions taken:** the device *pulls* updates from GitHub Releases; it **auto-checks** (daily) and
-shows "update available"; the user **confirms the install** in the web UI. Nothing installs by itself.
+> **Status:** implemented on branch `claude/vibrant-mayer-01x9ex`. Builds (all three environments,
+> no warnings), host tests and tool tests pass. **Not run on hardware yet**: see the checklist.
 
-## Where we are
+## Decisions
 
-- Push OTA already works: `ESP8266HTTPUpdateServer` on `/update-<token>` behind the admin password
-  (`main.cpp`, `webserver.cpp`). The user picks a `firmware.bin` by hand.
-- CI builds `esp01_1m`, `esp01_1m_debug`, `esp01_1m_kids` and uploads `firmware.bin` + `littlefs.bin`
-  as a workflow *artifact* (not a Release, needs a GitHub login to download).
-- `FW_VERSION "0.2.0"` + git hash are compiled in (`version.h`, `tools/pio_version.py`).
-- **No TLS on purpose** (`improvement_plan.md`: removing it dropped flash from 74 % to 60 %). All
-  network traffic is plain HTTP via `WiFiClient` + `HTTPClient` (`weather.cpp`).
+- The device **pulls** updates from GitHub Releases. It **checks daily** and shows "update
+  available" (`UPD` on the OLED, *Firmware Update* card in the web UI); the user **confirms the
+  install**. Nothing installs by itself.
+- **No TLS on the device; a plain-HTTP relay instead.** TLS was the first choice but does not fit:
+  see "Measurements". The relay (`tools/ota-relay`, a Cloudflare Worker) serves the latest release
+  over HTTP.
+- **Signed manifest and signed images** (RSA-2048, PKCS#1 v1.5, SHA-256). Integrity comes from the
+  signature, so the relay and the network are untrusted.
+- **gzip-compressed images**, unpacked by the ESP8266 bootloader (eboot).
+- **64 KB filesystem** (`eagle.flash.1m64.ld`) instead of the board default of 256 KB. Existing
+  devices need **one serial flash**; their `config.json` starts from scratch once (agreed).
+- The filesystem is **not** part of an update.
 
-## The central problem: GitHub is HTTPS-only
+## Measurements (`pio run`, 1 MB ESP-01)
 
-Release assets are served over HTTPS and redirect to `objects.githubusercontent.com`. The ESP-01 has
-~1 MB flash and ~40 KB heap. Three ways out; **Phase 0 decides**:
+Free space for an update = flash before the filesystem minus the running image, rounded to sectors
+(`ESP.getFreeSketchSpace()`); the web upload page takes 4 KB less.
 
-| Option | Flash / RAM cost | Trust model | Notes |
-|---|---|---|---|
-| **A. TLS on the device** (BearSSL) | +100-150 KB flash, ~20 KB+ heap during handshake | cert pinning or `setInsecure()` | May not fit OTA headroom on 1 MB; GitHub does not do small-buffer (MFLN) TLS; redirect chain needs 2 handshakes. Highest risk. |
-| **B. Plain-HTTP relay + signed images** (recommended to try first) | ~+10 KB (signature check) | **end-to-end signature**, transport is irrelevant | A tiny relay (Cloudflare Worker, or any HTTP host) fetches the Release and serves `manifest.json` + `.bin` over `http://`. GitHub Pages cannot be used: it forces HTTPS. |
-| **C. Local mirror** | none | LAN trust | A Pi/NAS that syncs the Release. Works, but needs hardware and defeats "one click". |
+| Build | Image | Signed update | Free (256 KB FS, old) | Free (128 KB FS) | Free (64 KB FS) |
+|---|---|---|---|---|---|
+| Before this work | 472 KB | (raw) 472 KB | 290 KB | — | — |
+| + TLS client + `SigningVerifier` (spike) | 590 KB | 414 KB gz | 172 KB | — | 369 KB |
+| + `SigningVerifier` only (no TLS) | 534 KB | 369 KB gz | — | 360 KB | — |
+| **Final: direct BearSSL RSA check** | **504 KB** | **346 KB gz** | — | — | **451 KB** |
 
-Because transport is plain HTTP (like weather today), **integrity must come from a signature**, not
-from TLS. That is required in any case: without it anyone on the network could push firmware.
+- The old layout could never take an OTA update, not even the existing browser upload (472 KB into
+  290 KB). It was never tried on hardware.
+- TLS does not fit next to a second image in any 1 MB layout.
+- `BearSSL::SigningVerifier` links the key parser and the elliptic-curve code (30 KB). Calling
+  `br_rsa_i15_pkcs1_vrfy` directly, on the core's second ("thunk") stack, avoids that.
+- Final margin: about 105 KB. The firmware can grow to roughly 560 KB before an update no longer
+  fits; CI (`ota_tool.py check-size`) fails before that happens.
+- Static RAM: 39.0 KB → 41.0 KB. During a signature check the core's 6.2 KB second stack is
+  allocated and freed again; checks require an 8 KB free block.
 
-## Phase 0: measure before designing (small, do first)
+## Design
 
-- [ ] Build `esp01_1m` and record: firmware size, free sketch space (`Update.getFreeSketchSpace()`
-      equivalent), the linker script in use, and FS size. OTA needs *free space ≥ new image size*;
-      state the max firmware size we can ever flash. Put the number in this file.
-- [ ] Spike signed OTA in `native`-independent form: confirm `Update.installSignature()` with
-      `BearSSL::SigningVerifier` and `signing.py` works on `espressif8266@4.2.1` (core 3.1.x).
-      Record the flash cost.
-- [ ] Spike option A only if B is rejected: HTTPS GET to the release URL on a real ESP-01, record heap.
-- [ ] **Decision gate:** pick A/B/C. Everything below assumes **B**.
+### Release (`.github/workflows/release.yml`, on tag `vX.Y.Z`)
 
-## Phase 1: release pipeline (CI)
+1. Tag must equal `FW_VERSION`; the `OTA_SIGNING_KEY` secret must match the committed
+   `firmware/include/ota_pubkey.h` (`ota_tool.py check-key`).
+2. Tests, build rider + kids + filesystem, size check.
+3. Assets:
 
-- [ ] Version source of truth: `FW_VERSION` in `version.h`; a tag `vX.Y.Z` must match it (CI fails
-      on mismatch). Compare versions as `major.minor.patch` numbers, never as strings.
-- [ ] New workflow `release.yml`, triggered by tag `v*`: run tests, build all three envs plus
-      `buildfs`, then create a GitHub Release with:
-      - `motoclock-<ver>-rider.bin`, `motoclock-<ver>-kids.bin`, `motoclock-<ver>-fs.bin`
-      - `manifest.json`: `{version, variants:{rider:{file,size,sha256}, kids:{...}}, minVersion, notes}`
-- [ ] Sign the images in CI. Generate the keypair once; the **private key is a GitHub Actions secret**,
-      the **public key is committed** (`firmware/include/ota_pubkey.h`). Document key rotation and
-      what happens if the key is lost (devices need one serial/browser flash with a new key).
-- [ ] Keep `ci.yml` artifacts as they are for non-release pushes.
+| Asset | Content |
+|---|---|
+| `ota-manifest.txt` | line 1: JSON `{"version","notes","variants":{"rider":{"file","size","sha256"},"kids":{…}}}`; line 2: hex signature of line 1 |
+| `motoclock-rider.bin.gz`, `motoclock-kids.bin.gz` | gzip image ‖ RSA signature of SHA-256(gzip image) ‖ uint32 LE signature length (the core's format) |
+| `motoclock-*-serial.bin`, `motoclock-fs-serial.bin` | raw images for serial flashing |
 
-## Phase 2: relay (only for option B)
+`sha256` in the manifest is the hash of the signed part of the image, so an older (validly signed)
+image cannot be passed off under a newer version.
 
-- [ ] A minimal worker: `GET /manifest.json` and `GET /fw/<variant>.bin` read the latest Release
-      through the GitHub API and stream it over HTTP; cache the manifest ~10 min (rate limits).
-      Lives in `tools/ota-relay/` with its own README and deploy steps.
-- [ ] The relay is **untrusted by design**: it can delay or withhold updates but cannot install
-      anything, because the device verifies the signature.
-- [ ] Relay base URL is a config field (`ota.url`), default compiled in `config.h`.
+### Relay (`tools/ota-relay`)
 
-## Phase 3: device side
+`GET /ota-manifest.txt` → latest release's manifest; `GET /vX.Y.Z/motoclock-(rider|kids).bin.gz` →
+that release's image. Buffers bodies so replies have a `Content-Length`. Any static HTTP server with
+the same layout works too.
 
-New files: `firmware/include/ota.h`, `firmware/src/ota.cpp`. Pure logic (version compare, manifest
-parse/validate) goes in `firmware/lib/motologic` so it is unit-tested on the host.
+### Device (`firmware/src/ota.cpp`)
 
-- [ ] **Check:** once per 24 h (plus once ~2 min after boot), non-blocking, only when WiFi is up and
-      free heap is above a guard. Fetch the manifest with `HTTPClient` (HTTP/1.0, same pattern as
-      `weather.cpp`). Store `latestVersion`, `checkedAt` in RAM; do not write flash for this.
-- [ ] **Variant:** the build defines which variant it is (`KIDS_MODE` → `kids`, else `rider`); a kids
-      clock must never download the rider image and vice versa.
-- [ ] **Install** (only on user request via an authenticated, CSRF-token-protected POST):
-      stream to `Update`, verify size and SHA-256 against the manifest *and* the signature, then
-      reboot. Reject images larger than free sketch space *before* downloading. Refuse downgrades
-      unless explicitly forced.
-- [ ] **Filesystem:** the `littlefs` image is *not* part of the pull update. Config lives there and
-      must survive. Changes to `config.json` go through the existing version/migration field.
-- [ ] **Safety:** never install while a weather fetch or config save (`updateConfig`) is in progress;
-      pause the display loop and show "Updating…" with progress on the OLED; on any failure keep
-      running the old image and log why (`Update.getError()`). The core's OTA is atomic: the old
-      image stays until the new one is complete and verified.
-- [ ] **Boot confirmation:** count boots after an update; if the new image crashes before it has
-      completed one weather fetch, record it in a flash flag and stop offering that version.
-      (ESP8266 has no hardware rollback, so this is best-effort; see risks.)
+- `otaInit()` installs the signature check in the core `Updater` for **every** firmware update,
+  including manual uploads, when a key is compiled in.
+- Check: two minutes after boot, then daily (hourly after a failure); only while nobody touched the
+  device for a minute. Verifies the manifest signature, then parses it; a manifest is only taken
+  over when fully valid. Variant fixed at build time (`KIDS_MODE` → `kids`).
+- Install: only on request from the web UI, only a newer version, only if it fits and the heap
+  allows the check. `ESPhttpUpdate` streams the image; the `Updater` verifies the hash against the
+  manifest and the signature before it marks the image bootable. On failure the old firmware keeps
+  running and the reason is shown in the web UI.
+- Web API: `GET /api/ota`, `POST /api/ota/check`, `POST /api/ota/install`, `POST /api/ota/settings`
+  (all behind the admin password, POSTs with the CSRF token). Config: `ota.url`, `ota.autoCheck`.
 
-## Phase 4: web UI and display
+### Pure logic (`firmware/lib/motologic`, host tested)
 
-- [ ] `GET /api/ota` → `{current, latest, checkedAt, updateAvailable, variant, canInstall, error}`.
-- [ ] `POST /api/ota/check` and `POST /api/ota/install` (both authenticated + token).
-- [ ] Update the *OTA Update* card in `webserver.cpp`: show current version + git hash, "Check now",
-      "Update to X.Y.Z" with release notes, a progress/status line, and keep the manual upload as an
-      "advanced" fallback.
-- [ ] A small `UPD` status tag on the OLED when an update is available (same style as `OLD`/`TMR`).
-      Config field `ota.autoCheck` (default on) and `ota.url`; add to the config schema, validation
-      and `README.md` settings table.
+`parseVersion`, `isNewerVersion` (numeric, no downgrades), `hexToBytes`.
 
-## Phase 5: tests and docs
+## Status
 
-- [ ] Host tests (`test/test_logic`): version compare (`0.2.0 < 0.10.0`), manifest parsing (missing
-      fields, wrong variant, oversize), downgrade refusal, check scheduling.
-- [ ] CI: add a step that fails if the tag, `FW_VERSION` and manifest disagree; build still runs for
-      all three envs and checks the size limit from Phase 0.
-- [ ] Hardware test checklist (cannot be done in CI): update over WiFi, wrong signature rejected,
-      WiFi dropped mid-download, power cut mid-download, kids ↔ rider mismatch, update with a full
-      filesystem, large `config.json`.
-- [ ] README: replace "Updating the firmware over the air" with the pull flow, the manual fallback,
-      and a Security notes entry (signed images, plain-HTTP transport).
+- [x] Phase 0: measured TLS, signing and layouts (table above); TLS rejected, relay chosen
+- [x] Version logic + host tests
+- [x] `tools/ota_tool.py` (keygen, check-key, sign, manifest, check-size) + tests
+- [x] `release.yml`; CI size check
+- [x] Relay worker (smoke-tested locally with Node)
+- [x] Device: `ota.cpp`, web UI card and API, `UPD` mark, config, 64 KB layout
+- [x] README
+- [ ] **Owner:** `python tools/ota_tool.py keygen`, add the `OTA_SIGNING_KEY` secret, commit
+      `ota_pubkey.h`; deploy the relay and confirm it answers over plain `http://`
+- [ ] **Hardware checklist** (not possible in CI):
+  - [ ] serial flash of the new layout; device boots, LittleFS is formatted, setup AP appears
+  - [ ] *Check now* finds a newer release through the relay; log shows no memory errors
+  - [ ] install works and the device boots the new version with its settings
+  - [ ] an image signed with another key is rejected (pull and manual upload); old firmware runs on
+  - [ ] a manifest signed with another key is rejected
+  - [ ] WiFi dropped / power cut during the download: old firmware keeps running
+  - [ ] kids build only offers and installs the kids image
+  - [ ] daily check pauses the display only briefly and only when idle
 
 ## Risks
 
-- **Flash headroom on 1 MB** is the hard limit; Phase 0 gives the number and every later phase must
-  respect it. If signing + manifest code pushes us over, shrink first (e.g. drop the debug-only code).
-- **No hardware rollback** on ESP8266: a bad but validly signed image can still brick remotely. The
-  fallback is serial flashing. Mitigation: only release tags that passed the hardware checklist.
-- **Key management:** a leaked private key means anyone can sign firmware; a lost one strands devices.
-- **Not run on hardware.** Like the earlier plans, nothing here is verified until flashed on a real
-  ESP-01; the code must say so in its status notes.
-
-## Suggested order and effort
-
-1. Phase 0 spike (half a day) → decision gate.
-2. Phase 1 + 3 (core path, with host tests) → first signed manual-install flow, no relay yet,
-   by pointing `ota.url` at a local HTTP server.
-3. Phase 2 relay, then Phase 4 UI, then Phase 5 hardware checklist and docs.
-
-## Open questions for the owner
-
-1. Is running a small relay acceptable (free Cloudflare Worker or a home server), or should we try
-   TLS on the device first?
-2. One shared signing key in a GitHub secret, or a key kept offline and signed locally?
-3. Should a release include the filesystem image, or stay firmware-only (recommended)?
+- **No hardware rollback** on ESP8266: a bad but validly signed image needs a serial flash. Only tag
+  releases that passed the hardware checklist.
+- **Key management:** a leaked private key lets anyone who can reach the device's network path
+  install their firmware; a lost key means one manual upload of a build with a new key.
+- **Withholding:** the relay or the network can block updates or keep serving an old manifest.
+  They cannot install anything older or unsigned.
+- **Firmware growth:** about 60 KB left before updates stop fitting (CI guards it). Beyond that,
+  options are trimming code or a 4 MB module.
+- **Relay host:** workers.dev must answer plain HTTP without redirecting to HTTPS; to verify on
+  deployment (see the relay README).
