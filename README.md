@@ -11,7 +11,7 @@ It comes in two flavours, built from the same code:
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
-**📖 Read the manual: <https://martijn4313.github.io/MotoClock/>**
+**📖 Read the manual: <https://martijn4313.github.io/WeatherWise/>**
 
 ## Quick start
 
@@ -24,7 +24,7 @@ pio test -e native            # host unit tests for the pure logic
 ```
 
 Then join the `WeatherWise` WiFi network the device opens and follow the
-[first boot](https://martijn4313.github.io/MotoClock/first-boot/) steps. Wiring, configuration,
+[first boot](https://martijn4313.github.io/WeatherWise/first-boot/) steps. Wiring, configuration,
 over-the-air updates and security notes are all in the manual.
 
 ## Project layout
