@@ -1,0 +1,91 @@
+name: Release
+
+# Push a tag vX.Y.Z (equal to FW_VERSION in firmware/include/version.h) to publish a signed release.
+# Devices pull ota-manifest.txt and the signed images through the relay in tools/ota-relay
+# (see plans/ota_plan.md).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install
+        run: pip install platformio -r tools/requirements-dev.txt
+
+      - name: Tag matches FW_VERSION
+        run: |
+          fw=$(sed -n 's/^#define FW_VERSION "\(.*\)"/\1/p' firmware/include/version.h)
+          if [ "v$fw" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match FW_VERSION $fw"
+            exit 1
+          fi
+
+      - name: Signing key matches the committed public key
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+        run: |
+          if [ -z "$OTA_SIGNING_KEY" ]; then
+            echo "::error::The OTA_SIGNING_KEY secret is not set (see README: Updating the firmware)"
+            exit 1
+          fi
+          printf '%s\n' "$OTA_SIGNING_KEY" > "$RUNNER_TEMP/ota.pem"
+          python tools/ota_tool.py check-key --key "$RUNNER_TEMP/ota.pem"
+
+      - name: Unit tests
+        run: |
+          pio test -e native
+          cd tools && python -m pytest tests
+
+      - name: Build
+        run: |
+          pio run -e esp01_1m
+          pio run -e esp01_1m_kids
+          pio run -e esp01_1m -t buildfs
+          ld=$(sed -n 's/^board_build.ldscript *= *//p' platformio.ini)
+          python tools/ota_tool.py check-size --in .pio/build/esp01_1m/firmware.bin --ldscript "$ld"
+          python tools/ota_tool.py check-size --in .pio/build/esp01_1m_kids/firmware.bin --ldscript "$ld"
+
+      - name: Sign and write the manifest
+        run: |
+          key="$RUNNER_TEMP/ota.pem"
+          rider=.pio/build/esp01_1m/firmware.bin
+          kids=.pio/build/esp01_1m_kids/firmware.bin
+          mkdir dist
+          # Over the air: gzip-compressed and signed. Serial flashing: the raw images.
+          python tools/ota_tool.py sign --key "$key" --in "$rider" --out dist/motoclock-rider.bin.gz
+          python tools/ota_tool.py sign --key "$key" --in "$kids" --out dist/motoclock-kids.bin.gz
+          cp "$rider" dist/motoclock-rider-serial.bin
+          cp "$kids" dist/motoclock-kids-serial.bin
+          cp .pio/build/esp01_1m/littlefs.bin dist/motoclock-fs-serial.bin
+          # Release notes on the device: the subject line of the annotated tag, if any
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          notes=$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")
+          python tools/ota_tool.py manifest --key "$key" --version "${GITHUB_REF_NAME#v}" --notes "$notes" \
+            --variant rider=dist/motoclock-rider.bin.gz \
+            --variant kids=dist/motoclock-kids.bin.gz \
+            --out dist/ota-manifest.txt
+          rm -f "$key"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "MotoClock $GITHUB_REF_NAME" --generate-notes --verify-tag
