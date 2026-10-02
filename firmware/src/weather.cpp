@@ -136,6 +136,7 @@ static bool parseForecast(JsonDocument& doc) {
     JsonArray precips = hourlyJson["precipitation"];
     JsonArray gusts = hourlyJson["wind_gusts_10m"];
     JsonArray probs = hourlyJson["precipitation_probability"];
+    JsonArray codes = hourlyJson["weather_code"];
     w.trend = 'f';
 
     if (temps.size() >= FORECAST_HOURS && precips.size() >= FORECAST_HOURS && gusts.size() >= FORECAST_HOURS) {
@@ -174,6 +175,7 @@ static bool parseForecast(JsonDocument& doc) {
             h.rainTenthMm = isnan(p) ? 0 : (uint8_t)constrain((int)lroundf(p * 10.0f), 0, 255);
             h.gustKmh = isnan(g) ? 0 : (uint8_t)constrain((int)lroundf(g), 0, 254);
             h.rainProb = isnan(pr) ? 255 : (uint8_t)constrain((int)lroundf(pr), 0, 100);
+            h.code = codes[startIdx + keep].is<int>() ? (uint8_t)constrain(codes[startIdx + keep].as<int>(), 0, 254) : 255;
         }
         hourlyCount = keep;
         hourlyStartEpoch = day0 + (time_t)startIdx * 3600;
@@ -216,6 +218,9 @@ unsigned long fetchWeather(float lat, float lon) {
     url += String(lon, 6);
     url += "&current=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,weather_code";
     url += "&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m";
+#ifdef KIDS_MODE
+    url += ",weather_code";   // the kids "later" pictures; the rider build saves the RAM
+#endif
     url += "&daily=sunrise,sunset";
     url += "&forecast_days=7&timezone=auto&timeformat=unixtime";
     // Data is always requested in metric units (thresholds are metric); the display converts
@@ -261,6 +266,9 @@ unsigned long fetchWeather(float lat, float lon) {
         filter["hourly"]["precipitation"][0] = true;
         filter["hourly"]["wind_gusts_10m"][0] = true;
         filter["hourly"]["precipitation_probability"][0] = true;
+#ifdef KIDS_MODE
+        filter["hourly"]["weather_code"][0] = true;
+#endif
 
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));

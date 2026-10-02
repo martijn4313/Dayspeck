@@ -733,7 +733,13 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
     }
 }
 
-// ---- Kids variant: what to wear -------------------------------------------------------------------
+// ---- Kids variant: what to wear, now and later -------------------------------------------------
+// Layout: two 56 px wide halves (now at x 0, later at x 72) and a 16 px strip between them with an
+// arrow and the time-of-day symbol of "later".
+
+#define KIDS_NOW_X    0
+#define KIDS_LATER_X  72
+#define KIDS_HALF_W   56
 
 // Filled convex quadrilateral
 static void fillQuad(Adafruit_SSD1306 &d, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3) {
@@ -753,57 +759,179 @@ static void drawShirt(Adafruit_SSD1306 &d, int ox, int oy, int num, int den) {
     #undef SY
 }
 
-// Sweater silhouette with long sleeves and a ribbed hem, in a 56x52 box
+// Shorts silhouette, 34 wide and `h` tall
+static void drawShorts(Adafruit_SSD1306 &d, int ox, int oy, int h) {
+    d.fillRect(ox, oy, 34, h, SSD1306_WHITE);
+    d.fillTriangle(ox + 17, oy + h / 2 - 1, ox + 13, oy + h, ox + 21, oy + h, SSD1306_BLACK);   // between the legs
+    d.drawFastHLine(ox, oy + 3, 34, SSD1306_BLACK);                                          // waistband
+}
+
+// Long-sleeved garment, 56 wide: body `len` tall, sleeves ending about 10 px above the hem
+static void drawLongSleeved(Adafruit_SSD1306 &d, int ox, int oy, int len) {
+    d.fillRect(ox + 14, oy + 1, 28, len, SSD1306_WHITE);
+    fillQuad(d, ox + 15, oy + 1, ox + 6, oy + 6, ox + 1, oy + len - 10, ox + 9, oy + len - 8);
+    fillQuad(d, ox + 41, oy + 1, ox + 50, oy + 6, ox + 55, oy + len - 10, ox + 47, oy + len - 8);
+}
+
+// Sweater: V neck, ribbed hem and cuffs, 56x52
 static void drawSweater(Adafruit_SSD1306 &d, int ox, int oy) {
-    d.fillRect(ox + 14, oy + 1, 28, 50, SSD1306_WHITE);
-    fillQuad(d, ox + 15, oy + 1, ox + 6, oy + 6, ox + 1, oy + 40, ox + 9, oy + 42);
-    fillQuad(d, ox + 41, oy + 1, ox + 50, oy + 6, ox + 55, oy + 40, ox + 47, oy + 42);
+    drawLongSleeved(d, ox, oy, 50);
     d.fillTriangle(ox + 22, oy, ox + 34, oy, ox + 28, oy + 8, SSD1306_BLACK);     // neck
     d.drawFastHLine(ox + 14, oy + 45, 28, SSD1306_BLACK);                          // hem
     d.drawLine(ox + 1, oy + 36, ox + 8, oy + 38, SSD1306_BLACK);                   // cuffs
     d.drawLine(ox + 55, oy + 36, ox + 48, oy + 38, SSD1306_BLACK);
 }
 
-// Shorts silhouette, 34x24
-static void drawShorts(Adafruit_SSD1306 &d, int ox, int oy) {
-    d.fillRect(ox, oy, 34, 24, SSD1306_WHITE);
-    d.fillTriangle(ox + 17, oy + 11, ox + 13, oy + 24, ox + 21, oy + 24, SSD1306_BLACK);   // gap between the legs
-    d.drawFastHLine(ox, oy + 3, 34, SSD1306_BLACK);                                        // waistband
+// Sun cap with the peak to the right, centred on cx, top at oy (about 22x9)
+static void drawCap(Adafruit_SSD1306 &d, int cx, int oy) {
+    d.fillCircle(cx, oy + 8, 8, SSD1306_WHITE);
+    d.fillRect(cx - 9, oy + 9, 19, 8, SSD1306_BLACK);           // keep the top half: the crown
+    d.fillRect(cx, oy + 7, 14, 2, SSD1306_WHITE);                // peak
+    d.drawPixel(cx, oy, SSD1306_BLACK);                          // button on top
 }
 
-// Centre text (size `size`) in the right half
-static void printRightHalf(Adafruit_SSD1306 &d, const char* text, int size, int y) {
-    int w = (int)strlen(text) * 6 * size;
-    d.setTextSize(size);
-    d.setCursor(64 + (64 - w) / 2, y);
-    d.print(text);
+// Knitted hat with a pompom, centred on cx, top at oy (about 22x15)
+static void drawBeanie(Adafruit_SSD1306 &d, int cx, int oy) {
+    d.fillCircle(cx, oy + 13, 10, SSD1306_WHITE);
+    d.fillRect(cx - 11, oy + 14, 23, 11, SSD1306_BLACK);        // keep the dome
+    d.fillRect(cx - 11, oy + 10, 23, 5, SSD1306_WHITE);          // turned-up rim
+    d.drawFastHLine(cx - 11, oy + 12, 23, SSD1306_BLACK);
+    d.fillCircle(cx, oy + 2, 3, SSD1306_WHITE);                  // pompom
 }
 
-void renderKidsView(Adafruit_SSD1306 &d, int clothing, int tempShown, bool dutch) {
+// Hooded rain coat with buttons, and rain boots, 56x64
+static void drawRainOutfit(Adafruit_SSD1306 &d, int ox, int oy) {
+    drawLongSleeved(d, ox, oy + 12, 40);
+    d.fillCircle(ox + 28, oy + 8, 9, SSD1306_WHITE);             // hood
+    d.fillCircle(ox + 28, oy + 10, 5, SSD1306_BLACK);            // face opening
+    d.drawFastVLine(ox + 28, oy + 18, 35, SSD1306_BLACK);        // front opening
+    for (int y = 22; y <= 44; y += 8) d.fillRect(ox + 31, oy + y, 2, 2, SSD1306_BLACK);   // buttons
+    d.fillRect(ox + 15, oy + 55, 9, 9, SSD1306_WHITE);           // boots, toes outwards
+    d.fillRect(ox + 10, oy + 60, 6, 4, SSD1306_WHITE);
+    d.fillRect(ox + 32, oy + 55, 9, 9, SSD1306_WHITE);
+    d.fillRect(ox + 40, oy + 60, 6, 4, SSD1306_WHITE);
+    d.drawFastHLine(ox + 15, oy + 57, 9, SSD1306_BLACK);
+    d.drawFastHLine(ox + 32, oy + 57, 9, SSD1306_BLACK);
+}
+
+// Padded winter coat with a zip, under a knitted hat, 56x64; `freezing` adds a scarf and mittens
+static void drawWinterOutfit(Adafruit_SSD1306 &d, int ox, int oy, bool freezing) {
+    drawBeanie(d, ox + 28, oy);
+    drawLongSleeved(d, ox, oy + 16, 47);
+    for (int y = 27; y <= 54; y += 9) d.drawFastHLine(ox, oy + y, 56, SSD1306_BLACK);   // padding
+    d.drawFastVLine(ox + 28, oy + 17, 47, SSD1306_BLACK);                               // zip
+    if (!freezing) return;
+    d.fillRect(ox + 15, oy + 16, 26, 8, SSD1306_BLACK);          // scarf round the neck...
+    d.fillRect(ox + 16, oy + 17, 24, 6, SSD1306_WHITE);
+    d.fillRect(ox + 31, oy + 22, 8, 17, SSD1306_BLACK);          // ...and its hanging end
+    d.fillRect(ox + 32, oy + 23, 6, 15, SSD1306_WHITE);
+    d.drawFastHLine(ox + 32, oy + 30, 6, SSD1306_BLACK);
+    d.drawFastHLine(ox + 32, oy + 34, 6, SSD1306_BLACK);
+    for (int side = 0; side < 2; side++) {                        // mittens at the cuffs
+        int cx = side ? ox + 51 : ox + 5;
+        d.fillCircle(cx, oy + 57, 5, SSD1306_BLACK);
+        d.fillCircle(cx, oy + 57, 4, SSD1306_WHITE);
+        d.fillRect(side ? cx - 6 : cx + 3, oy + 53, 3, 3, SSD1306_WHITE);   // thumb
+    }
+}
+
+// One outfit in a 56x64 half
+static void drawOutfit(Adafruit_SSD1306 &d, int ox, int outfit) {
+    switch (outfit) {
+    case OUTFIT_HOT:
+        drawCap(d, ox + 26, 0);
+        drawShirt(d, ox + 4, 11, 1, 1);
+        drawShorts(d, ox + 11, 43, 21);
+        break;
+    case OUTFIT_WARM:
+        drawShirt(d, ox + 4, 2, 1, 1);
+        drawShorts(d, ox + 11, 36, 24);
+        break;
+    case OUTFIT_COOL:
+        drawSweater(d, ox, 6);
+        break;
+    case OUTFIT_RAIN:
+        drawRainOutfit(d, ox, 0);
+        break;
+    case OUTFIT_COLD:
+        drawWinterOutfit(d, ox, 0, false);
+        break;
+    case OUTFIT_FREEZING:
+        drawWinterOutfit(d, ox, 0, true);
+        break;
+    default:   // OUTFIT_MILD
+        drawShirt(d, ox, 14, 7, 6);
+        break;
+    }
+}
+
+// Unknown "later": a big question mark
+static void drawUnknown(Adafruit_SSD1306 &d, int ox) {
+    d.setTextSize(4);
+    d.setCursor(ox + (KIDS_HALF_W - 22) / 2, 18);
+    d.print('?');
+}
+
+// The strip between the halves: an arrow from now to later, and below it when "later" is
+static void drawKidsMiddle(Adafruit_SSD1306 &d, int timeOfDaySymbol) {
+    const int cx = 64;
+    d.fillRect(57, 9, 7, 3, SSD1306_WHITE);                                    // arrow shaft
+    d.fillTriangle(63, 5, 63, 15, 69, 10, SSD1306_WHITE);                      // arrow head
+
+    const int y = 44;   // symbols live in a 14x14 box from (57, y - 7)
+    switch (timeOfDaySymbol) {
+    case KIDS_TIME_MORNING:
+    case KIDS_TIME_EVENING: {
+        // Half a sun on the horizon with rays, and beside it an arrow: up in the morning, down in the evening
+        const int sx = cx - 3;
+        d.fillCircle(sx, y + 4, 4, SSD1306_WHITE);
+        d.fillRect(sx - 5, y + 5, 11, 5, SSD1306_BLACK);
+        d.drawFastHLine(57, y + 5, 14, SSD1306_WHITE);
+        d.drawPixel(sx - 6, y + 1, SSD1306_WHITE);
+        d.drawPixel(sx + 5, y - 1, SSD1306_WHITE);
+        d.drawPixel(sx - 4, y - 2, SSD1306_WHITE);
+        d.drawPixel(sx, y - 3, SSD1306_WHITE);
+        d.drawFastVLine(cx + 5, y - 5, 8, SSD1306_WHITE);
+        if (timeOfDaySymbol == KIDS_TIME_MORNING) d.fillTriangle(cx + 5, y - 8, cx + 2, y - 5, cx + 8, y - 5, SSD1306_WHITE);
+        else                                      d.fillTriangle(cx + 2, y + 1, cx + 8, y + 1, cx + 5, y + 4, SSD1306_WHITE);
+        break;
+    }
+    case KIDS_TIME_AFTERNOON: {
+        // Full sun, high in the sky
+        d.fillCircle(cx, y, 3, SSD1306_WHITE);
+        static const int8_t ray[8][2] = { {6,0}, {4,4}, {0,6}, {-4,4}, {-6,0}, {-4,-4}, {0,-6}, {4,-4} };
+        for (int i = 0; i < 8; i++) d.drawPixel(cx + ray[i][0], y + ray[i][1], SSD1306_WHITE);
+        break;
+    }
+    case KIDS_TIME_NIGHT:
+        d.fillCircle(cx, y, 6, SSD1306_WHITE);
+        d.fillCircle(cx + 3, y - 2, 5, SSD1306_BLACK);
+        break;
+    default: {
+        // Tomorrow: a bed, "after sleeping"
+        d.fillRect(57, y - 4, 2, 11, SSD1306_WHITE);                           // headboard
+        d.fillRect(57, y + 2, 14, 3, SSD1306_WHITE);                           // mattress
+        d.fillRect(69, y, 2, 7, SSD1306_WHITE);                                // foot end
+        d.fillRect(60, y - 1, 4, 3, SSD1306_WHITE);                            // pillow
+        d.setTextSize(1);
+        d.setCursor(65, y - 11);
+        d.print('z');
+        break;
+    }
+    }
+}
+
+void renderKidsView(Adafruit_SSD1306 &d, int outfitNow, int outfitLater, int timeOfDaySymbol) {
     d.clearDisplay();
     d.setTextColor(SSD1306_WHITE);
     d.setTextWrap(false);
-
-    const char* word;
-    if (clothing == CLOTHES_WARM) {
-        drawShirt(d, 8, 2, 1, 1);
-        drawShorts(d, 15, 36);
-        word = "WARM";
-    } else if (clothing == CLOTHES_COOL) {
-        drawSweater(d, 4, 6);
-        word = dutch ? "KOEL" : "COOL";
-    } else {
-        drawShirt(d, 2, 13, 5, 4);
-        word = "MILD";
-    }
-
-    d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
-
-    char num[8];
-    snprintf(num, sizeof(num), "%d", tempShown);
-    printRightHalf(d, num, strlen(num) > 2 ? 3 : 4, strlen(num) > 2 ? 10 : 6);   // big digits, easy to read
-    printRightHalf(d, word, 2, 44);
+    drawOutfit(d, KIDS_NOW_X, outfitNow);
+    if (outfitLater >= 0) drawOutfit(d, KIDS_LATER_X, outfitLater);
+    else                  drawUnknown(d, KIDS_LATER_X);
+    drawKidsMiddle(d, timeOfDaySymbol);
 }
+
+// ---- Kids weather pictures (56x44 box) ------------------------------------------------------------
 
 // Cloud silhouette in a 40x26 box; `grow` fattens it (drawn in black first to cut it out of what is behind)
 static void drawCloud(Adafruit_SSD1306 &d, int ox, int oy, int grow, int color) {
@@ -834,7 +962,7 @@ static void drawMoon(Adafruit_SSD1306 &d, int cx, int cy, int r) {
 
 static void drawRainDrops(Adafruit_SSD1306 &d, int ox, int oy) {
     for (int i = 0; i < 4; i++) {
-        int x = ox + 4 + i * 9, y = oy + (i % 2) * 5;
+        int x = ox + 4 + i * 9, y = oy + (i % 2) * 4;
         d.drawLine(x, y, x - 3, y + 7, SSD1306_WHITE);
         d.drawLine(x + 1, y, x - 2, y + 7, SSD1306_WHITE);
     }
@@ -842,7 +970,7 @@ static void drawRainDrops(Adafruit_SSD1306 &d, int ox, int oy) {
 
 static void drawSnowFlakes(Adafruit_SSD1306 &d, int ox, int oy) {
     for (int i = 0; i < 4; i++) {
-        int x = ox + 6 + i * 9, y = oy + 2 + (i % 2) * 6;
+        int x = ox + 6 + i * 9, y = oy + 2 + (i % 2) * 5;
         d.fillRect(x - 1, y - 1, 3, 3, SSD1306_WHITE);
         d.drawPixel(x, y - 3, SSD1306_WHITE);
         d.drawPixel(x, y + 3, SSD1306_WHITE);
@@ -851,15 +979,16 @@ static void drawSnowFlakes(Adafruit_SSD1306 &d, int ox, int oy) {
     }
 }
 
+// Lightning bolt, about 16x22
 static void drawLightning(Adafruit_SSD1306 &d, int ox, int oy) {
-    d.fillTriangle(ox + 8, oy, ox + 18, oy, ox + 5, oy + 14, SSD1306_WHITE);
-    d.fillTriangle(ox + 3, oy + 11, ox + 15, oy + 11, ox + 2, oy + 27, SSD1306_WHITE);
-    d.fillTriangle(ox + 15, oy + 11, ox + 8, oy + 20, ox + 3, oy + 11, SSD1306_WHITE);
+    d.fillTriangle(ox + 7, oy, ox + 16, oy, ox + 4, oy + 12, SSD1306_WHITE);
+    d.fillTriangle(ox + 2, oy + 10, ox + 13, oy + 10, ox + 1, oy + 22, SSD1306_WHITE);
+    d.fillTriangle(ox + 13, oy + 10, ox + 7, oy + 16, ox + 2, oy + 10, SSD1306_WHITE);
 }
 
 // Wind: three streaks that curl at the end
 static void drawWindStreaks(Adafruit_SSD1306 &d, int ox, int oy) {
-    static const int8_t rows[3][3] = { {0, 8, 36}, {10, 0, 40}, {20, 6, 30} };   // y, x start, x end
+    static const int8_t rows[3][3] = { {0, 8, 36}, {7, 0, 40}, {14, 6, 30} };   // y/2, x start, x end
     for (int i = 0; i < 3; i++) {
         int y = oy + 8 + rows[i][0] * 2, x0 = ox + rows[i][1], x1 = ox + rows[i][2];
         for (int o = 0; o < 2; o++) d.drawFastHLine(x0, y + o, x1 - x0, SSD1306_WHITE);
@@ -867,61 +996,68 @@ static void drawWindStreaks(Adafruit_SSD1306 &d, int ox, int oy) {
     }
 }
 
-void renderKidsWeatherView(Adafruit_SSD1306 &d, int weather, bool isNight, bool dutch) {
+// One weather picture in the 56x44 box at (ox, 0)
+static void drawKidsWeather(Adafruit_SSD1306 &d, int ox, int weather, bool night) {
+    switch (weather) {
+    case KIDS_WEATHER_PARTLY:
+        if (night) drawMoon(d, ox + 20, 13, 12); else drawSun(d, ox + 20, 14, 7);
+        drawCloud(d, ox + 12, 16, 2, SSD1306_BLACK);
+        drawCloud(d, ox + 12, 16, 0, SSD1306_WHITE);
+        break;
+    case KIDS_WEATHER_CLOUDY:
+        drawCloud(d, ox + 8, 8, 4, SSD1306_WHITE);
+        break;
+    case KIDS_WEATHER_RAIN:
+        drawCloud(d, ox + 8, 2, 2, SSD1306_WHITE);
+        drawRainDrops(d, ox + 8, 33);
+        break;
+    case KIDS_WEATHER_STORM:
+        drawCloud(d, ox + 8, 0, 2, SSD1306_WHITE);
+        drawLightning(d, ox + 20, 22);
+        break;
+    case KIDS_WEATHER_SNOW:
+        drawCloud(d, ox + 8, 2, 2, SSD1306_WHITE);
+        drawSnowFlakes(d, ox + 6, 33);
+        break;
+    case KIDS_WEATHER_WIND:
+        drawWindStreaks(d, ox + 6, 0);
+        break;
+    default:
+        if (night) {
+            drawMoon(d, ox + 26, 22, 18);
+            d.drawPixel(ox + 49, 6, SSD1306_WHITE);
+            d.fillRect(ox + 50, 18, 2, 2, SSD1306_WHITE);
+            d.fillRect(ox + 4, 4, 2, 2, SSD1306_WHITE);
+        } else {
+            drawSun(d, ox + 28, 22, 10);
+        }
+    }
+}
+
+// Temperature under a picture: size 2 digits, centred in the half
+static void drawKidsTemp(Adafruit_SSD1306 &d, int ox, int temp) {
+    char num[8];
+    snprintf(num, sizeof(num), "%d", temp);
+    int w = (int)strlen(num) * 12 - 2;
+    d.setTextSize(2);
+    d.setCursor(ox + (KIDS_HALF_W - w) / 2, 48);
+    d.print(num);
+}
+
+void renderKidsWeatherView(Adafruit_SSD1306 &d, int weatherNow, bool nightNow, int tempNow,
+                           bool laterValid, int weatherLater, bool nightLater, int tempLater, int timeOfDaySymbol) {
     d.clearDisplay();
     d.setTextColor(SSD1306_WHITE);
     d.setTextWrap(false);
-
-    // Picture box: 56x56 at the left, centred vertically
-    const int ox = 4, oy = 4;
-    const char* word = "";
-    switch (weather) {
-    case KIDS_WEATHER_PARTLY:
-        if (isNight) drawMoon(d, ox + 20, oy + 18, 14); else drawSun(d, ox + 20, oy + 18, 9);
-        drawCloud(d, ox + 12, oy + 22, 2, SSD1306_BLACK);
-        drawCloud(d, ox + 12, oy + 22, 0, SSD1306_WHITE);
-        word = dutch ? "WOLK" : "CLOUD";
-        break;
-    case KIDS_WEATHER_CLOUDY:
-        drawCloud(d, ox + 6, oy + 12, 4, SSD1306_WHITE);
-        word = dutch ? "WOLK" : "CLOUD";
-        break;
-    case KIDS_WEATHER_RAIN:
-        drawCloud(d, ox + 6, oy + 4, 2, SSD1306_WHITE);
-        drawRainDrops(d, ox + 6, oy + 38);
-        word = dutch ? "REGEN" : "RAIN";
-        break;
-    case KIDS_WEATHER_STORM:
-        drawCloud(d, ox + 6, oy + 2, 2, SSD1306_WHITE);
-        drawLightning(d, ox + 20, oy + 28);
-        word = dutch ? "ONWEER" : "STORM";
-        break;
-    case KIDS_WEATHER_SNOW:
-        drawCloud(d, ox + 6, oy + 4, 2, SSD1306_WHITE);
-        drawSnowFlakes(d, ox + 6, oy + 38);
-        word = dutch ? "SNEEUW" : "SNOW";
-        break;
-    case KIDS_WEATHER_WIND:
-        drawWindStreaks(d, ox + 4, oy);
-        word = "WIND";
-        break;
-    default:
-        if (isNight) {
-            drawMoon(d, ox + 28, oy + 28, 24);
-            d.drawPixel(ox + 47, oy + 6, SSD1306_WHITE);
-            d.fillRect(ox + 50, oy + 14, 2, 2, SSD1306_WHITE);
-            d.fillRect(ox + 8, oy + 4, 2, 2, SSD1306_WHITE);
-            word = dutch ? "MAAN" : "MOON";
-        } else {
-            drawSun(d, ox + 28, oy + 28, 14);
-            word = dutch ? "ZON" : "SUN";
-        }
+    drawKidsWeather(d, KIDS_NOW_X, weatherNow, nightNow);
+    drawKidsTemp(d, KIDS_NOW_X, tempNow);
+    if (laterValid) {
+        drawKidsWeather(d, KIDS_LATER_X, weatherLater, nightLater);
+        drawKidsTemp(d, KIDS_LATER_X, tempLater);
+    } else {
+        drawUnknown(d, KIDS_LATER_X);
     }
-
-    int w = (int)strlen(word) * 12;   // size 2: 12 px per letter, fits the 74 px right of the picture
-    d.setTextSize(2);
-    d.setCursor(54 + (74 - w) / 2, 24);
-    d.print(word);
+    drawKidsMiddle(d, timeOfDaySymbol);
 }
 
 // Clock screen: HH:MM in large type, weekday and date below, year at the bottom

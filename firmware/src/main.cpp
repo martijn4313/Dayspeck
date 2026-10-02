@@ -284,19 +284,64 @@ void renderDisplay() {
 }
 
 #ifdef KIDS_MODE
+static const KidsLimits kidsLimits = { KIDS_HOT_FROM_C, KIDS_SHORTS_FROM_C, KIDS_SWEATER_BELOW_C,
+                                       KIDS_COAT_BELOW_C, KIDS_FREEZE_BELOW_C, KIDS_WINDY_GUST_KMH };
+
+// Temperature as shown on the kids screens (the API is always metric)
+static int kidsShownTemp(float tempC) {
+    if (isnan(tempC)) return 0;
+    return (int)lroundf(weatherUnits == "imperial" ? tempC * 9.0f / 5.0f + 32.0f : tempC);
+}
+
+static bool nightAt(time_t t) {
+    if (sunriseTime > 0 && sunsetTime > 0) return isNightAt((long)t, (long)sunriseTime, (long)sunsetTime);
+    int h = localHourOf(t);
+    return h >= 21 || h < 6;
+}
+
 /**
- * Kids variant: what to wear, from the current temperature
+ * Kids variant: what to wear and the weather, now (left) and later (right)
  */
 void renderKids() {
-    float tempC = getCurrentWeather().tempC;
-    int clothing = clothingFor(tempC, DEFAULT_SHORTS_FROM_C, DEFAULT_SWEATER_BELOW_C);
-    float shown = (weatherUnits == "imperial") ? tempC * 9.0f / 5.0f + 32.0f : tempC;
-    bool dutch = displayLanguage == "nl";
-    if (state.displayMode == 1) {
-        WeatherData w = getCurrentWeather();
-        renderKidsWeatherView(display, kidsWeatherFor(w.code, w.windKmh, warnWindKmh), state.isNight, dutch);
+    WeatherData w = getCurrentWeather();
+    int weatherNow = kidsWeatherFor(w.code, w.gustKmh, KIDS_WINDY_GUST_KMH);
+    int outfitNow = outfitFor(w.tempC, weatherNow, state.isNight, kidsLimits);
+
+    // The forecast from the next hour on: hours[k] starts at firstEpoch + (k + 1) hours
+    const HourSlice* slices = nullptr;
+    time_t firstEpoch = 0;
+    size_t n = getUpcomingHours(slices, firstEpoch);
+    KidsHour hours[24];
+    size_t count = 0;
+    for (size_t i = 1; i < n && count < 24; i++, count++) {
+        const HourSlice& s = slices[i];
+        time_t t = firstEpoch + (time_t)i * 3600;
+        hours[count] = KidsHour{ (float)s.tempC, s.rainTenthMm / 10.0f, (float)s.gustKmh,
+                                 s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid };
+    }
+    auto hourOf = [&](int k) { return localHourOf(firstEpoch + (time_t)(k + 1) * 3600); };
+
+    KidsOutlook later;
+    int symbol;
+    int hourNow = state.timeSynced ? localHour() : localHourOf(firstEpoch);
+    if (hourNow >= KIDS_TOMORROW_FROM_HR || hourNow < 5) {
+        // Evening and night: what to wear after sleeping, the morning from KIDS_MORNING_HR
+        size_t start = 0;
+        while (start < count && hourOf((int)start) != KIDS_MORNING_HR) start++;
+        size_t end = start + KIDS_WINDOW_HOURS < count ? start + KIDS_WINDOW_HOURS : count;
+        later = kidsWindowOutlook(hours, start, end, kidsLimits);
+        symbol = KIDS_TIME_TOMORROW;
     } else {
-        renderKidsView(display, clothing, isnan(shown) ? 0 : (int)lroundf(shown), dutch);
+        // Daytime: the next hours, or something big that comes after them
+        later = kidsLaterOutlook(hours, count, KIDS_WINDOW_HOURS, KIDS_LOOKAHEAD_HOURS, kidsLimits);
+        symbol = timeOfDay(hourOf(later.hour));
+    }
+
+    if (state.displayMode == 1) {
+        renderKidsWeatherView(display, weatherNow, state.isNight, kidsShownTemp(w.tempC),
+                              later.valid, later.weather, later.night, kidsShownTemp((float)later.tempC), symbol);
+    } else {
+        renderKidsView(display, outfitNow, later.valid ? later.outfit : -1, symbol);
     }
 }
 #endif

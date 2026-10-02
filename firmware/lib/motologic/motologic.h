@@ -56,20 +56,12 @@ struct HourSlice {
     uint8_t gustKmh;       // saturating
     uint8_t rainProb;      // percent, 255 = unknown
     bool    valid;
+    uint8_t code = 255;    // WMO weather code, 255 = unknown
 };
 
 // Start index of the best `windowLen`-hour window with start in [from, to), by score. Windows that
 // contain an invalid hour are skipped; -1 when there is none. Ties go to the earliest start.
 int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to);
-
-// Kids variant: what to wear. Warm = t-shirt and shorts, mild = t-shirt, cool = sweater.
-#define CLOTHES_WARM    0
-#define CLOTHES_MILD    1
-#define CLOTHES_COOL    2
-
-// `shortsFromC`: from this temperature on shorts are fine; below `sweaterBelowC` a sweater is needed.
-// An unknown temperature (NAN) gives the middle option.
-int clothingFor(float tempC, float shortsFromC, float sweaterBelowC);
 
 // Kids variant: which weather picture to show (day or night is chosen when drawing)
 #define KIDS_WEATHER_CLEAR   0
@@ -86,6 +78,73 @@ int kidsWeatherFor(int code, float windKmh, float warnWindKmh);
 // SSD1306 contrast for a brightness percentage (clamped to 1-100). Never 0: on some panels
 // contrast 0 is completely dark.
 uint8_t contrastForPercent(int percent);
+
+// Kids variant: outfits. HOT..FREEZING run from warm to cold; RAIN sits outside that order.
+#define OUTFIT_HOT       0   // sun cap, t-shirt and shorts
+#define OUTFIT_WARM      1   // t-shirt and shorts
+#define OUTFIT_MILD      2   // t-shirt
+#define OUTFIT_COOL      3   // sweater
+#define OUTFIT_RAIN      4   // rain coat and boots
+#define OUTFIT_COLD      5   // winter coat and hat
+#define OUTFIT_FREEZING  6   // winter coat, hat, scarf and mittens
+
+struct KidsLimits {
+    float hotFromC;       // sun cap from here on, when it is sunny and daytime
+    float shortsFromC;    // shorts from here on
+    float sweaterBelowC;  // sweater below this
+    float coatBelowC;     // winter coat below this
+    float freezeBelowC;   // scarf and mittens below this
+    float windyGustKmh;   // gusts above this show the wind picture (dry weather only)
+};
+
+// Outfit for a temperature and a KIDS_WEATHER_* picture. Snow means the full winter outfit,
+// rain or a storm the rain coat (unless it is cold enough for the winter coat). NAN = mild.
+int outfitFor(float tempC, int kidsWeather, bool night, const KidsLimits& l);
+
+// Warmth step of a temperature: 0 = hot ... 5 = freezing (the outfit order without rain)
+int warmthStep(float tempC, const KidsLimits& l);
+
+// One forecast hour for the kids outlook. code = WMO weather code, -1 = unknown.
+struct KidsHour {
+    float tempC;
+    float rainMm;
+    float gustKmh;
+    int   code;
+    bool  night;
+    bool  valid;
+};
+
+// Weather picture of one hour (without a code: rain from the amount, otherwise clear)
+int kidsHourWeather(const KidsHour& h, const KidsLimits& l);
+
+// What the kids screens show for a stretch of hours
+struct KidsOutlook {
+    bool valid;
+    int  outfit;     // OUTFIT_*
+    int  weather;    // KIDS_WEATHER_*
+    bool night;      // draw the moon instead of the sun
+    int  tempC;      // average temperature, rounded
+    int  hour;       // index of the hour it is about: the middle of a window, or the hour of an event
+};
+
+// Summary of hours [from, to): the most severe precipitation if there is any (at least 0.2 mm in an
+// hour, or a storm), otherwise the most common sky; outfit from the average temperature.
+KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
+
+// "Later" for the kids screens. hours[0] is the first hour after now. Normally the summary of the
+// first `window` hours; but when an hour in [window, lookahead) deviates strongly from that summary
+// (heavy rain of 1 mm or more, a storm or snow while the window is dry, or a temperature two warmth
+// steps away), that hour instead, so the screen can warn "rain this afternoon".
+KidsOutlook kidsLaterOutlook(const KidsHour* hours, size_t count, size_t window, size_t lookahead,
+                             const KidsLimits& l);
+
+// Time of day of a local hour, for the symbol between the halves
+#define KIDS_TIME_MORNING    0   // 06-11
+#define KIDS_TIME_AFTERNOON  1   // 12-17
+#define KIDS_TIME_EVENING    2   // 18-21
+#define KIDS_TIME_NIGHT      3   // 22-05
+#define KIDS_TIME_TOMORROW   4   // after sleeping (drawn as a bed)
+int timeOfDay(int localHour);
 
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);

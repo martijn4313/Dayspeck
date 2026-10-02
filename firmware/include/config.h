@@ -50,10 +50,21 @@
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
 // Kids variant (build the esp01_1m_kids environment, -DKIDS_MODE): instead of the ride rating the display
-// shows what to wear. Shorts (with a t-shirt) from SHORTS_FROM_C on, a sweater below SWEATER_BELOW_C,
-// a t-shirt in between.
-#define DEFAULT_SHORTS_FROM_C   20
-#define DEFAULT_SWEATER_BELOW_C 15
+// shows what to wear now and later. Outfits by temperature (C), from warm to cold:
+#define KIDS_HOT_FROM_C        25   // sun cap, t-shirt and shorts (sunny daytime only)
+#define KIDS_SHORTS_FROM_C     20   // t-shirt and shorts
+#define KIDS_SWEATER_BELOW_C   15   // sweater below this, a t-shirt above
+#define KIDS_COAT_BELOW_C       5   // winter coat and hat
+#define KIDS_FREEZE_BELOW_C     0   // winter coat, hat, scarf and mittens
+#define KIDS_WINDY_GUST_KMH    50   // gusts above this show the wind picture
+// Rain or a storm gives the rain coat and boots (above KIDS_COAT_BELOW_C), snow the full winter outfit.
+// "Later": the next KIDS_WINDOW_HOURS, unless something big happens in the hours up to
+// KIDS_LOOKAHEAD_HOURS. From KIDS_TOMORROW_FROM_HR until 05:00 it is tomorrow morning instead,
+// KIDS_MORNING_HR onwards.
+#define KIDS_WINDOW_HOURS       6
+#define KIDS_LOOKAHEAD_HOURS   12
+#define KIDS_TOMORROW_FROM_HR  18
+#define KIDS_MORNING_HR         7
 
 // Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
 // config.json "display.nightBrightness")
