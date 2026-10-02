@@ -1,13 +1,13 @@
 # MotoClock
 
-<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (t-shirt and shorts, 24, WARM)" width="640"></p>
+<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
 It comes in two flavours, built from the same code:
 
 - **Rider** (default): answers one question at a glance, **can I ride today?**
 - **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I wear
-  today?** with a picture, a number and a short word. [Jump to the kids variant](#kids-variant-what-do-i-wear-today).
+  today?** with pictures and numbers, for now and for later in the day. [Jump to the kids variant](#kids-variant-what-do-i-wear-today).
 
 ## Rider variant
 
@@ -47,34 +47,53 @@ Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account o
 ## Kids variant: what do I wear today?
 
 A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
-rating it shows what to wear and what the weather is like, with big shapes and as little text as
-possible. A tap on the touch sensor switches between the two screens (they close by themselves after
-30 s).
+rating it shows what to wear and what the weather is like, with big pictures and numbers and no
+words. Both screens are split in two: **left is now, right is later**, with an arrow between them and
+a small symbol that says when "later" is. A tap on the touch sensor switches between the clothes and
+the weather screen (the weather screen closes by itself after 30 s).
 
-<p align="center"><img src="docs/images/kids-clothes.png" alt="Kids clothes screens: 24 WARM with t-shirt and shorts, 17 MILD with a t-shirt, 9 COOL with a sweater" width="860"></p>
+<p align="center"><img src="docs/images/kids-clothes.png" alt="Kids clothes screens: sun cap, t-shirt and shorts now, t-shirt and shorts this afternoon; t-shirt now, rain coat and boots this afternoon; winter coat now, winter coat with scarf and mittens tomorrow" width="860"></p>
 
-**Clothes screen**
+**Clothes screen.** The outfits, from warm to cold:
 
-| Temperature | Picture | Word (English / Dutch) |
-|-------------|---------|------------------------|
-| 20 °C and up | t-shirt and shorts | `WARM` / `WARM` |
-| 15 to under 20 °C | t-shirt | `MILD` / `MILD` |
-| under 15 °C | sweater | `COOL` / `KOEL` |
+| When | Picture |
+|------|---------|
+| 25 °C and up, sunny, daytime | sun cap, t-shirt and shorts |
+| 20 °C and up | t-shirt and shorts |
+| 15 to under 20 °C | t-shirt |
+| 5 to under 15 °C | sweater |
+| rain or thunderstorm (5 °C and up) | hooded rain coat and boots |
+| 0 to under 5 °C | winter coat and hat |
+| below 0 °C, or snow | winter coat, hat, scarf and mittens |
 
-The left half shows the clothes, the right half the current temperature as a big number (a number
-to read, no unit) and a short word.
+**Now and later.** The left half is the weather right now. The right half is the next 6 hours: their average
+temperature and the wettest weather in that time. When something big happens in
+the 6 hours after that (1 mm of rain or more in an hour, a thunderstorm or snow while the next hours are
+dry, or a temperature two outfits warmer or colder), the right half shows that instead, so a sunny
+morning can still say "rain coat this afternoon". From 18:00 until 05:00 the right half shows tomorrow
+morning (from 7:00) instead.
 
-<p align="center"><img src="docs/images/kids-weather.png" alt="Kids weather screens: SUN, RAIN, STORM and SNOW" width="640"></p>
+The symbol under the arrow says when "later" is:
 
-**Weather screen:** a big picture (sun or moon, partly cloudy, cloud, rain, thunderstorm, snow, wind)
-with its name: `SUN`/`ZON`, `MOON`/`MAAN`, `CLOUD`/`WOLK`, `RAIN`/`REGEN`, `STORM`/`ONWEER`,
-`SNOW`/`SNEEUW`, `WIND`/`WIND`.
+| Symbol | Meaning |
+|--------|---------|
+| half sun with an arrow up | morning (6-12) |
+| small sun | afternoon (12-18) |
+| half sun with an arrow down | evening (18-22) |
+| moon | night |
+| bed | tomorrow morning, after sleeping |
 
-**Settings** (web UI, *Display*): *Language* (English by default, or Nederlands) and *Always sleep*:
-the screen stays off and a touch wakes it for 30 s (the first touch only wakes it). *Always sleep*
-also works in the normal build. The clothes limits are `DEFAULT_SHORTS_FROM_C` and
-`DEFAULT_SWEATER_BELOW_C` in `firmware/include/config.h` (compile-time). The rain animation and the
-`OLD` tag are left out in this build; Wifi, location, the web UI and OTA work as before.
+<p align="center"><img src="docs/images/kids-weather.png" alt="Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning" width="860"></p>
+
+**Weather screen:** the same split, with a big picture (sun or moon, partly cloudy, cloud, rain,
+thunderstorm, snow, wind) and the temperature on each side: a number to read, no unit.
+
+**Settings** (web UI, *Display*): *Always sleep*: the screen stays off and a touch wakes it for 30 s
+(the first touch only wakes it). It also works in the normal build. *Language* has no visible effect
+since the screens no longer show words. The temperature limits, the 6 hour window, the look-ahead and
+the evening switch are compile-time settings (`KIDS_*` in `firmware/include/config.h`). The rain
+animation and the `OLD` tag are left out in this build; WiFi, location, the web UI and OTA work as
+before.
 
 ```sh
 pio run -e esp01_1m_kids -t upload
@@ -209,7 +228,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `display.dimAtNight` | dim the panel at night |
 | `display.nightBrightness` | brightness at night in percent, 1-100 (default 10); raise it if the screen looks blank at night |
 | `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
-| `display.language` | words in the kids build: `en` (default) or `nl` |
+| `display.language` | `en` (default) or `nl`; currently without visible effect (the kids screens show no words) |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
 | `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
 

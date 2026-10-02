@@ -105,10 +105,12 @@ void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int mi
 // Small status marks on the primary view: "TMRW" tag and WiFi signal bars (bars 0-4, -1 = not connected)
 void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars);
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm);
-// Kids variant: big picture of the clothes (CLOTHES_*), the temperature as a big number and a short word
-void renderKidsView(Adafruit_SSD1306 &display, int clothing, int tempShown, bool dutch);
-// Kids variant: big picture of the weather (KIDS_WEATHER_*) and its name
-void renderKidsWeatherView(Adafruit_SSD1306 &display, int weather, bool isNight, bool dutch);
+// Kids variant: outfit now (left, OUTFIT_*) and later (right, -1 = unknown), with an arrow and the
+// KIDS_TIME_* symbol of "later" between them
+void renderKidsView(Adafruit_SSD1306 &display, int outfitNow, int outfitLater, int timeOfDaySymbol);
+// Kids variant: weather picture (KIDS_WEATHER_*) and temperature, now and later, same layout
+void renderKidsWeatherView(Adafruit_SSD1306 &display, int weatherNow, bool nightNow, int tempNow,
+                           bool laterValid, int weatherLater, bool nightLater, int tempLater, int timeOfDaySymbol);
 // Setup access point instructions (full width): network name, password and IP address
 void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip);
 void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs);

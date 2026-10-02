@@ -85,13 +85,6 @@ int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t
     return best;
 }
 
-int clothingFor(float tempC, float shortsFromC, float sweaterBelowC) {
-    if (isnan(tempC)) return CLOTHES_MILD;
-    if (tempC >= shortsFromC) return CLOTHES_WARM;
-    if (tempC < sweaterBelowC) return CLOTHES_COOL;
-    return CLOTHES_MILD;
-}
-
 int kidsWeatherFor(int code, float windKmh, float warnWindKmh) {
     if (code >= 95) return KIDS_WEATHER_STORM;
     if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return KIDS_WEATHER_RAIN;
@@ -106,6 +99,114 @@ uint8_t contrastForPercent(int percent) {
     if (percent < 1) percent = 1;
     if (percent > 100) percent = 100;
     return (uint8_t)((percent * 255 + 50) / 100);
+}
+
+int warmthStep(float tempC, const KidsLimits& l) {
+    if (isnan(tempC)) return 2;
+    if (tempC >= l.hotFromC) return 0;
+    if (tempC >= l.shortsFromC) return 1;
+    if (tempC >= l.sweaterBelowC) return 2;
+    if (tempC >= l.coatBelowC) return 3;
+    if (tempC >= l.freezeBelowC) return 4;
+    return 5;
+}
+
+int outfitFor(float tempC, int kidsWeather, bool night, const KidsLimits& l) {
+    int step = warmthStep(tempC, l);
+    if (kidsWeather == KIDS_WEATHER_SNOW || step == 5) return OUTFIT_FREEZING;
+    if (step == 4) return OUTFIT_COLD;
+    if (kidsWeather == KIDS_WEATHER_RAIN || kidsWeather == KIDS_WEATHER_STORM) return OUTFIT_RAIN;
+    if (step == 3) return OUTFIT_COOL;
+    if (step == 2) return OUTFIT_MILD;
+    bool sunny = kidsWeather == KIDS_WEATHER_CLEAR || kidsWeather == KIDS_WEATHER_PARTLY;
+    if (step == 0 && sunny && !night) return OUTFIT_HOT;
+    return OUTFIT_WARM;
+}
+
+int kidsHourWeather(const KidsHour& h, const KidsLimits& l) {
+    int code = h.code >= 0 ? h.code : (h.rainMm >= 0.2f ? 61 : 0);
+    return kidsWeatherFor(code, h.gustKmh, l.windyGustKmh);
+}
+
+// Precipitation that counts: rain or snow of at least 0.2 mm, or a storm
+static bool isWet(const KidsHour& h, int weather) {
+    if (weather == KIDS_WEATHER_STORM) return true;
+    return (weather == KIDS_WEATHER_RAIN || weather == KIDS_WEATHER_SNOW) && h.rainMm >= 0.2f;
+}
+
+static int wetRank(int weather) {
+    return weather == KIDS_WEATHER_STORM ? 3 : weather == KIDS_WEATHER_SNOW ? 2 : weather == KIDS_WEATHER_RAIN ? 1 : 0;
+}
+
+KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l) {
+    KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, (int)from };
+    float tempSum = 0;
+    int n = 0, nights = 0, wettest = KIDS_WEATHER_CLEAR;
+    int skyCount[7] = { 0, 0, 0, 0, 0, 0, 0 };
+    for (size_t i = from; i < to; i++) {
+        const KidsHour& h = hours[i];
+        if (!h.valid) continue;
+        int w = kidsHourWeather(h, l);
+        if (isWet(h, w)) {
+            if (wetRank(w) > wetRank(wettest)) wettest = w;
+        } else if (wetRank(w) == 0) {
+            skyCount[w]++;
+        } else {
+            skyCount[KIDS_WEATHER_CLOUDY]++;   // a trace of rain: just clouds
+        }
+        tempSum += h.tempC;
+        if (h.night) nights++;
+        n++;
+    }
+    if (n == 0) return o;
+
+    o.valid = true;
+    o.night = nights * 2 > n;
+    if (wetRank(wettest) > 0) {
+        o.weather = wettest;
+    } else {
+        static const int sky[4] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_WIND };
+        int best = KIDS_WEATHER_CLEAR;
+        for (int w : sky) {
+            if (skyCount[w] > skyCount[best] || (w == KIDS_WEATHER_WIND && skyCount[w] > 0)) best = w;
+        }
+        o.weather = best;
+    }
+    float avg = tempSum / n;
+    o.tempC = (int)lroundf(avg);
+    o.outfit = outfitFor(avg, o.weather, o.night, l);
+    o.hour = (int)(from + (to - from - 1) / 2);
+    return o;
+}
+
+KidsOutlook kidsLaterOutlook(const KidsHour* hours, size_t count, size_t window, size_t lookahead,
+                             const KidsLimits& l) {
+    if (window > count) window = count;
+    if (lookahead > count) lookahead = count;
+    KidsOutlook win = kidsWindowOutlook(hours, 0, window, l);
+    if (!win.valid) return win;
+
+    bool winWet = wetRank(win.weather) > 0;
+    int winStep = warmthStep((float)win.tempC, l);
+    for (size_t i = window; i < lookahead; i++) {
+        const KidsHour& h = hours[i];
+        if (!h.valid) continue;
+        int w = kidsHourWeather(h, l);
+        bool heavy = w == KIDS_WEATHER_STORM || (w == KIDS_WEATHER_SNOW && h.rainMm >= 0.2f) ||
+                     (w == KIDS_WEATHER_RAIN && h.rainMm >= 1.0f);
+        int step = warmthStep(h.tempC, l);
+        if ((heavy && !winWet) || step - winStep >= 2 || winStep - step >= 2) {
+            return kidsWindowOutlook(hours, i, i + 1, l);
+        }
+    }
+    return win;
+}
+
+int timeOfDay(int localHour) {
+    if (localHour >= 6 && localHour < 12) return KIDS_TIME_MORNING;
+    if (localHour >= 12 && localHour < 18) return KIDS_TIME_AFTERNOON;
+    if (localHour >= 18 && localHour < 22) return KIDS_TIME_EVENING;
+    return KIDS_TIME_NIGHT;
 }
 
 int mapWeatherCode(int code, float windKmh, float warnWindKmh) {

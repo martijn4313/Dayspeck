@@ -176,14 +176,85 @@ void test_interval_elapsed() {
     TEST_ASSERT_TRUE(intervalElapsed(0x200, last, 0x200));
 }
 
-void test_clothing() {
-    TEST_ASSERT_EQUAL(CLOTHES_WARM, clothingFor(25, 20, 15));
-    TEST_ASSERT_EQUAL(CLOTHES_WARM, clothingFor(20, 20, 15));    // shorts from the limit on
-    TEST_ASSERT_EQUAL(CLOTHES_MILD, clothingFor(19.9f, 20, 15));
-    TEST_ASSERT_EQUAL(CLOTHES_MILD, clothingFor(15, 20, 15));    // sweater only below the limit
-    TEST_ASSERT_EQUAL(CLOTHES_COOL, clothingFor(14.9f, 20, 15));
-    TEST_ASSERT_EQUAL(CLOTHES_COOL, clothingFor(-5, 20, 15));
-    TEST_ASSERT_EQUAL(CLOTHES_MILD, clothingFor(NAN, 20, 15));
+static const KidsLimits K = { 25, 20, 15, 5, 0, 40 };
+
+void test_outfit() {
+    TEST_ASSERT_EQUAL(OUTFIT_HOT, outfitFor(27, KIDS_WEATHER_CLEAR, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_WARM, outfitFor(27, KIDS_WEATHER_CLEAR, true, K));     // no sun cap at night
+    TEST_ASSERT_EQUAL(OUTFIT_WARM, outfitFor(27, KIDS_WEATHER_CLOUDY, false, K));   // nor when cloudy
+    TEST_ASSERT_EQUAL(OUTFIT_WARM, outfitFor(20, KIDS_WEATHER_CLEAR, false, K));    // shorts from the limit on
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, outfitFor(19.9f, KIDS_WEATHER_CLEAR, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, outfitFor(15, KIDS_WEATHER_CLEAR, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, outfitFor(14.9f, KIDS_WEATHER_CLEAR, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, outfitFor(12, KIDS_WEATHER_RAIN, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, outfitFor(22, KIDS_WEATHER_STORM, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, outfitFor(4, KIDS_WEATHER_RAIN, false, K));      // the coat beats the rain coat
+    TEST_ASSERT_EQUAL(OUTFIT_FREEZING, outfitFor(-1, KIDS_WEATHER_CLEAR, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_FREEZING, outfitFor(2, KIDS_WEATHER_SNOW, false, K));
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, outfitFor(NAN, KIDS_WEATHER_CLEAR, false, K));
+}
+
+static KidsHour hr(float t, float rain, int code) { return KidsHour{ t, rain, 10, code, false, true }; }
+
+void test_kids_window() {
+    KidsHour h[4] = { hr(16, 0, 1), hr(18, 0, 1), hr(18, 0, 3), hr(20, 0, 1) };
+    KidsOutlook o = kidsWindowOutlook(h, 0, 4, K);
+    TEST_ASSERT_TRUE(o.valid);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);   // most common sky
+    TEST_ASSERT_EQUAL(18, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+    TEST_ASSERT_EQUAL(1, o.hour);
+
+    h[2] = hr(18, 0.5f, 61);                             // one wet hour makes it a rainy window
+    o = kidsWindowOutlook(h, 0, 4, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+
+    h[2] = hr(18, 0.1f, 61);                             // a trace is only a cloud
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWindowOutlook(h, 0, 4, K).weather);
+
+    KidsHour none[2] = { hr(1, 0, 0), hr(1, 0, 0) };
+    none[0].valid = none[1].valid = false;
+    TEST_ASSERT_FALSE(kidsWindowOutlook(none, 0, 2, K).valid);
+}
+
+void test_kids_later_warns_for_rain_after_the_window() {
+    KidsHour h[10];
+    for (int i = 0; i < 10; i++) h[i] = hr(18, 0, 1);
+    KidsOutlook o = kidsLaterOutlook(h, 10, 6, 10, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);
+    TEST_ASSERT_EQUAL(2, o.hour);                        // middle of the window
+
+    h[8] = hr(17, 0.6f, 61);                             // light rain later: no warning
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsLaterOutlook(h, 10, 6, 10, K).weather);
+
+    h[8] = hr(17, 2.0f, 63);                             // heavy rain later: show that hour
+    o = kidsLaterOutlook(h, 10, 6, 10, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+    TEST_ASSERT_EQUAL(8, o.hour);
+
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsLaterOutlook(h, 10, 6, 8, K).weather);   // beyond the look-ahead
+}
+
+void test_kids_later_warns_for_a_big_temperature_change() {
+    KidsHour h[10];
+    for (int i = 0; i < 10; i++) h[i] = hr(17, 0, 1);   // mild
+    h[7] = hr(13, 0, 1);                                 // one step colder: no warning
+    TEST_ASSERT_EQUAL(2, kidsLaterOutlook(h, 10, 6, 10, K).hour);   // still the window
+    h[9] = hr(3, 0, 1);                                  // two steps colder
+    KidsOutlook o = kidsLaterOutlook(h, 10, 6, 10, K);
+    TEST_ASSERT_EQUAL(9, o.hour);
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, o.outfit);
+}
+
+void test_time_of_day() {
+    TEST_ASSERT_EQUAL(KIDS_TIME_NIGHT, timeOfDay(5));
+    TEST_ASSERT_EQUAL(KIDS_TIME_MORNING, timeOfDay(6));
+    TEST_ASSERT_EQUAL(KIDS_TIME_MORNING, timeOfDay(11));
+    TEST_ASSERT_EQUAL(KIDS_TIME_AFTERNOON, timeOfDay(12));
+    TEST_ASSERT_EQUAL(KIDS_TIME_EVENING, timeOfDay(18));
+    TEST_ASSERT_EQUAL(KIDS_TIME_NIGHT, timeOfDay(22));
 }
 
 void test_kids_weather() {
@@ -223,7 +294,11 @@ int main(int, char**) {
     RUN_TEST(test_rate_window_uses_worst_hour);
     RUN_TEST(test_rate_window_sums_rain);
     RUN_TEST(test_rate_window_missing_hours);
-    RUN_TEST(test_clothing);
+    RUN_TEST(test_outfit);
+    RUN_TEST(test_kids_window);
+    RUN_TEST(test_kids_later_warns_for_rain_after_the_window);
+    RUN_TEST(test_kids_later_warns_for_a_big_temperature_change);
+    RUN_TEST(test_time_of_day);
     RUN_TEST(test_contrast_for_percent);
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
