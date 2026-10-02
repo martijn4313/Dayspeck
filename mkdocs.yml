@@ -1,0 +1,42 @@
+site_name: MotoClock
+site_description: A small ESP8266 weather display for riders and kids
+repo_url: https://github.com/martijn4313/motoclock
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: {icon: material/weather-sunny, name: Light mode}
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - tables
+  - attr_list
+  - toc: {permalink: true}
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Using it:
+      - Rider variant: rider.md
+      - Kids variant: kids.md
+      - Ride rating: ride-rating.md
+  - Setting up:
+      - Hardware: hardware.md
+      - Build and flash: build.md
+      - First boot: first-boot.md
+      - Configuration: configuration.md
+  - Maintaining:
+      - Over-the-air updates: ota.md
+      - Security: security.md
+      - Contributing: contributing.md
