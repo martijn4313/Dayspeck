@@ -1,6 +1,6 @@
 # Rider variant
 
-<p align="center"><img src="images/rider-today.png" alt="Three rider screens: good (check mark), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, strong wind)" width="860"></p>
+![Three rider screens: good (check mark), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, strong wind)](images/rider-today.png){ .center }
 
 - **Left half:** a big ride badge — ✓ good, ! caution, X don't ride.
 - **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
@@ -26,9 +26,9 @@
 
 The other screens, in order: the week grid, the next hours and the clock.
 
-<p align="center"><img src="images/rider-views.png" alt="Week grid with the best day highlighted, next-hours view and clock" width="860"></p>
+![Week grid with the best day highlighted, next-hours view and clock](images/rider-views.png){ .center }
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
-*The screenshots in this README are renders of the firmware's drawing code (the host simulator in
+*The screenshots in this manual are renders of the firmware's drawing code (the host simulator in
 [`tools/`](https://github.com/martijn4313/WeatherWise/tree/main/tools/README.md) and a host build of the kids screens), not photos of the device.*

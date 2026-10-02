@@ -6,7 +6,7 @@ words. Both screens are split in two: **left is now, right is later**, with an a
 a small symbol that says when "later" is. A tap on the touch sensor switches between the clothes and
 the weather screen (the weather screen closes by itself after 30 s).
 
-<p align="center"><img src="images/kids-clothes.png" alt="Kids clothes screens: sun cap, t-shirt and shorts now, t-shirt and shorts this afternoon; t-shirt now, rain coat and boots this afternoon; winter coat now, winter coat with scarf and mittens tomorrow" width="860"></p>
+![Kids clothes screens: sun cap, t-shirt and shorts now, t-shirt and shorts this afternoon; t-shirt now, rain coat and boots this afternoon; winter coat now, winter coat with scarf and mittens tomorrow](images/kids-clothes.png){ .center }
 
 **Clothes screen.** The outfits, from warm to cold:
 
@@ -37,7 +37,7 @@ The symbol under the arrow says when "later" is:
 | moon | night |
 | bed | tomorrow morning, after sleeping |
 
-<p align="center"><img src="images/kids-weather.png" alt="Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning" width="860"></p>
+![Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning](images/kids-weather.png){ .center }
 
 **Weather screen:** the same split, with a big picture (sun or moon, partly cloudy, cloud, rain,
 thunderstorm, snow, wind) and the temperature on each side: a number to read, no unit.
