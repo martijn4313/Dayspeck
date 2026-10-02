@@ -1,4 +1,4 @@
-// MotoClock update relay: serves the latest GitHub Release over plain HTTP for the ESP-01,
+// WeatherWise update relay: serves the latest GitHub Release over plain HTTP for the ESP-01,
 // which has no room for TLS. The relay is not trusted: the device checks the signature of the
 // manifest and of every image, so the worst a broken or hostile relay can do is withhold updates.
 //

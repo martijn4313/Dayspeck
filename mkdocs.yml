@@ -1,6 +1,7 @@
-site_name: MotoClock
+site_name: WeatherWise
 site_description: A small ESP8266 weather display for riders and kids
-repo_url: https://github.com/martijn4313/motoclock
+site_url: https://martijn4313.github.io/MotoClock/
+repo_url: https://github.com/martijn4313/MotoClock
 edit_uri: edit/main/docs/
 
 theme:

@@ -82,7 +82,7 @@ def cmd_render(args) -> int:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="bitmaptool", description="MotoWeather bitmap tool")
+    parser = argparse.ArgumentParser(prog="bitmaptool", description="WeatherWise bitmap tool")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("gui", help="start the graphical tool")

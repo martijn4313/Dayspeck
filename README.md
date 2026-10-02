@@ -1,4 +1,4 @@
-# MotoClock
+# WeatherWise
 
 <p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
 
@@ -6,317 +6,55 @@ A small weather display for a bedside table or a wall, on an ESP8266 with a 128�
 It comes in two flavours, built from the same code:
 
 - **Rider** (default): answers one question at a glance, **can I ride today?**
-- **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I wear
-  today?** with pictures and numbers, for now and for later in the day. [Jump to the kids variant](#kids-variant-what-do-i-wear-today).
-
-## Rider variant
-
-<p align="center"><img src="docs/images/rider-today.png" alt="Three rider screens: good (check mark), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, strong wind)" width="860"></p>
-
-- **Left half:** a big ride badge — ✓ good, ! caution, X don't ride.
-- **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
-  animation when it rains.
-- **Right half, bottom:** weather icon, wind speed and precipitation.
-- **Touch:** a short tap switches *today / tomorrow*. A long press steps through the other screens:
-  the *7-day AM/PM grid*, the *next hours*, the *clock*, then back to the main screen. The week and
-  hours views close by themselves after 30 s; the clock stays until you tap. A tap always returns to the
-  main screen.
-- **Status marks:** a signal-bars icon (bottom of the left half; a cross when offline), a `TMR` tag
-  while tomorrow is shown, and an `OLD` tag when the data is stale (older than twice its refresh
-  interval).
-- **Week grid:** the best day (see the ride score below) is shown in inverse video.
-- **Next hours:** six columns, with a label on the left naming each row: `h` the hour, `°C` the
-  temperature, `mm` a bar for the rain amount (taller = more), `%` a dotted line for the chance of rain
-  (higher = likelier) and `kmh` the strongest gust. The bottom line shows the best time to leave in the
-  next 12 hours (a 2 hour daytime ride) and when the data was last updated.
-- **Clock:** the time in large digits with a blinking colon, then the weekday and date, then the year.
-  It needs the network time and the first weather update (which tells the device its time zone), and
-  says "Time not set yet" until then.
-- **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
-  firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
-
-The other screens, in order: the week grid, the next hours and the clock.
-
-<p align="center"><img src="docs/images/rider-views.png" alt="Week grid with the best day highlighted, next-hours view and clock" width="860"></p>
+- **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I
+  wear today?** with pictures and numbers.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
-*The screenshots in this README are renders of the firmware's drawing code (the host simulator in
-[`tools/`](tools/README.md) and a host build of the kids screens), not photos of the device.*
+**📖 Read the manual: <https://martijn4313.github.io/MotoClock/>**
 
-## Kids variant: what do I wear today?
-
-A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
-rating it shows what to wear and what the weather is like, with big pictures and numbers and no
-words. Both screens are split in two: **left is now, right is later**, with an arrow between them and
-a small symbol that says when "later" is. A tap on the touch sensor switches between the clothes and
-the weather screen (the weather screen closes by itself after 30 s).
-
-<p align="center"><img src="docs/images/kids-clothes.png" alt="Kids clothes screens: sun cap, t-shirt and shorts now, t-shirt and shorts this afternoon; t-shirt now, rain coat and boots this afternoon; winter coat now, winter coat with scarf and mittens tomorrow" width="860"></p>
-
-**Clothes screen.** The outfits, from warm to cold:
-
-| When | Picture |
-|------|---------|
-| 25 °C and up, sunny, daytime | sun cap, t-shirt and shorts |
-| 20 °C and up | t-shirt and shorts |
-| 15 to under 20 °C | t-shirt |
-| 5 to under 15 °C | sweater |
-| rain or thunderstorm (5 °C and up) | hooded rain coat and boots |
-| 0 to under 5 °C | winter coat and hat |
-| below 0 °C, or snow | winter coat, hat, scarf and mittens |
-
-**Now and later.** The left half is the weather right now. The right half is the next 6 hours: their average
-temperature and the wettest weather in that time. When something big happens in
-the 6 hours after that (1 mm of rain or more in an hour, a thunderstorm or snow while the next hours are
-dry, or a temperature two outfits warmer or colder), the right half shows that instead, so a sunny
-morning can still say "rain coat this afternoon". From 18:00 until 05:00 the right half shows tomorrow
-morning (from 7:00) instead.
-
-The symbol under the arrow says when "later" is:
-
-| Symbol | Meaning |
-|--------|---------|
-| half sun with an arrow up | morning (6-12) |
-| small sun | afternoon (12-18) |
-| half sun with an arrow down | evening (18-22) |
-| moon | night |
-| bed | tomorrow morning, after sleeping |
-
-<p align="center"><img src="docs/images/kids-weather.png" alt="Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning" width="860"></p>
-
-**Weather screen:** the same split, with a big picture (sun or moon, partly cloudy, cloud, rain,
-thunderstorm, snow, wind) and the temperature on each side: a number to read, no unit.
-
-**Settings** (web UI, *Display*): *Always sleep*: the screen stays off and a touch wakes it for 30 s
-(the first touch only wakes it). It also works in the normal build. *Language* has no visible effect
-since the screens no longer show words. The temperature limits, the 6 hour window, the look-ahead and
-the evening switch are compile-time settings (`KIDS_*` in `firmware/include/config.h`). The rain
-animation and the `OLD` tag are left out in this build; WiFi, location, the web UI and OTA work as
-before.
-
-```sh
-pio run -e esp01_1m_kids -t upload
-```
-
-## Hardware
-
-Designed for a bare ESP-01 and a 0.96" SSD1306 module, wired as below. Cheap "mini weather clock" DIY
-soldering kits (an ESP8266 board, a 0.96" OLED and an acrylic case, a few euros on AliExpress) use
-the same chip family and the same kind of display, so they are good candidates. **They are untested
-with this firmware.** Check three things before you flash one:
-
-- the display is an SSD1306 at address `0x3C` (some 0.96" modules use an SH1106 or a different address);
-- which GPIOs the OLED and the button or touch pad use: set `OLED_SDA`, `OLED_SCL` and `TOUCH_PIN` in
-  `firmware/include/config.h`;
-- the flash size: the `esp01_1m` environment assumes 1 MB, so a board with 4 MB (NodeMCU, ESP-12F)
-  needs its own environment in `platformio.ini` (`board = esp12e` or `nodemcuv2`).
-
-A kit without a touch pad or button can use any momentary switch to ground on a free GPIO.
-
-| Part | Notes |
-|------|-------|
-| ESP-01 (ESP8266, 1 MB flash) | the `esp01_1m` board in PlatformIO |
-| SSD1306 128×64 I²C OLED, address `0x3C` | |
-| Touch input | a TTP223 module or a push button |
-| 3.3 V supply, ≥ 300 mA | the ESP8266 draws current spikes when transmitting |
-
-Wiring (all 3.3 V):
-
-| ESP-01 pin | GPIO | Connects to |
-|-----------|------|-------------|
-| 0 | GPIO0 | OLED **SDA** |
-| 2 | GPIO2 | OLED **SCL** |
-| RX | GPIO3 | touch sensor output |
-
-Notes:
-
-- GPIO0 and GPIO2 are boot-strap pins and must be **high at power-up**. The OLED's I²C pull-ups
-  normally do that; do not hold either low.
-- GPIO3 is the UART RX pin, so **serial output and serial flashing are unavailable while the touch
-  sensor is attached**. All diagnostics go to the log in the web UI instead. Disconnect the sensor
-  while flashing over serial.
-- Touch polarity is set in `firmware/include/config.h`: `TOUCH_ACTIVE_HIGH 0` (default) expects the
-  pin to be pulled **low** when touched (button to ground, internal pull-up). Set it to `1` for
-  modules such as the TTP223 that drive the pin **high**.
-
-## Build and flash
+## Quick start
 
 Requires [PlatformIO](https://platformio.org).
 
 ```sh
-pio run                       # build
-pio run -t upload             # flash the firmware
+pio run -t upload             # flash the rider firmware (or -e esp01_1m_kids for the kids one)
 pio run -t uploadfs           # flash firmware/data (config.json) to the filesystem
 pio test -e native            # host unit tests for the pure logic
-pio run -e esp01_1m_debug     # development build with on-screen debug status
-pio run -e esp01_1m_kids      # kids variant (what to wear)
 ```
 
-Optional compile-time defaults (WiFi credentials) go in `firmware/include/secrets.h`; copy
-`secrets.h.example` and edit it. The file is git-ignored. Everything can also be set later in the
-web UI, so this is only a convenience.
-
-`firmware/data/config.json` ships with empty WiFi credentials. To keep your own local edits out of
-commits: `git update-index --skip-worktree firmware/data/config.json`.
-
-## First boot
-
-1. If there are no (working) WiFi credentials the device starts its own network after about 30 s.
-   The OLED shows the network name (**MotoWeather**), its password and `192.168.4.1`.
-2. Join that network and open `http://192.168.4.1`. Sign in with user **`admin`** and the password
-   from the display. The default password is `moto` plus six hex digits derived from the chip ID.
-3. Enter your WiFi network under *WiFi Configuration*, pick your city (or add per-network
-   locations), and **set your own admin password**. The device restarts after a password change.
-4. Afterwards the page is at `http://motoclock.local`.
-
-If the WiFi connection is lost later, the device keeps retrying on its own and only opens the setup
-network again after 5 minutes without a connection.
-
-## How the ride rating works
-
-For each day the forecast is split into a morning (AM) and an evening (PM) ride window. A window is
-rated by its **worst hour**:
-
-| Rating | Condition (defaults) |
-|--------|----------------------|
-| ✗ don't ride | rain over the window > 2.0 mm, or gusts > 60 km/h |
-| ! caution | any rain, temperature < 5 °C, gusts > 40 km/h, or a chance of rain of 50 % or more |
-| ✓ good | none of the above |
-
-*Today* shows the morning ride until its window is over, then the evening ride. *Tomorrow* shows
-tomorrow's morning. The week grid shows both rides for seven days, starting at today. With
-`previewHr` set, the main screen shows tomorrow by default from that hour on (a tap then shows today).
-
-### Ride score and best day
-
-Each window also gets a score from 0 to 100: 100 points, minus 3 per degree away from 20 °C, minus 20
-per mm of rain, minus 2 per km/h of gusts above 20 km/h. A day scores as its better window, plus 15 on
-Saturday and Sunday so that weekend rides are preferred. Windows rated "don't ride" do not count. The
-highest-scoring day is highlighted in the week grid.
-
-### Screen power
-
-The panel can be dimmed at night (to *Night brightness*, 10 % by default; a touch gives full
-brightness for 30 s), switched off after some idle minutes at night, and switched off
-during fixed quiet hours (for example 23 to 6). A touch wakes it (the first touch only wakes it, and it
-then stays on for 30 s even in quiet hours). All of this needs the clock to be synced.
-
-## Configuration reference (`config.json`)
-
-The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys are kept.
-
-| Key | Meaning |
-|-----|---------|
-| `version` | config layout version (written automatically) |
-| `lat`, `lon` | location used for the forecast |
-| `manualLocation` | `true` once a city was picked in the web UI (then network locations are ignored) |
-| `wifi.ssid`, `wifi.password` | WiFi credentials (the password is never sent back to the browser) |
-| `auth.password` | admin and setup-network password, 8–63 characters (set it in the web UI) |
-| `thresholds.maxRainMm` | rain over a ride window above which you should not ride |
-| `thresholds.maxWindKmh` | gust speed above which you should not ride |
-| `thresholds.minTempC` | below this the rating is "caution" |
-| `thresholds.warnWindKmh` | gusts above this give "caution" |
-| `thresholds.rainProbPct` | a chance of rain from this percentage on gives "caution"; 101 switches it off |
-| `wd_am`, `wd_pm` | weekday morning / evening ride window: `[start hour, hours]` |
-| `we_am`, `we_pm` | the same for Saturday and Sunday |
-| `ssidLocations` | `[{"ssid", "lat", "lon"}]` — use this location when connected to that network |
-| `weatherApiUrl` | forecast endpoint, `http://` only (default Open-Meteo) |
-| `weatherUnits` | `metric` or `imperial`; imperial only changes the temperature shown on the display |
-| `weatherDebug` | log extra detail to the web UI log |
-| `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
-| `display.dimAtNight` | dim the panel at night |
-| `display.nightBrightness` | brightness at night in percent, 1-100 (default 10); raise it if the screen looks blank at night |
-| `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
-| `display.language` | `en` (default) or `nl`; currently without visible effect (the kids screens show no words) |
-| `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
-| `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
-| `ota.url` | update server (the relay), `http://` only; default `OTA_DEFAULT_URL` in `config.h` |
-| `ota.autoCheck` | check for a new release once a day (default `true`) |
-
-Thresholds are always metric (mm, km/h, °C).
-
-## Updating the firmware over the air
-
-The device checks the latest GitHub Release once a day. When a newer version is out, the main screen
-shows `UPD` in the top-left corner, and the web UI's *Firmware Update* card offers **Install X.Y.Z**.
-Nothing installs by itself. The install takes about a minute (the display shows the progress), then
-the device restarts. Settings are kept.
-
-How it fits on an ESP-01 with 1 MB flash (details in `plans/ota_plan.md`):
-
-- **No TLS on the device**: it would not fit next to a second firmware image. A small relay
-  (`tools/ota-relay`, a free Cloudflare Worker, or any plain HTTP server) passes the release on
-  over HTTP.
-- **Signed images**: the release workflow signs the manifest and every image with an RSA key.
-  The device only installs an image whose signature matches the public key compiled into it, and
-  only the exact image the signed manifest names. The relay does not need to be trusted.
-- **Compressed images**: updates are gzip-compressed; the bootloader unpacks them.
-- **64 KB filesystem** (`board_build.ldscript` in `platformio.ini`), so a compressed update fits next
-  to the running firmware. CI fails if the firmware grows too large for that.
-
-### One-time setup
-
-1. **Signing key.** Run `python tools/ota_tool.py keygen` (needs `pip install cryptography`). Keep
-   `ota_private.pem` safe and out of git (`*.pem` is ignored), add it as the repository secret
-   `OTA_SIGNING_KEY` (`gh secret set OTA_SIGNING_KEY < ota_private.pem`), and commit the generated
-   `firmware/include/ota_pubkey.h`. A build without that file cannot install pull updates.
-   If the key is lost, generate a new one; devices then need one manual upload (or a serial flash)
-   of a build with the new public key.
-2. **Relay.** Deploy `tools/ota-relay` (see its README) and put its `http://` address in the web UI
-   under *Update server*, or in `OTA_DEFAULT_URL` in `config.h`.
-3. **Serial flash, once.** Devices built before the 64 KB filesystem layout have too little free
-   flash for any over-the-air update: flash them over serial (`pio run -t upload` and
-   `pio run -t uploadfs`, or `motoclock-rider-serial.bin` and `motoclock-fs-serial.bin` from a
-   release). The filesystem moves, so the WiFi settings, location and password start from scratch.
-
-### Publishing a release
-
-1. Set `FW_VERSION` in `firmware/include/version.h` to the new version and commit.
-2. Tag it: `git tag -a v0.3.0 -m "One-line release notes shown in the web UI"` and push the tag.
-3. `.github/workflows/release.yml` checks that the tag matches `FW_VERSION` and that the secret
-   matches the committed public key, runs the tests, builds the rider and kids firmware, signs them
-   and publishes the release. Devices see it within a day (or at once with *Check now*).
-
-Only tag versions you have tried on a device: the ESP8266 cannot roll back to the old firmware if
-a new one installs fine but then misbehaves (a serial flash fixes it).
-
-### Manual upload
-
-The *Manual upload* form in the web UI takes a signed `motoclock-rider.bin.gz` (or `-kids`) from a
-release. To upload your own build, sign it with your key first:
-`python tools/ota_tool.py sign --key ota_private.pem --in .pio/build/esp01_1m/firmware.bin --out fw.bin.gz`.
-A build without a key accepts unsigned images; upload a compressed one
-(`gzip -9 -k .pio/build/esp01_1m/firmware.bin`), as an uncompressed image does not fit.
-
-## Security notes
-
-- The web UI, the API and OTA all need the admin password (HTTP Basic). Basic auth is **not
-  encrypted**: use a network you trust, and change the default password.
-- Firmware updates travel over plain HTTP but must carry a valid RSA signature from the release key
-  (once `ota_pubkey.h` holds a key). Someone between the device and the relay can delay or block
-  updates, but cannot install their own firmware or an older release.
-- The ESP8266 is too slow for TLS, so weather requests are plain HTTP. No account, key or
-  personal data is sent — only your configured coordinates.
-- Writes need a per-boot token, which protects against forged requests from other web pages.
-- DNS rebinding is not blocked.
+Then join the `WeatherWise` WiFi network the device opens and follow the
+[first boot](https://martijn4313.github.io/MotoClock/first-boot/) steps. Wiring, configuration,
+over-the-air updates and security notes are all in the manual.
 
 ## Project layout
 
 ```
+docs/                   the manual (MkDocs) and its screenshots
 firmware/src, include   device code (display, touch, weather, web server, main loop)
 firmware/lib/motologic  pure logic, unit tested on the host
 firmware/data           files for the LittleFS filesystem (config.json)
-docs/images             the screenshots used in this README
 test/                   host-side unit tests
-tools/                  png_to_bitmap.py — bitmap converter and OLED simulator (see tools/README.md)
-tools/ota_tool.py       signing key, image signing and release manifest for OTA updates
-tools/ota-relay         Cloudflare Worker that serves releases to the device over HTTP
+tools/                  bitmap converter and OLED simulator, OTA signing tool and relay
 plans/                  improvement plan and design notes
 ```
 
+## Building the manual
+
+```sh
+pip install -r requirements-docs.txt
+mkdocs serve        # live preview at http://127.0.0.1:8000
+mkdocs build --strict
+```
+
+The manual is published to GitHub Pages by `.github/workflows/docs.yml` on every push to `main`.
+
 ## Contributing
 
-CI (`.github/workflows/ci.yml`) runs the unit tests, builds all firmware environments and the
-filesystem image, checks that the firmware leaves room for an update, and lints and tests the Python
-tools. Tags `vX.Y.Z` publish a signed release (`.github/workflows/release.yml`). See `plans/improvement_plan.md` for the roadmap.
+CI (`.github/workflows/ci.yml`) runs the unit tests, builds all firmware environments, and lints and
+tests the Python tools; see the manual's *Contributing* page for details. Tags `vX.Y.Z` publish a signed
+release. See `plans/improvement_plan.md` for the roadmap.
+
+## License
+
+See [LICENSE](LICENSE).

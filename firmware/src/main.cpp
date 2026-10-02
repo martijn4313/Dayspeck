@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Main Entry Point
+// WeatherWise Bedside Display — Main Entry Point
 // PlatformIO project for ESP-01 (ESP8266) + SSD1306 OLED
 // Rewritten: Event driven architecture, non-blocking, reliable timing
 
@@ -63,7 +63,7 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 #define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
 #define WEEKLY_VIEW_TIMEOUT_MS    30000UL
-#define AP_SSID                   "MotoWeather"
+#define AP_SSID                   "WeatherWise"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
 
 
@@ -563,7 +563,7 @@ void onWifiConnected() {
     }
 
     if (!state.mdnsStarted) {
-        MDNS.begin("motoclock");
+        MDNS.begin("weatherwise");
         MDNS.addService("http", "tcp", 80);
         state.mdnsStarted = true;
     }
@@ -709,7 +709,7 @@ void setup() {
     Wire.setClock(400000);
 
     initDisplay();
-    renderLoadingView(display, "MotoWeather", "Booting...", 0);
+    renderLoadingView(display, "WeatherWise", "Booting...", 0);
     display.display();
 
     touch_init();

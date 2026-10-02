@@ -1,4 +1,4 @@
-# MotoClock
+# WeatherWise
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
 
@@ -18,7 +18,3 @@ It comes in two flavours, built from the same code:
 
 Then see [how the ride rating works](ride-rating.md), the [configuration reference](configuration.md)
 and how to [update over the air](ota.md).
-
-!!! note "Work in progress"
-    This manual was split out of the README and is still being rewritten. The project name is under
-    discussion, since "MotoClock" does not cover the kids variant.

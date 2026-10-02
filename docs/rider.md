@@ -21,7 +21,7 @@
 - **Clock:** the time in large digits with a blinking colon, then the weekday and date, then the year.
   It needs the network time and the first weather update (which tells the device its time zone), and
   says "Time not set yet" until then.
-- **Web UI** at `http://motoclock.local` (or the device IP): location, WiFi, thresholds, logs and
+- **Web UI** at `http://weatherwise.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
 
 The other screens, in order: the week grid, the next hours and the clock.
@@ -31,4 +31,4 @@ The other screens, in order: the week grid, the next hours and the clock.
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
 *The screenshots in this README are renders of the firmware's drawing code (the host simulator in
-[`tools/`](https://github.com/martijn4313/motoclock/tree/main/tools/README.md) and a host build of the kids screens), not photos of the device.*
+[`tools/`](https://github.com/martijn4313/MotoClock/tree/main/tools/README.md) and a host build of the kids screens), not photos of the device.*

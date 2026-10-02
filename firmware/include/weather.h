@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Weather Data Declarations
+// WeatherWise Bedside Display — Weather Data Declarations
 // Open-Meteo API fetch, ArduinoJson streaming filter, ride decision logic
 
 #ifndef WEATHER_H
