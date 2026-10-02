@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Device credentials
+// WeatherWise Bedside Display — Device credentials
 
 #include "security.h"
 

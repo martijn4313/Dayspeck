@@ -12,3 +12,4 @@ __pycache__/
 
 # OTA signing key (tools/ota_tool.py keygen)
 *.pem
+site/

@@ -1,4 +1,4 @@
-// MotoWeather — pure logic (no Arduino dependencies, unit tested natively with `pio test -e native`)
+// WeatherWise — pure logic (no Arduino dependencies, unit tested natively with `pio test -e native`)
 
 #ifndef MOTOLOGIC_H
 #define MOTOLOGIC_H

@@ -1,4 +1,4 @@
-# MotoClock update relay
+# WeatherWise update relay
 
 The ESP-01 has no room for TLS next to a second firmware image, and GitHub only serves HTTPS. This
 Cloudflare Worker fetches the latest GitHub Release and hands it to the device over plain HTTP.

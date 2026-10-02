@@ -1,4 +1,4 @@
-// MotoWeather — pure logic
+// WeatherWise — pure logic
 
 #include "motologic.h"
 #include <math.h>

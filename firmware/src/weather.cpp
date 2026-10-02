@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Weather Data Implementation
+// WeatherWise Bedside Display — Weather Data Implementation
 // Open-Meteo API fetch (single request, filtered stream parse), ride decision logic
 
 #include "weather.h"

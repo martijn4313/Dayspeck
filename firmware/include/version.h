@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Firmware version
+// WeatherWise Bedside Display — Firmware version
 #ifndef VERSION_H
 #define VERSION_H
 

@@ -1,9 +1,9 @@
-// MotoWeather Bedside Display — Embedded Web Server Implementation
+// WeatherWise Bedside Display — Embedded Web Server Implementation
 //
 // Security model:
 //  * every route requires the admin password (HTTP Basic auth, user "admin"); repeated failures
 //    lock the device out for a minute
-//  * state-changing routes must be POST and carry the per-boot token in the X-MotoClock header.
+//  * state-changing routes must be POST and carry the per-boot token in the X-WeatherWise header.
 //    The token can only be read by same-origin script (/api/token), which defeats cross-site
 //    request forgery against a browser that has cached the Basic credentials
 //  * OTA uploads live on /update-<token> behind the same password; with a key compiled in, every
@@ -121,7 +121,7 @@ static const char index_html[] PROGMEM = R"HTML(
 <html>
 <head>
     <meta charset="utf-8">
-    <title>MotoWeather Status</title>
+    <title>WeatherWise Status</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 1rem; }
@@ -139,7 +139,7 @@ static const char index_html[] PROGMEM = R"HTML(
 </head>
 <body>
     <div id="toast"></div>
-    <h1>MotoWeather</h1>
+    <h1>WeatherWise</h1>
     <div id="pwBanner" class="banner" style="display:none">
         This device still uses its default password (shown on the display during WiFi setup).
         Please set your own below.
@@ -308,7 +308,7 @@ static const char index_html[] PROGMEM = R"HTML(
         // POST helper: adds the token, resolves to {ok, status, message}
         function post(path, body) {
             return tokenReady
-                .then(() => fetch(path, { method: 'POST', headers: { 'X-MotoClock': csrf }, body: body }))
+                .then(() => fetch(path, { method: 'POST', headers: { 'X-WeatherWise': csrf }, body: body }))
                 .then(r => r.text().then(text => {
                     let message = '';
                     try { message = JSON.parse(text).message || ''; } catch (e) { /* not JSON */ }
@@ -579,7 +579,7 @@ static const char index_html[] PROGMEM = R"HTML(
             const feedback = document.getElementById('otaUploadFeedback');
             feedback.textContent = 'Uploading...';
             tokenReady
-                .then(() => fetch(otaPath, { method: 'POST', headers: { 'X-MotoClock': csrf }, body: new FormData(this) }))
+                .then(() => fetch(otaPath, { method: 'POST', headers: { 'X-WeatherWise': csrf }, body: new FormData(this) }))
                 .then(r => r.text().then(text => {
                     if (r.ok && !text.startsWith('Update error')) {
                         feedback.textContent = 'Update successful. The device restarts, reload the page in a few seconds.';
@@ -627,7 +627,7 @@ static bool authorized() {
         authLockUntilMs = now | 1;
         logMessage("Web UI locked for 60 s after repeated failed logins");
     }
-    server.requestAuthentication(BASIC_AUTH, "MotoClock");
+    server.requestAuthentication(BASIC_AUTH, "WeatherWise");
     return false;
 }
 
@@ -647,7 +647,7 @@ static ESP8266WebServer::THandlerFunction guardedPost(void (*handler)()) {
             sendMessage(405, "POST required");
             return;
         }
-        if (server.header("X-MotoClock") != csrfToken) {
+        if (server.header("X-WeatherWise") != csrfToken) {
             sendMessage(403, "Missing or invalid request token, reload the page");
             return;
         }
@@ -1193,7 +1193,7 @@ void initWebServer() {
     csrfToken = token;
     otaPath = "/update-" + csrfToken;
 
-    server.collectHeaders("X-MotoClock");
+    server.collectHeaders("X-WeatherWise");
 
     server.on("/", guarded(handleRoot));
     server.on("/api/token", guarded(handleApiToken));

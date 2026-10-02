@@ -1,4 +1,4 @@
-// MotoWeather Bedside Display — Pull updates (see ota.h and plans/ota_plan.md)
+// WeatherWise Bedside Display — Pull updates (see ota.h and plans/ota_plan.md)
 #include "ota.h"
 #include "config.h"
 #include "app_state.h"
