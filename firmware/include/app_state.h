@@ -78,6 +78,7 @@ extern int  quietStartHr;         // quiet hours: panel off from start (inclusiv
 extern int  quietEndHr;
 extern int  displayNightBrightness;   // percent (1-100) used at night when displayDimAtNight is set
 extern bool displayAlwaysSleep;   // panel stays off; a touch wakes it for 30 s
+extern String locationName;       // name of the manually chosen place (web UI search), may be empty
 extern String displayLanguage;    // kids variant words: "en" (default) or "nl"
 
 // WiFi credentials (config.json / web UI)

@@ -6,7 +6,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 |-----|---------|
 | `version` | config layout version (written automatically) |
 | `lat`, `lon` | location used for the forecast |
-| `manualLocation` | `true` once a city was picked in the web UI (then network locations are ignored) |
+| `locationName` | name of the place chosen in the web UI (display only) |
+| `manualLocation` | `true` once a location was set in the web UI (then network locations are ignored) |
 | `wifi.ssid`, `wifi.password` | WiFi credentials (the password is never sent back to the browser) |
 | `auth.password` | admin and setup-network password, 8–63 characters (set it in the web UI) |
 | `thresholds.maxRainMm` | rain over a ride window above which you should not ride |

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Render screenshots of the device's web UI for the manual (docs/images/webui-*.png).
 
-The page and the location list are read from firmware/src/webserver.cpp, so the screenshots always
-show the real UI. A small mock server answers the /api/* routes with demo data (no device needed).
+The page is read from firmware/src/webserver.cpp, so the screenshots always show the real UI. A small
+mock server answers the /api/* routes with demo data, and the place search (Open-Meteo geocoding) is
+answered with canned results, so no device and no internet are needed.
 
     pip install playwright pillow       # a Chromium is needed too, see --chromium
     python tools/webui_screenshots.py [--out docs/images] [--chromium /path/to/chrome]
@@ -28,7 +29,8 @@ def extract(name, source):
 
 STATUS = {
     "firmware": "0.2.0 (3f9c1ab)",
-    "lat": 52.3676, "lon": 4.9041, "locationSource": "Manual Selection",
+    "lat": 52.37, "lon": 4.89, "locationSource": "Manual Selection",
+    "locationName": "Amsterdam, Noord-Holland, Nederland",
     "thresholds": {"maxRainMm": 2.0, "maxWindKmh": 60, "minTempC": 5, "warnWindKmh": 40, "rainProbPct": 50},
     "display": {"previewHr": 18, "dimAtNight": True, "nightBrightness": 10, "sleepMinutes": 0,
                 "alwaysSleep": False, "language": "en", "quietStart": 23, "quietEnd": 6},
@@ -51,7 +53,17 @@ OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "rider", "keySet": Tru
        "size": 412000, "freeSpace": 700000, "error": ""}
 
 
-def make_handler(page, locations, default_password):
+GEOCODING = {"results": [
+    {"name": "Amsterdam", "latitude": 52.37403, "longitude": 4.88969, "country": "Nederland",
+     "admin1": "Noord-Holland", "admin2": "Gemeente Amsterdam"},
+    {"name": "Amsterdam", "latitude": 42.93869, "longitude": -74.18819, "country": "Verenigde Staten",
+     "admin1": "New York", "admin2": "Montgomery"},
+    {"name": "Nieuw Amsterdam", "latitude": 52.71667, "longitude": 6.85833, "country": "Nederland",
+     "admin1": "Drenthe", "admin2": "Emmen"},
+]}
+
+
+def make_handler(page, default_password):
     routes = {
         "/api/token": {"token": "demo", "otaPath": "/update/demo", "defaultPassword": default_password},
         "/api/status": STATUS, "/api/wifi/scan": SCAN, "/api/logs": LOGS, "/api/ota": OTA,
@@ -62,8 +74,6 @@ def make_handler(page, locations, default_password):
             path = self.path.split("?")[0]
             if path == "/":
                 body, kind = page.encode(), "text/html; charset=utf-8"
-            elif path == "/api/locations":
-                body, kind = locations.encode(), "application/json"
             elif path in routes:
                 body, kind = json.dumps(routes[path]).encode(), "application/json"
             else:
@@ -118,13 +128,16 @@ def main():
     from playwright.sync_api import sync_playwright
 
     source = SOURCE.read_text(encoding="utf-8")
-    html, locations = extract("index_html", source), extract("locationsJson", source)
+    html = extract("index_html", source)
 
-    # Cards in page order: 0 location, 1 manual location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
+    # Cards in page order: 0 location, 1 set location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
     # 5 thresholds, 6 display, 7 weather API, 8 password, 9 debug, 10 firmware update
-    def pick_city(p):
-        p.select_option("#countrySelect", "Netherlands")
-        p.select_option("#citySelect", "Amsterdam")
+    def search_place(p):
+        p.route("https://geocoding-api.open-meteo.com/**",
+                lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(GEOCODING)))
+        p.fill("#placeQuery", "Amsterdam")
+        p.click("#placeSearch button")
+        p.wait_for_selector("#placeResults button")
 
     def scan(p):
         p.click("#scanBtn")
@@ -136,7 +149,7 @@ def main():
 
     servers = []
     for default_password in (True, False):
-        srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(html, locations, default_password))
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(html, default_password))
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         servers.append(srv)
     base = [f"http://127.0.0.1:{s.server_port}/" for s in servers]
@@ -144,7 +157,7 @@ def main():
     with sync_playwright() as pw:
         kwargs = {"executable_path": args.chromium} if args.chromium else {}
         browser = pw.chromium.launch(**kwargs)
-        shoot(browser, base[0], out, "webui-location.png", 0, 1, pick_city)
+        shoot(browser, base[0], out, "webui-location.png", 0, 1, search_place)
         shoot(browser, base[1], out, "webui-wifi.png", 2, 4, scan)
         shoot(browser, base[1], out, "webui-settings.png", 5, 7)
         shoot(browser, base[1], out, "webui-update.png", 9, 10, logs)

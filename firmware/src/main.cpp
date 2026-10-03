@@ -50,6 +50,7 @@ int  quietStartHr = -1;
 int  quietEndHr = -1;
 bool displayAlwaysSleep = false;
 String displayLanguage = "en";
+String locationName;
 
 // WiFi configuration (loaded from config.json)
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
@@ -135,6 +136,7 @@ void loadConfig() {
         manualConfigPresent = true;
     }
     if (doc["manualLocation"].is<bool>()) manualLocation = doc["manualLocation"];
+    if (doc["locationName"].is<String>()) locationName = doc["locationName"].as<String>();
 
     // Config schema version (see CONFIG_VERSION in config.h)
     int version = doc["version"] | 0;
