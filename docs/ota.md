@@ -43,6 +43,21 @@ How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://gith
 Only tag versions you have tried on a device: the ESP8266 cannot roll back to the old firmware if
 a new one installs fine but then misbehaves (a serial flash fixes it).
 
+## Test builds
+
+To try a version before tagging it, use the test images that CI makes:
+
+- Every push to `main` builds `dayspeck-rider.bin.gz` and `dayspeck-kids.bin.gz`, signed with the same
+  `OTA_SIGNING_KEY` secret as a release. For any other branch, open *Actions → CI → Run workflow* on
+  GitHub and pick the branch.
+- Open the finished run and download the **ota-test-images** artifact (a zip, kept for 90 days, needs a
+  GitHub login). `BUILD.txt` in it names the version and commit.
+- Install the image that matches your device with [*Manual upload*](#manual-upload).
+
+Test images are not published: they are not in a release or the manifest, so devices never install
+them by themselves. Without the secret (in a fork, say) they are unsigned and only install on a build
+without a key.
+
 ## Manual upload
 
 The *Manual upload* form in the web UI takes a signed `dayspeck-rider.bin.gz` (or `-kids`) from a
