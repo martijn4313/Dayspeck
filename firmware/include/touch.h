@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Touch Input Declarations
+// Dayspeck Bedside Display — Touch Input Declarations
 // GPIO3 (RX pin) capacitive touch sensor handler
 
 #ifndef TOUCH_H

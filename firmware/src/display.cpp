@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Display Rendering Implementation
+// Dayspeck Bedside Display — Display Rendering Implementation
 // Composite rendering engine for SSD1306 128x64 OLED
 
 #include "display.h"

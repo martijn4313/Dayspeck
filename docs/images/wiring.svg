@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400" font-family="Helvetica, Arial, sans-serif" role="img" aria-labelledby="t d">
-  <title id="t">WeatherWise wiring diagram</title>
+  <title id="t">Dayspeck wiring diagram</title>
   <desc id="d">ESP-01 GPIO2 goes to the OLED SCL, GPIO0 to the OLED SDA, RX (GPIO3) to the touch sensor output. VCC and CH_PD go to 3.3 V, GND to ground.</desc>
   <rect x="1" y="1" width="758" height="398" rx="10" fill="#ffffff" stroke="#c8ccd0"/>
   <g fill="none" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">

@@ -1,4 +1,4 @@
-# WeatherWise
+# Dayspeck
 
 <p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
 
@@ -23,7 +23,7 @@ pio run -t uploadfs           # flash firmware/data (config.json) to the filesys
 pio test -e native            # host unit tests for the pure logic
 ```
 
-Then join the `WeatherWise` WiFi network the device opens and follow the
+Then join the `Dayspeck` WiFi network the device opens and follow the
 [first boot](https://martijn4313.github.io/WeatherWise/first-boot/) steps. Wiring, configuration,
 over-the-air updates and security notes are all in the manual.
 

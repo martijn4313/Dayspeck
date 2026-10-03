@@ -21,7 +21,7 @@
 - **Clock:** the time in large digits with a blinking colon, then the weekday and date, then the year.
   It needs the network time and the first weather update (which tells the device its time zone), and
   says "Time not set yet" until then.
-- **Web UI** at `http://weatherwise.local` (or the device IP): location, WiFi, thresholds, logs and
+- **Web UI** at `http://dayspeck.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
 
 The other screens, in order: the week grid, the next hours and the clock.

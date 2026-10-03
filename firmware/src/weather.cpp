@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Weather Data Implementation
+// Dayspeck Bedside Display — Weather Data Implementation
 // Open-Meteo API fetch (single request, filtered stream parse), ride decision logic
 
 #include "weather.h"

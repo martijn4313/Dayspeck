@@ -161,7 +161,7 @@ class BitmapEditorDialog(tk.Toplevel):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("WeatherWise Bitmap Tool")
+        self.title("Dayspeck Bitmap Tool")
         self.geometry("1100x660")
         self.resizable(False, False)
         self.configure(bg=BG_COLOR)
@@ -271,7 +271,7 @@ class App(tk.Tk):
             return
         filepath, funcname = self._procedural_functions[name]
         # Try to find the file relative to current directory
-        # Check if we're in the WeatherWise directory
+        # Check if we're in the Dayspeck directory
         base_dir = Path("..") if Path("../firmware").exists() else Path(".")
         full_path = base_dir / filepath
         if not full_path.exists():

@@ -41,13 +41,13 @@ STATUS = {
 SCAN = {"networks": [{"ssid": "HomeNet", "signalStrength": -58}, {"ssid": "OfficeWiFi", "signalStrength": -71},
                      {"ssid": "Neighbour-2G", "signalStrength": -84}]}
 LOGS = {"logs": ["[00:00:03] WiFi connected to HomeNet, 192.168.1.42",
-                 "[00:00:04] mDNS started: weatherwise.local",
+                 "[00:00:04] mDNS started: dayspeck.local",
                  "[00:00:06] Time synced (NTP)",
                  "[00:00:09] Weather updated: 14.2 C, wind 18 km/h",
                  "[00:15:00] Weather updated: 14.5 C, wind 17 km/h"]}
 OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "rider", "keySet": True,
-       "url": "http://weatherwise-ota.example.workers.dev", "autoCheck": True, "checkedMinutesAgo": 42,
-       "latest": "0.3.0", "notes": "Adds the web UI manual and the WeatherWise name.", "available": True,
+       "url": "http://dayspeck-ota.example.workers.dev", "autoCheck": True, "checkedMinutesAgo": 42,
+       "latest": "0.3.0", "notes": "Adds the web UI manual and the Dayspeck name.", "available": True,
        "size": 412000, "freeSpace": 700000, "error": ""}
 
 

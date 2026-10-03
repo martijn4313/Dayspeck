@@ -1,4 +1,4 @@
-// WeatherWise — pure logic
+// Dayspeck — pure logic
 
 #include "motologic.h"
 #include <math.h>

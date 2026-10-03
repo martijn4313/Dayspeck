@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Compile-time Configuration
+// Dayspeck Bedside Display — Compile-time Configuration
 // Edit these values before building
 
 #ifndef CONFIG_H

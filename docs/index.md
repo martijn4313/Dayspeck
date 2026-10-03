@@ -1,4 +1,4 @@
-# WeatherWise
+# Dayspeck
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
 

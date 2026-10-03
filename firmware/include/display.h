@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Display Rendering Declarations
+// Dayspeck Bedside Display — Display Rendering Declarations
 // Composite rendering engine for SSD1306 128x64 OLED
 
 #ifndef DISPLAY_H

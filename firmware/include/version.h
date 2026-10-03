@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Firmware version
+// Dayspeck Bedside Display — Firmware version
 #ifndef VERSION_H
 #define VERSION_H
 
