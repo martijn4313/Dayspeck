@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:   # "Run workflow" in the Actions tab: OTA test images of any branch
 
 jobs:
   firmware:
@@ -46,6 +47,43 @@ jobs:
           for env in esp01_1m esp01_1m_kids; do
             python tools/ota_tool.py check-size --in .pio/build/$env/firmware.bin --ldscript "$ld"
           done
+
+      # Installable images to try on a device before tagging a release (web UI: Firmware update ->
+      # Manual upload). Only for main and manual runs, so not every branch push gets a signed image.
+      # They are not published: devices never install them by themselves.
+      - name: OTA test images
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+        run: |
+          rider=.pio/build/esp01_1m/firmware.bin
+          kids=.pio/build/esp01_1m_kids/firmware.bin
+          mkdir -p ota-test
+          if [ -n "$OTA_SIGNING_KEY" ]; then
+            key="$RUNNER_TEMP/ota.pem"
+            trap 'rm -f "$key"' EXIT
+            printf '%s\n' "$OTA_SIGNING_KEY" > "$key"
+            python tools/ota_tool.py check-key --key "$key"
+            python tools/ota_tool.py sign --key "$key" --in "$rider" --out ota-test/dayspeck-rider.bin.gz
+            python tools/ota_tool.py sign --key "$key" --in "$kids" --out ota-test/dayspeck-kids.bin.gz
+            signed=signed
+          else
+            echo "::warning::OTA_SIGNING_KEY is not set: the test images are unsigned and only install on a build without a key"
+            gzip -9 -n -c "$rider" > ota-test/dayspeck-rider.bin.gz
+            gzip -9 -n -c "$kids" > ota-test/dayspeck-kids.bin.gz
+            signed=unsigned
+          fi
+          fw=$(sed -n 's/^#define FW_VERSION "\(.*\)"/\1/p' firmware/include/version.h)
+          printf 'Dayspeck %s, commit %s (%s), %s\nNot a release: install with Firmware update -> Manual upload.\n' \
+            "$fw" "${GITHUB_SHA::7}" "$GITHUB_REF_NAME" "$signed" > ota-test/BUILD.txt
+          cat ota-test/BUILD.txt
+
+      - name: Upload OTA test images
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-test-images
+          path: ota-test/
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4

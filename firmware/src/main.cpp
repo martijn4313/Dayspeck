@@ -345,7 +345,8 @@ void renderKids() {
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
-    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, state.displayMode == 1);
+    // The weather is the main screen; a tap shows the clothes (and they go back by themselves after 30 s)
+    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, state.displayMode == 0);
 }
 #endif
 
@@ -499,7 +500,7 @@ void handleTouch() {
     }
 
 #ifdef KIDS_MODE
-    // Kids variant: a tap (or long press) switches between the clothes and the weather picture
+    // Kids variant: a tap (or long press) switches between the weather (main screen) and the clothes
     if (event != TOUCH_NONE) {
         state.displayMode = state.displayMode == 0 ? 1 : 0;
         state.weeklyEnteredMs = millis();
