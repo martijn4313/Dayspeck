@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Pull updates (see ota.h and plans/ota_plan.md)
+// Dayspeck Bedside Display — Pull updates (see ota.h and plans/ota_plan.md)
 #include "ota.h"
 #include "config.h"
 #include "app_state.h"

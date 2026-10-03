@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Pull updates from the release relay (see plans/ota_plan.md)
+// Dayspeck Bedside Display — Pull updates from the release relay (see plans/ota_plan.md)
 //
 // The device fetches <server>/ota-manifest.txt once a day, and on request installs the signed,
 // gzip-compressed image it names. Transport is plain HTTP; trust comes from RSA signatures that

@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Device credentials
+// Dayspeck Bedside Display — Device credentials
 
 #include "security.h"
 

@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Shared Application State
+// Dayspeck Bedside Display — Shared Application State
 // Single definition of the types and globals shared between main, weather and webserver.
 
 #ifndef APP_STATE_H

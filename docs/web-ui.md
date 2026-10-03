@@ -1,7 +1,7 @@
 # Web UI
 
 Everything about the device is set in its web page: location, WiFi, the ride thresholds, the display
-options and firmware updates. Open `http://weatherwise.local` (or the device's IP address) in a browser
+options and firmware updates. Open `http://dayspeck.local` (or the device's IP address) in a browser
 on the same network.
 
 The page asks for a login: user **`admin`** and your admin password. Until you set your own, the
@@ -91,7 +91,7 @@ you sign in again with the new password.
 ![Debug info with the verbose log open, and the firmware update card offering version 0.3.0](images/webui-update.png){ .center }
 
 - **Debug Info** shows the firmware version, whether the weather data is valid, how old it is and
-  whether mDNS (the `weatherwise.local` name) started. *Show Verbose Logs* prints the device log in
+  whether mDNS (the `dayspeck.local` name) started. *Show Verbose Logs* prints the device log in
   the page. The device has no serial output because the touch sensor uses the RX pin, so this is
   where to look when something does not work.
 - **Firmware Update**: *Check now* asks the update server for the latest release. When a newer one is

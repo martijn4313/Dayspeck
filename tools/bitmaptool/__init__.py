@@ -1,1 +1,1 @@
-"""WeatherWise bitmap tool: PNG to PROGMEM converter and SSD1306 OLED simulator."""
+"""Dayspeck bitmap tool: PNG to PROGMEM converter and SSD1306 OLED simulator."""

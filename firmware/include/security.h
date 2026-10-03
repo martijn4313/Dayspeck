@@ -1,4 +1,4 @@
-// WeatherWise Bedside Display — Device credentials
+// Dayspeck Bedside Display — Device credentials
 // One per-device password protects the setup access point and the web UI / OTA updates.
 
 #ifndef SECURITY_H
