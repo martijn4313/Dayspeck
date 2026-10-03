@@ -152,6 +152,13 @@ class OLEDCanvas:
                 if val:
                     self.set_pixel(x + col_idx, y + row_idx, True)
 
+    def blit_xor(self, x: int, y: int, bitmap: list[list[bool]]):
+        """Toggle the pixels of a 2D bool array (the firmware's SSD1306_INVERSE): visible on dark and on lit areas."""
+        for row_idx, row in enumerate(bitmap):
+            for col_idx, val in enumerate(row):
+                if val:
+                    self.set_pixel(x + col_idx, y + row_idx, not self.get_pixel(x + col_idx, y + row_idx))
+
     def to_image(self, scale: int = DEFAULT_SCALE, on: str = None, off: str = None) -> Image.Image:
         """Render to a Pillow RGB image (no Tk needed). Colours default to the current theme."""
         from . import theme

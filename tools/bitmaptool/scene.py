@@ -2,6 +2,7 @@
 
 The drawing order and geometry mirror firmware/src/display.cpp (renderPrimaryView,
 renderSkylineCard, renderBottomCard, renderWeeklyMatrix) so the preview matches the device.
+The rain and wind animations advance one step every time a scene is composed.
 """
 
 from dataclasses import dataclass, field
@@ -12,6 +13,7 @@ from .canvas import OLEDCanvas
 from .constants import *  # noqa: F403
 from .procedural import Procedural
 from .rain import RainAnimation
+from .wind import WindAnimation
 
 # View modes
 VIEW_TODAY = "today"      # Current day with giant badge
@@ -44,7 +46,8 @@ def demo_hours() -> list:
 @dataclass
 class SceneState:
     badge_type: str = "check"   # "check", "warn", "x" or "" (unknown: ring only)
-    skyline_bmp: Optional[list[list[bool]]] = None
+    scene_day_bmp: Optional[list[list[bool]]] = None     # 64x50 village by day
+    scene_night_bmp: Optional[list[list[bool]]] = None   # the same with the street lamp lit
     extra_bmps: list = field(default_factory=list)
     # Sun/moon icons
     sun_bmp: Optional[list[list[bool]]] = None
@@ -62,6 +65,12 @@ class SceneState:
     arrow_r_bmp: Optional[list[list[bool]]] = None
     trend: str = "flat"         # "up", "down", or "flat"
     seed: int = 42
+    # Wind animation: leaf sprites, the season, and the animation state
+    leaf_bmps: list = field(default_factory=list)       # 4 sprites: the leaf tumbles through them
+    autumn: bool = False                                # leaves blow when it is autumn and windy enough
+    wind_gusts: list = field(default_factory=list)      # List[Gust]
+    wind_leaves: list = field(default_factory=list)     # List[Leaf]
+    _wind_rng: Optional[random.Random] = field(default=None, repr=False, compare=False)
     view_mode: str = VIEW_TODAY
     # Weekly forecast data (7 values, each "check", "warn", "x" or "" for unknown)
     week_am: list = field(default_factory=lambda: ["check", "check", "warn", "x", "check", "warn", ""])
@@ -94,7 +103,7 @@ class SceneState:
     splash_sprites: list = field(default_factory=list)  # List of 2D bool arrays (splash variants)
     _rain_rng: Optional[random.Random] = field(default=None, repr=False, compare=False)
     show_horizon: bool = False            # Simulator aid: draw the virtual horizon line (not in firmware)
-    horizon_y: int = 41                   # Adjustable horizon line position (0-63)
+    horizon_y: int = 46                   # Adjustable horizon line position (0-63)
     rain_intensity_mmh: float = 5.0       # Rain intensity in mm/h (controls number of drops)
     rain_fps: int = 15                    # Rain animation FPS
 
@@ -118,22 +127,26 @@ class SceneComposer:
     # ── Today view ──────────────────────────────────────────────────────────
 
     @staticmethod
+    def leaves_blowing(state: SceneState) -> bool:
+        """Mirror of leavesBlowing() in motologic: autumn, no rain or snow, and enough wind."""
+        return state.autumn and state.weather in ("clear", "wind") and state.wind_speed >= LEAF_MIN_WIND_KMH
+
+    @staticmethod
     def _compose_today_view(canvas: OLEDCanvas, state: SceneState):
-        """renderPrimaryView: badge, divider, skyline card, divider, bottom card."""
+        """renderPrimaryView: badge, divider, scene card, then the wind and precipitation text."""
         Procedural.draw_giant_badge(canvas, state.badge_type)
         for y in range(64):
             canvas.set_pixel(64, y)              # vertical divider (drawLine(64, 0, 64, 63))
 
         SceneComposer._compose_skyline_card(canvas, state)
-
-        canvas.draw_hline(64, 41, 64)            # horizontal divider (drawLine(64, 41, 127, 41))
         SceneComposer._compose_bottom_card(canvas, state)
 
     @staticmethod
     def _compose_skyline_card(canvas: OLEDCanvas, state: SceneState):
-        """renderSkylineCard."""
-        if state.skyline_bmp:
-            canvas.blit(SKYLINE_X, SKYLINE_Y, state.skyline_bmp)
+        """renderSkylineCard: the village scene with sun or moon, weather effects and the temperature."""
+        scene = state.scene_night_bmp if state.night and state.scene_night_bmp else state.scene_day_bmp
+        if scene:
+            canvas.blit(SCENE_X, SCENE_Y, scene)
         for x, y, bmp in state.extra_bmps:
             canvas.blit(x, y, bmp)
 
@@ -148,6 +161,8 @@ class SceneComposer:
         elif state.sun_bmp:
             canvas.blit(SUN_X, SUN_Y, state.sun_bmp)
 
+        gusts_on = state.weather == "wind"
+        leaves_on = SceneComposer.leaves_blowing(state)
         if state.weather == "rain":
             if state.use_sprite_rain:
                 # Ensure rain animation state is initialised
@@ -168,6 +183,13 @@ class SceneComposer:
                 Procedural.draw_procedural_rain(canvas, state.intensity)
         elif state.weather == "snow":
             Procedural.draw_procedural_snow(canvas, state.intensity, state.seed)
+        elif gusts_on or leaves_on:
+            if not state.wind_gusts:
+                state.wind_gusts, state.wind_leaves = WindAnimation.init()
+            state._wind_rng = state._wind_rng or random.Random(state.seed)
+            WindAnimation.update(state.wind_gusts, state.wind_leaves, state._wind_rng, state.wind_speed,
+                                 gusts_on, leaves_on)
+            WindAnimation.draw(canvas, state.wind_gusts, state.wind_leaves, state.leaf_bmps)
 
         # Temperature on a black box (fillRect(TEMP_X - 1, TEMP_Y - 1, 26, 10, BLACK)), then the trend arrow
         canvas.fill_rect(TEMP_X - 1, TEMP_Y - 1, 26, 10, on=False)
@@ -179,43 +201,9 @@ class SceneComposer:
 
     @staticmethod
     def _compose_bottom_card(canvas: OLEDCanvas, state: SceneState):
-        """renderBottomCard: procedural weather icon, wind speed and precipitation text."""
-        ix, iy = 66, 44
-        if state.weather in ("rain", "snow"):
-            canvas.fill_disc(ix + 7, iy + 8, 5)
-            canvas.fill_disc(ix + 14, iy + 5, 6)
-            canvas.fill_disc(ix + 20, iy + 9, 4)
-            canvas.fill_rect(ix + 7, iy + 8, 14, 5)
-            for i in range(3):
-                x = ix + 6 + i * 7
-                if state.weather == "rain":
-                    canvas.draw_line(x + 1, iy + 15, x - 1, iy + 19)
-                else:
-                    canvas.set_pixel(x, iy + 16)
-                    canvas.set_pixel(x - 1, iy + 18)
-        elif state.weather == "wind":
-            # Three gusts of different lengths, each ending in a curl
-            for dy, length, r in ((6, 14, 3), (12, 20, 2), (18, 12, 2)):
-                y = iy + dy
-                canvas.draw_hline(ix, y, length)
-                canvas.draw_circle_helper(ix + length, y - r, r, 2 | 4)
-        elif state.night:
-            # Clear night: crescent moon (a disc with a second disc cut out) and three stars
-            cx, cy = ix + 10, iy + 10
-            canvas.fill_disc(cx, cy, 8)
-            canvas.fill_disc(cx + 5, cy - 3, 7, on=False)
-            for sx, sy in ((18, 4), (21, 11), (3, 1)):    # stars
-                canvas.set_pixel(ix + sx, iy + sy)
-        else:
-            cx, cy = ix + 11, iy + 9
-            canvas.fill_disc(cx, cy, 4)
-            dx = (1, 1, 0, -1, -1, -1, 0, 1)
-            dy = (0, 1, 1, 1, 0, -1, -1, -1)
-            for a in range(8):
-                canvas.draw_line(cx + dx[a] * 6, cy + dy[a] * 6, cx + dx[a] * 8, cy + dy[a] * 8)
-
-        canvas.draw_text(93, 46, f"{state.wind_speed}km/h")
-        canvas.draw_text(93, 55, f"{state.precip_mm:.1f}mm")
+        """renderBottomCard: wind speed and precipitation as text on the street band of the scene."""
+        canvas.draw_text(WIND_TEXT_X, WIND_TEXT_Y, f"{state.wind_speed}km/h")
+        canvas.draw_text(WIND_TEXT_X, PRECIP_TEXT_Y, f"{state.precip_mm:.1f}mm")
 
     # ── Weekly view ─────────────────────────────────────────────────────────
 

@@ -5,6 +5,10 @@ from pathlib import Path
 
 
 from bitmaptool.canvas import OLEDCanvas
+from bitmaptool.constants import (
+    LEAF_MAX_Y, PRECIP_TEXT_Y, SCENE_H, SCENE_W, SCENE_X, SCENE_Y, WIND_AREA_X_END, WIND_AREA_X_START,
+    WIND_AREA_Y_SPAN, WIND_AREA_Y_TOP, WIND_TEXT_X, WIND_TEXT_Y,
+)
 from bitmaptool.scene import SceneComposer, SceneState, VIEW_HOURLY, VIEW_WEEKLY
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,10 +25,10 @@ def lit(canvas, x0, y0, x1, y1) -> int:
     return sum(canvas.pixels[y][x] for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
 
 
-def test_dividers_are_drawn():
+def test_divider_is_drawn_and_the_scene_has_no_inner_divider():
     c = render()
     assert all(c.pixels[y][64] for y in range(10, 64))   # vertical (top rows are covered by the temperature box)
-    assert all(c.pixels[41][x] for x in range(65, 128))  # horizontal
+    assert not all(c.pixels[41][x] for x in range(65, 128))   # the old card divider is gone
 
 
 def test_badge_types_differ_and_unknown_is_ring_only():
@@ -40,35 +44,115 @@ def test_temperature_text_uses_the_5x7_font():
     assert lit(render(temp_str=""), 65, 1, 82, 8) == 0
 
 
-def test_bottom_card_shows_wind_and_rain_text():
+def test_street_band_shows_wind_and_rain_text():
     c = render(wind_speed=12, precip_mm=1.5)
-    assert lit(c, 93, 46, 127, 53) > 20 and lit(c, 93, 55, 127, 62) > 20
+    assert lit(c, WIND_TEXT_X, WIND_TEXT_Y, 127, WIND_TEXT_Y + 6) > 20
+    assert lit(c, WIND_TEXT_X, PRECIP_TEXT_Y, 127, PRECIP_TEXT_Y + 6) > 20
 
 
-def test_weather_icons_differ():
-    icons = {w: render(weather=w, wind_speed=30) for w in ("clear", "rain", "snow", "wind")}
-    areas = [lit(c, 66, 44, 90, 63) for c in icons.values()]
-    assert len(set(areas)) == 4
+def test_scene_is_blitted_below_the_temperature_row():
+    scene = [[True] * SCENE_W for _ in range(SCENE_H)]
+    c = render(scene_day_bmp=scene)
+    assert lit(c, 64, SCENE_Y, 127, SCENE_Y + SCENE_H - 1) > SCENE_W * (SCENE_H - 8)
+    assert lit(c, 66, 0, 127, SCENE_Y - 1) < 80          # only temperature, arrow and sun/moon strip
 
 
-def test_wind_draws_no_effect_in_the_sky():
-    windy = render(weather="wind", wind_speed=52)
-    calm = render(weather="clear", wind_speed=52)
-    assert lit(windy, 64, 0, 127, 40) == lit(calm, 64, 0, 127, 40)    # skyline card identical
+def test_night_uses_the_night_scene_and_stars_stay_above_it():
+    day = [[False] * SCENE_W for _ in range(SCENE_H)]
+    night = [[False] * SCENE_W for _ in range(SCENE_H)]
+    night[5][5] = True
+    c_night = render(night=True, scene_day_bmp=day, scene_night_bmp=night)
+    assert c_night.pixels[SCENE_Y + 5][SCENE_X + 5]
+    assert not render(night=False, scene_day_bmp=day, scene_night_bmp=night).pixels[SCENE_Y + 5][SCENE_X + 5]
+    # the four stars sit in the strip above the scene, so the only lit pixel inside it is the art's own
+    assert lit(c_night, 65, SCENE_Y, 127, WIND_TEXT_Y - 1) == 1
+    assert lit(c_night, 65, 0, 127, SCENE_Y - 1) >= 1
 
 
-def test_wind_icon_has_three_curled_gusts_and_leaves_room_for_the_text():
-    icon = render(weather="wind", wind_speed=52)
-    assert lit(icon, 66, 44, 88, 63) > 50
-    assert lit(icon, 89, 44, 92, 63) == 0                      # gap before the "km/h" text at x=93
-    for y in (50, 56, 62):                                       # one long line per gust
-        assert sum(icon.pixels[y][x] for x in range(66, 80)) >= 12
+def run_frames(frames, **kwargs):
+    state = SceneState(**kwargs)
+    canvas = OLEDCanvas()
+    seen = []
+    for _ in range(frames):
+        SceneComposer.compose(canvas, state)
+        seen.append([row[:] for row in canvas.pixels])
+    return state, seen
+
+
+def test_wind_without_leaves_animates_gusts_only():
+    state, frames = run_frames(60, weather="wind", wind_speed=52)
+    assert any(g.active for g in state.wind_gusts) or any(lit_pixels(f) for f in frames)
+    assert not any(leaf.active for leaf in state.wind_leaves)
+    assert frames[0] != frames[-1]
+
+
+def lit_pixels(pixels):
+    return sum(sum(row[65:]) for row in pixels[10:46])
+
+
+def test_clear_calm_day_has_no_wind_animation():
+    state, frames = run_frames(40, weather="clear", wind_speed=10, autumn=True)
+    assert state.wind_gusts == [] and state.wind_leaves == []
+    assert frames[0] == frames[-1]
+
+
+def leaves_ever_active(**kwargs) -> bool:
+    state = SceneState(**kwargs)
+    canvas = OLEDCanvas()
+    for _ in range(120):
+        SceneComposer.compose(canvas, state)
+        if any(leaf.active for leaf in state.wind_leaves):
+            return True
+    return False
+
+
+def test_autumn_leaves_blow_from_20_kmh_without_a_windy_condition():
+    sprites = [[[True] * 5 for _ in range(5)]] * 4
+    assert leaves_ever_active(weather="clear", wind_speed=30, autumn=True, leaf_bmps=sprites)
+    assert leaves_ever_active(weather="wind", wind_speed=52, autumn=True, leaf_bmps=sprites)
+    # not in autumn, too little wind, or rain and snow: no leaves
+    assert not leaves_ever_active(weather="clear", wind_speed=30, autumn=False, leaf_bmps=sprites)
+    assert not leaves_ever_active(weather="clear", wind_speed=15, autumn=True, leaf_bmps=sprites)
+    assert not leaves_ever_active(weather="snow", wind_speed=30, autumn=True, leaf_bmps=sprites)
+    assert not leaves_ever_active(weather="rain", wind_speed=30, autumn=True, leaf_bmps=sprites)
+
+
+def test_wind_animation_never_touches_the_left_half():
+    leaf = [[True] * 5 for _ in range(5)]
+    _, frames = run_frames(200, weather="wind", wind_speed=70, autumn=True, leaf_bmps=[leaf] * 4)
+    plain = render(badge_type="check", weather="clear", wind_speed=70)
+    for f in frames:
+        for y in range(64):
+            assert f[y][:64] == plain.pixels[y][:64]
+
+
+def test_gusts_and_leaves_stay_in_their_area_and_move_right():
+    from bitmaptool.wind import WindAnimation, target_gusts, target_leaves
+    import random
+    gusts, leaves = WindAnimation.init()
+    rng = random.Random(1)
+    for _ in range(300):
+        WindAnimation.update(gusts, leaves, rng, 65, True, True)
+        for g in gusts:
+            if g.active:
+                assert WIND_AREA_Y_TOP <= g.y < WIND_AREA_Y_TOP + WIND_AREA_Y_SPAN
+                assert 8 <= g.length <= 16 and g.speed >= 2
+        for f in leaves:
+            if f.active:
+                assert WIND_AREA_X_START <= f.x <= WIND_AREA_X_END + 4
+                assert f.y_base <= LEAF_MAX_Y + 1
+    assert (target_gusts(40), target_gusts(50), target_gusts(65)) == (1, 2, 3)
+    assert (target_leaves(20), target_leaves(35), target_leaves(50), target_leaves(120)) == (2, 3, 4, 4)
+
+
+def test_wind_animation_is_deterministic_for_a_seed():
+    a, fa = run_frames(50, weather="wind", wind_speed=52, autumn=True, seed=3)
+    b, fb = run_frames(50, weather="wind", wind_speed=52, autumn=True, seed=3)
+    assert fa == fb
 
 
 def test_night_overlay_is_deterministic_like_the_firmware():
     assert render(night=True).pixels == render(night=True).pixels
-    # streetlight glow
-    assert render(night=True).pixels[32][120]
 
 
 def test_weekly_view_marks_today_and_rows():
@@ -170,25 +254,56 @@ def test_rain_sprites_are_in_the_header_and_used():
     assert lit(c, 97, 37, 103, 40) == sum(map(sum, splashes[1]))            # splash sprite 2 centred on x=100
 
 
-def test_rain_lands_above_the_card_divider():
-    """Splashes used to land up to 9 px below the horizon, i.e. inside the bottom card, over its text."""
+def test_rain_lands_on_the_pavement_above_the_text():
+    """Splashes land at the pavement edge of the scene, never down in the street band with the text."""
     from bitmaptool.rain import RainAnimation
+    from bitmaptool.constants import HORIZON_Y
     import random
-    drops, splashes = RainAnimation.init_rain_animation(7, 41)
-    assert all(38 <= d.target_y <= 41 for d in drops)
+    drops, splashes = RainAnimation.init_rain_animation(7, HORIZON_Y)
+    assert all(HORIZON_Y - 3 <= d.target_y <= HORIZON_Y for d in drops)
     rng = random.Random(3)
     for _ in range(200):
-        RainAnimation.update(drops, splashes, rng, 41, 4, 10, 8.0)
-    assert all(38 <= s.y <= 41 for s in splashes if s.active) and all(38 <= d.target_y <= 41 for d in drops)
+        RainAnimation.update(drops, splashes, rng, HORIZON_Y, 4, 10, 8.0)
+    assert all(HORIZON_Y - 3 <= s.y <= HORIZON_Y for s in splashes if s.active)
+    assert all(HORIZON_Y - 3 <= d.target_y <= HORIZON_Y for d in drops)
+    assert HORIZON_Y < WIND_TEXT_Y
 
 
-def test_clear_night_shows_a_moon_not_a_sun_in_the_bottom_card():
-    day, night = render(weather="clear"), render(weather="clear", night=True)
-    assert lit(day, 66, 44, 90, 63) != lit(night, 66, 44, 90, 63)
-    # a crescent: the left half is solid, the right half is mostly cut away
-    left, right = lit(night, 68, 46, 76, 62), lit(night, 77, 46, 85, 62)
-    assert left > 2 * right
-    # no sun rays: the sun's top ray sits at (77, 45)-(77, 46)
-    assert not night.pixels[45][77]
-    # rain and snow keep their cloud at night
-    assert lit(render(weather="rain", night=True), 66, 44, 90, 63) == lit(render(weather="rain"), 66, 44, 90, 63)
+def test_kids_leaves_blow_across_the_whole_screen():
+    from bitmaptool.wind import KIDS_AREA, WindAnimation
+    import random
+    gusts, leaves = WindAnimation.init()
+    rng = random.Random(5)
+    canvas = OLEDCanvas()
+    sprites = [[[True] * 5 for _ in range(5)]] * 4
+    left_half_seen = False
+    for _ in range(300):
+        WindAnimation.update(gusts, leaves, rng, 40, False, True, KIDS_AREA)
+        assert not any(g.active for g in gusts)                  # the kids screens have no gusts
+        canvas.clear()
+        WindAnimation.draw(canvas, gusts, leaves, sprites, KIDS_AREA)
+        left_half_seen = left_half_seen or lit(canvas, 0, 0, 63, 63) > 0
+        for f in leaves:
+            if f.active:
+                assert -4 <= f.x <= 127 + 4 and 3 <= f.y_base <= KIDS_AREA.leaf_max_y + 1
+    assert left_half_seen
+
+
+def test_kids_leaves_invert_what_they_cross_and_keep_clear_of_the_digits():
+    from bitmaptool.wind import KIDS_AREA, WindAnimation
+    import random
+    leaf = [[True] * 5 for _ in range(5)]
+    gusts, leaves = WindAnimation.init()
+    rng = random.Random(2)
+    canvas = OLEDCanvas()
+    base = [[(x + y) % 2 == 0 for x in range(128)] for y in range(64)]
+    for _ in range(200):
+        WindAnimation.update(gusts, leaves, rng, 40, False, True, KIDS_AREA)
+        canvas.pixels = [row[:] for row in base]
+        WindAnimation.draw(canvas, gusts, leaves, [leaf] * 4, KIDS_AREA)
+        for y in range(46, 64):                                   # the digits' rows are never touched
+            assert canvas.pixels[y] == base[y]
+    # a leaf over a lit area shows as dark pixels: the picture is not erased around it
+    canvas.pixels = [[True] * 128 for _ in range(64)]
+    canvas.blit_xor(10, 10, leaf)
+    assert not canvas.pixels[12][12] and canvas.pixels[12][16] and canvas.pixels[9][12]

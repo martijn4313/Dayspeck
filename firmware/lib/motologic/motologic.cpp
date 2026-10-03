@@ -230,6 +230,23 @@ char temperatureTrend(float now, float later) {
     return 'f';
 }
 
+bool isAutumn(int month, bool southern) {
+    return southern ? (month >= 3 && month <= 5) : (month >= 9 && month <= 11);
+}
+
+bool leavesBlowing(bool autumn, int condition, float windKmh) {
+    if (!autumn || isnan(windKmh)) return false;
+    if (condition != WEATHER_CLEAR && condition != WEATHER_WIND) return false;
+    return windKmh >= LEAF_MIN_WIND_KMH;
+}
+
+bool kidsLeavesBlowing(bool autumn, int kidsWeather, float windKmh) {
+    if (!autumn || isnan(windKmh)) return false;
+    bool dry = kidsWeather == KIDS_WEATHER_CLEAR || kidsWeather == KIDS_WEATHER_PARTLY ||
+               kidsWeather == KIDS_WEATHER_CLOUDY || kidsWeather == KIDS_WEATHER_WIND;
+    return dry && windKmh >= LEAF_MIN_WIND_KMH;
+}
+
 bool isNightAt(long now, long sunrise, long sunset) {
     long days = (now >= sunrise) ? (now - sunrise) / 86400 : 0;
     long rise = sunrise + days * 86400;

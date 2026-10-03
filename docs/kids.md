@@ -42,11 +42,19 @@ The symbol under the arrow says when "later" is:
 **Weather screen:** the same split, with a big picture (sun or moon, partly cloudy, cloud, rain,
 thunderstorm, snow, wind) and the temperature on each side: a number to read, no unit.
 
+**Autumn leaves.** In autumn leaves blow across both screens when the wind is up (gusts from 20 km/h on,
+and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
+numbers, and show as inverted dots so the pictures stay readable. Autumn is September to November, and
+March to May in the southern hemisphere; it needs the network time, so the leaves appear once the clock is
+synced.
+
+![An animation of the kids weather screen with autumn leaves blowing across it](images/kids-wind.gif){ .center }
+
 **Settings** (web UI, *Display*): *Always sleep*: the screen stays off and a touch wakes it for 30 s
 (the first touch only wakes it). It also works in the normal build. *Language* has no visible effect
 since the screens no longer show words. The temperature limits, the 6 hour window, the look-ahead and
 the evening switch are compile-time settings (`KIDS_*` in `firmware/include/config.h`). The rain
-animation and the `OLD` tag are left out in this build; WiFi, location, the web UI and OTA work as
+animation and the `OLD` tag are left out in this build (the autumn leaves are not); WiFi, location, the web UI and OTA work as
 before.
 
 ```sh
