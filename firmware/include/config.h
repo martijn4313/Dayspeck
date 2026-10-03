@@ -50,7 +50,8 @@
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
 // Kids variant (build the esp01_1m_kids environment, -DKIDS_MODE): instead of the ride rating the display
-// shows what to wear now and later. Outfits by temperature (C), from warm to cold. These are the defaults:
+// shows what to wear and the weather for the next parts of the day. Outfits by temperature (C), from warm
+// to cold. These are the defaults:
 // config.json ("kids") and the web UI ("Clothing") override them.
 #define KIDS_HOT_FROM_C        25   // sun cap, t-shirt and shorts (sunny daytime only)
 #define KIDS_SHORTS_FROM_C     20   // t-shirt and shorts
@@ -59,13 +60,8 @@
 #define KIDS_FREEZE_BELOW_C     0   // winter coat, hat, scarf and mittens
 #define KIDS_WINDY_GUST_KMH    50   // gusts above this show the wind picture
 // Rain or a storm gives the rain coat and boots (above KIDS_COAT_BELOW_C), snow the full winter outfit.
-// "Later": the next KIDS_WINDOW_HOURS, unless something big happens in the hours up to
-// KIDS_LOOKAHEAD_HOURS. From KIDS_TOMORROW_FROM_HR until 05:00 it is tomorrow morning instead,
-// KIDS_MORNING_HR onwards.
-#define KIDS_WINDOW_HOURS       6
-#define KIDS_LOOKAHEAD_HOURS   12
-#define KIDS_TOMORROW_FROM_HR  18
-#define KIDS_MORNING_HR         7
+// The screens show the next three parts of the day: morning 07-12, afternoon 12-18, evening 18-22
+// (KIDS_*_HR in firmware/lib/motologic/motologic.h).
 
 // Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
 // config.json "display.nightBrightness")

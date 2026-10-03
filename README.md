@@ -1,13 +1,13 @@
 # Dayspeck
 
-<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, a village and the weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
+<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, a village and the weather) next to the kids screen (an autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening)" width="640"></p>
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
 It comes in two flavours, built from the same code:
 
 - **Rider** (default): answers one question at a glance, **can I ride today?**
 - **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I
-  wear today?** with pictures and numbers.
+  wear today?** with pictures and numbers, for the morning, afternoon and evening.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
