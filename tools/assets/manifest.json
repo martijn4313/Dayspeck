@@ -6,9 +6,13 @@
       "png": "sun.png",
       "header": "sun  10x10 sun with rays"
     },
-    "skyline_base": {
-      "png": "skyline_base.png",
-      "header": "skyline_base  64x30"
+    "scene_day": {
+      "png": "scene_day.png",
+      "header": "scene_day  64x50 village by day (clean street: text sits on it)"
+    },
+    "scene_night": {
+      "png": "scene_night.png",
+      "header": "scene_night  64x50 the same village with the street lamp lit"
     },
     "moon": {
       "png": "moon.png",
@@ -57,6 +61,22 @@
     "splash_4": {
       "png": "splash_4.png",
       "comment": "droplets"
+    },
+    "leaf_1": {
+      "png": "leaf_1.png",
+      "comment": "leaf tip up-right"
+    },
+    "leaf_2": {
+      "png": "leaf_2.png",
+      "comment": "leaf lying flat"
+    },
+    "leaf_3": {
+      "png": "leaf_3.png",
+      "comment": "leaf tip up-left"
+    },
+    "leaf_4": {
+      "png": "leaf_4.png",
+      "comment": "leaf on its end"
     }
   }
 }

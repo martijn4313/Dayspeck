@@ -135,6 +135,43 @@ void test_wind_overrides_only_dry_weather() {
     TEST_ASSERT_EQUAL(WEATHER_RAIN, mapWeatherCode(61, 30, 25));
 }
 
+void test_autumn_follows_the_hemisphere() {
+    TEST_ASSERT_FALSE(isAutumn(8, false));
+    TEST_ASSERT_TRUE(isAutumn(9, false));
+    TEST_ASSERT_TRUE(isAutumn(11, false));
+    TEST_ASSERT_FALSE(isAutumn(12, false));
+    TEST_ASSERT_FALSE(isAutumn(4, false));
+    // south: the seasons are swapped
+    TEST_ASSERT_FALSE(isAutumn(2, true));
+    TEST_ASSERT_TRUE(isAutumn(3, true));
+    TEST_ASSERT_TRUE(isAutumn(5, true));
+    TEST_ASSERT_FALSE(isAutumn(6, true));
+    TEST_ASSERT_FALSE(isAutumn(10, true));
+}
+
+void test_leaves_blow_in_autumn_wind_only() {
+    TEST_ASSERT_TRUE(leavesBlowing(true, WEATHER_CLEAR, 20.0f));       // from 20 km/h on, windy day or not
+    TEST_ASSERT_TRUE(leavesBlowing(true, WEATHER_WIND, 55.0f));
+    TEST_ASSERT_FALSE(leavesBlowing(true, WEATHER_CLEAR, 19.9f));
+    TEST_ASSERT_FALSE(leavesBlowing(false, WEATHER_WIND, 55.0f));      // not autumn
+    TEST_ASSERT_FALSE(leavesBlowing(true, WEATHER_RAIN, 55.0f));       // rain and snow keep them down
+    TEST_ASSERT_FALSE(leavesBlowing(true, WEATHER_SNOW, 55.0f));
+    TEST_ASSERT_FALSE(leavesBlowing(true, WEATHER_CLEAR, NAN));
+}
+
+void test_kids_leaves_blow_in_dry_autumn_wind_only() {
+    TEST_ASSERT_TRUE(kidsLeavesBlowing(true, KIDS_WEATHER_CLEAR, 20.0f));
+    TEST_ASSERT_TRUE(kidsLeavesBlowing(true, KIDS_WEATHER_PARTLY, 30.0f));
+    TEST_ASSERT_TRUE(kidsLeavesBlowing(true, KIDS_WEATHER_CLOUDY, 30.0f));
+    TEST_ASSERT_TRUE(kidsLeavesBlowing(true, KIDS_WEATHER_WIND, 60.0f));
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(true, KIDS_WEATHER_CLEAR, 19.9f));
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(false, KIDS_WEATHER_WIND, 60.0f));     // not autumn
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(true, KIDS_WEATHER_RAIN, 60.0f));      // rain, storm and snow keep them down
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(true, KIDS_WEATHER_STORM, 60.0f));
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(true, KIDS_WEATHER_SNOW, 60.0f));
+    TEST_ASSERT_FALSE(kidsLeavesBlowing(true, KIDS_WEATHER_CLEAR, NAN));
+}
+
 void test_trend() {
     TEST_ASSERT_EQUAL_CHAR('u', temperatureTrend(10, 12));
     TEST_ASSERT_EQUAL_CHAR('d', temperatureTrend(12, 10));
@@ -345,6 +382,9 @@ int main(int, char**) {
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
     RUN_TEST(test_wind_overrides_only_dry_weather);
+    RUN_TEST(test_autumn_follows_the_hemisphere);
+    RUN_TEST(test_leaves_blow_in_autumn_wind_only);
+    RUN_TEST(test_kids_leaves_blow_in_dry_autumn_wind_only);
     RUN_TEST(test_trend);
     RUN_TEST(test_night_detection);
     RUN_TEST(test_night_detection_rolls_forward_by_days);

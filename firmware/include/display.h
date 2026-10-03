@@ -19,26 +19,25 @@
 #define BADGE_X1      63
 #define BADGE_Y1      63
 
-#define SKYLINE_X     64
-#define SKYLINE_Y     12
-#define SKY_YMAX      29      // 30 rows for town (y=12 to y=41)
-#define BOTTOM_CARD_Y 42      // Divider moved down to give 30px height
+// The 64x50 village scene fills the right half below the temperature row (y = 10 .. 59); its street
+// band at the bottom is empty so that the wind and precipitation text sits on it
+#define SCENE_X       64
+#define SCENE_Y       10
 
-// Coordinate constants (adjust after finalising skyline art)
-#define STREETLIGHT_BX  120
-#define STREETLIGHT_BY  32    // Moved down with divider
-#define CHURCH_ROOF_Y   41      // Bottom of 30px town area (y=12 to y=41)
 #define SUN_X           116
-#define SUN_Y           2
+#define SUN_Y           0     // the 10x10 sun / moon sit in the strip above the scene
 #define MOON_X          116
-#define MOON_Y          2
+#define MOON_Y          0
 #define TEMP_X          65
 #define TEMP_Y          1
 #define ARROW_X         91    // right of a 4 character temperature such as "-10C"
 #define ARROW_Y         1
+#define WIND_TEXT_X     82    // right of the street lamp
+#define WIND_TEXT_Y     49
+#define PRECIP_TEXT_Y   57
 
 // Rain animation constants
-#define HORIZON_Y            41      // Bottom of town area (y=12 to y=41)
+#define HORIZON_Y            46      // Pavement edge of the scene: rain splashes here, above the text
 #define RAIN_AREA_X_START    64      // Rain region left boundary
 #define RAIN_AREA_X_END      127     // Rain region right boundary
 #define MAX_RAIN_DROPS       16      // Increased from 8 for better visual density
@@ -47,6 +46,30 @@
 #define RAIN_FRAME_INTERVAL  66      // 15 FPS in milliseconds
 #define RAIN_INTENSITY_MIN   0       // Minimum rain intensity (mm/h)
 #define RAIN_INTENSITY_MAX   20      // Maximum rain intensity (mm/h)
+
+// Wind animation constants (gusts and, in autumn, tumbling leaves; mirrored in tools/bitmaptool/constants.py)
+#define MAX_GUSTS            3
+#define MAX_LEAVES           4
+#ifdef KIDS_MODE
+// The kids screens have no gusts, only leaves, and they blow across the whole screen
+#define WIND_AREA_X_START    0
+#define WIND_AREA_X_END      127
+#define WIND_AREA_Y_TOP      11
+#define WIND_AREA_Y_SPAN     33
+#define LEAF_SPAWN_X         (-4)    // enters a little off the left edge
+#define LEAF_SPAWN_Y         3       // a new leaf starts at y = 3 .. 15, above the temperature digits (y >= 46)
+#define LEAF_SPAWN_SPAN      13
+#define LEAF_MAX_Y           34      // a leaf that sinks past this base line has landed (ends above y = 42)
+#else
+#define WIND_AREA_X_START    65      // right of the divider at x=64: the ride badge is never touched
+#define WIND_AREA_X_END      127
+#define WIND_AREA_Y_TOP      11      // between the temperature row and the street band
+#define WIND_AREA_Y_SPAN     33      // gust lanes: y = 11 .. 43
+#define LEAF_SPAWN_X         WIND_AREA_X_START
+#define LEAF_SPAWN_Y         12      // a new leaf starts at y = 12 .. 35
+#define LEAF_SPAWN_SPAN      24
+#define LEAF_MAX_Y           38      // a leaf that sinks past this base line has landed
+#endif
 
 // Rain drop and splash structures
 
@@ -76,6 +99,32 @@ struct Splash {
     bool active;        // Is this splash currently visible?
     int spriteIdx;      // Which splash sprite variant
 };
+
+struct Gust {
+    int x;              // left end of the streak; the curl sits at x + length
+    int y;
+    int length;         // 8-16
+    int speed;          // px per frame
+    int curl;           // radius of the curl at the leading end (1 or 2)
+    int delay;          // frames to wait before the next gust in this slot
+    bool active;
+};
+
+struct Leaf {
+    int x;
+    int yBase;          // sinks slowly; the drawn y adds a wobble
+    int age;            // frames since it appeared (drives wobble and spin)
+    int speed;          // px per frame
+    int phase;          // 0-15, so leaves do not move in step
+    int delay;
+    bool active;
+};
+
+// Wind animation: gusts when it is windy, leaves when leavesOn (see leavesBlowing() in motologic).
+// Same 15 FPS tick as the rain. initWindAnimation() also stops it.
+void initWindAnimation();
+void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn);
+void drawWindAnimation(Adafruit_SSD1306 &display);
 
 // Rain animation functions
 void initRainAnimation();

@@ -16,7 +16,7 @@ class RainDrop:
     """Mirrors firmware RainDrop struct — a single animated rain drop."""
     x: int = 0
     y: int = 0
-    target_y: int = 41      # The y-coordinate where the drop hits the ground and splashes
+    target_y: int = HORIZON_Y      # The y-coordinate where the drop hits the ground and splashes
     speed: int = 3          # Vertical fall speed in pixels per frame (3-6)
     sprite_variant: int = 0  # Which sprite to render (0-3)
     active: bool = True
@@ -26,7 +26,7 @@ class RainDrop:
 class Splash:
     """Mirrors firmware Splash struct — brief impact effect at horizon."""
     x: int = 0
-    y: int = 41
+    y: int = HORIZON_Y
     frame_counter: int = SPLASH_FRAMES
     active: bool = False
     sprite_variant: int = 0  # Which splash sprite to render (0-3)
@@ -36,7 +36,7 @@ class RainAnimation:
     """Sprite-based rain physics engine — mirrors firmware rain animation system."""
 
     @staticmethod
-    def init_rain_animation(seed: int = 42, horizon_y: int = 41) -> tuple[list, list]:
+    def init_rain_animation(seed: int = 42, horizon_y: int = HORIZON_Y) -> tuple[list, list]:
         """Initialise MAX_RAIN_DROPS drops at random positions above skyline.
 
         Returns:
@@ -58,7 +58,7 @@ class RainAnimation:
         return drops, splashes
 
     @staticmethod
-    def reset_drop(drop: RainDrop, rng: random.Random, horizon_y: int = 41, wind_drift: int = 0):
+    def reset_drop(drop: RainDrop, rng: random.Random, horizon_y: int = HORIZON_Y, wind_drift: int = 0):
         """Reset a single drop to a new random position above the skyline.
         
         The spawn zone is extended to the right based on wind drift to compensate
@@ -78,7 +78,7 @@ class RainAnimation:
         drop.active = True
 
     @staticmethod
-    def compute_target_drops(rain_intensity_mmh: float, wind_drift: int, horizon_y: int = 41) -> int:
+    def compute_target_drops(rain_intensity_mmh: float, wind_drift: int, horizon_y: int = HORIZON_Y) -> int:
         """Return wind-compensated active drop count to maintain visible density.
         
         When wind blows drops sideways, the spawn zone widens. We need more drops
@@ -120,7 +120,7 @@ class RainAnimation:
                 return
 
     @staticmethod
-    def update(drops: list, splashes: list, rng: random.Random, horizon_y: int = 41, num_splash_variants: int = 1, wind_speed: int = 0, rain_intensity_mmh: float = 5.0):
+    def update(drops: list, splashes: list, rng: random.Random, horizon_y: int = HORIZON_Y, num_splash_variants: int = 1, wind_speed: int = 0, rain_intensity_mmh: float = 5.0):
         """Advance all drops and splashes by one animation frame.
 
         Movement: y += speed (vertical fall), x += wind (horizontal drift).

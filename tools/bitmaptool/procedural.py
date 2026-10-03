@@ -39,19 +39,16 @@ class Procedural:
 
     @staticmethod
     def apply_night_overlay(canvas: OLEDCanvas, seed: int = 42):
-        """applyNightOverlay: four deterministic stars plus the streetlight glow.
-        (`seed` is unused: the firmware always starts from 12345.)"""
+        """applyNightOverlay: four deterministic stars in the strip above the scene. The lit street lamp
+        is part of the night scene art. (`seed` is unused: the firmware always starts from 12345.)"""
         s = 12345
         for i in range(5):
             s = _lcg(s)
             star_x = 64 + (s % 64)
             s = _lcg(s)
-            star_y = s % 12
+            star_y = s % 10
             if i < 4:
                 canvas.set_pixel(star_x, star_y)
-        for dx in (0, 1):
-            for dy in (0, 1):
-                canvas.set_pixel(STREETLIGHT_BX + dx, STREETLIGHT_BY + dy)
 
     @staticmethod
     def draw_procedural_rain(canvas: OLEDCanvas, intensity: int):
@@ -64,7 +61,7 @@ class Procedural:
 
     @staticmethod
     def draw_procedural_snow(canvas: OLEDCanvas, intensity: int, seed: int = 42):
-        """drawProceduralSnow: scattered pixels plus a roof line at intensity >= 2."""
+        """drawProceduralSnow: scattered pixels plus a line of snow on the street at intensity >= 2."""
         s = 54321
         for _ in range(intensity * 4):
             s = _lcg(s)
@@ -74,4 +71,4 @@ class Procedural:
             canvas.set_pixel(x, y)
         if intensity >= 2:
             for x in range(64, 127):
-                canvas.set_pixel(x, CHURCH_ROOF_Y)
+                canvas.set_pixel(x, HORIZON_Y)

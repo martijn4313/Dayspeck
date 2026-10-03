@@ -4,9 +4,13 @@ import argparse
 import sys
 from pathlib import Path
 
+from .constants import RAIN_FRAME_INTERVAL_MS
 from .convert import (
     Converter, ConvertError, Entry, check_name, export_assets, regenerate, render_header, upsert_entry, write_atomic,
 )
+
+
+DEFAULT_BITMAPS = Path(__file__).resolve().parents[2] / "firmware" / "include" / "bitmaps.h"
 
 
 def cmd_convert(args) -> int:
@@ -47,6 +51,23 @@ def cmd_export(args) -> int:
     return 0
 
 
+def load_scene_assets(state, header: Path) -> None:
+    """Fill a SceneState with the artwork of a bitmaps.h (scene, sun, moon, arrows, rain, splash, leaves)."""
+    if not header.exists():
+        return
+    by_name = {e.name: e.pixels for e in Converter.parse_entries(header.read_text(encoding="utf-8"))}
+    state.scene_day_bmp = by_name.get("scene_day_bmp")
+    state.scene_night_bmp = by_name.get("scene_night_bmp")
+    state.leaf_bmps = [by_name[f"leaf_{i}_bmp"] for i in range(1, 5) if f"leaf_{i}_bmp" in by_name]
+    state.sun_bmp = by_name.get("sun_bmp")
+    state.moon_bmp = by_name.get("moon_bmp")
+    state.arrow_ur_bmp = by_name.get("arrow_ur_bmp")
+    state.arrow_dr_bmp = by_name.get("arrow_dr_bmp")
+    state.arrow_r_bmp = by_name.get("arrow_r_bmp")
+    state.rain_sprites = [by_name[f"rain_drop_{i}_bmp"] for i in range(1, 5) if f"rain_drop_{i}_bmp" in by_name]
+    state.splash_sprites = [by_name[f"splash_{i}_bmp"] for i in range(1, 5) if f"splash_{i}_bmp" in by_name]
+
+
 def cmd_render(args) -> int:
     from .canvas import OLEDCanvas
     from .scene import SceneComposer, SceneState, VIEW_CLOCK, VIEW_HOURLY, VIEW_TODAY, VIEW_WEEKLY
@@ -61,21 +82,24 @@ def cmd_render(args) -> int:
     state.week_best_day = args.best_day
     state.tomorrow = args.tomorrow
     state.stale = args.stale
-    firmware_header = Path(args.bitmaps)
-    if firmware_header.exists():
-        by_name = {e.name: e.pixels for e in Converter.parse_entries(firmware_header.read_text(encoding="utf-8"))}
-        state.skyline_bmp = by_name.get("skyline_base_bmp")
-        state.sun_bmp = by_name.get("sun_bmp")
-        state.moon_bmp = by_name.get("moon_bmp")
-        state.arrow_ur_bmp = by_name.get("arrow_ur_bmp")
-        state.arrow_dr_bmp = by_name.get("arrow_dr_bmp")
-        state.arrow_r_bmp = by_name.get("arrow_r_bmp")
-        state.rain_sprites = [by_name[f"rain_drop_{i}_bmp"] for i in range(1, 5) if f"rain_drop_{i}_bmp" in by_name]
-        state.splash_sprites = [by_name[f"splash_{i}_bmp"] for i in range(1, 5) if f"splash_{i}_bmp" in by_name]
+    state.autumn = args.autumn
+    state.precip_mm = args.precip
+    load_scene_assets(state, Path(args.bitmaps))
     canvas = OLEDCanvas()
     state.show_horizon = False
+    if args.gif:
+        # An animation: skip `--frames` warm-up steps, then record `--gif-frames` frames at 15 FPS
+        for _ in range(max(0, args.frames)):
+            SceneComposer.compose(canvas, state)
+        images = []
+        for _ in range(max(1, args.gif_frames)):
+            SceneComposer.compose(canvas, state)
+            images.append(canvas.to_image(scale=args.scale))
+        images[0].save(args.out, save_all=True, append_images=images[1:], duration=RAIN_FRAME_INTERVAL_MS, loop=0)
+        print(f"Wrote {args.out} ({len(images)} frames)")
+        return 0
     for _ in range(max(1, args.frames)):
-        SceneComposer.compose(canvas, state)    # the rain animation advances one step per frame
+        SceneComposer.compose(canvas, state)    # the rain and wind animations advance one step per frame
     canvas.to_image(scale=args.scale).save(args.out)
     print(f"Wrote {args.out}")
     return 0
@@ -110,7 +134,7 @@ def main(argv=None) -> int:
 
     p = sub.add_parser("render", help="render the OLED scene to a PNG without a GUI")
     p.add_argument("--out", required=True)
-    p.add_argument("--bitmaps", default="firmware/include/bitmaps.h")
+    p.add_argument("--bitmaps", default=str(DEFAULT_BITMAPS))
     p.add_argument("--view", choices=["today", "weekly", "hourly", "clock"], default="today")
     p.add_argument("--best-day", type=int, default=-1, help="weekly view: column to highlight")
     p.add_argument("--tomorrow", action="store_true", help="show the TMR tag")
@@ -120,8 +144,12 @@ def main(argv=None) -> int:
     p.add_argument("--badge", choices=["check", "warn", "x"], default="check")
     p.add_argument("--temp", default="12C")
     p.add_argument("--wind", type=int, default=10)
+    p.add_argument("--precip", type=float, default=0.0, help="precipitation in mm")
+    p.add_argument("--autumn", action="store_true", help="autumn: leaves blow when it is windy enough")
     p.add_argument("--scale", type=int, default=4)
     p.add_argument("--frames", type=int, default=1, help="animation steps to run before the snapshot")
+    p.add_argument("--gif", action="store_true", help="write an animated GIF (--out must end in .gif)")
+    p.add_argument("--gif-frames", type=int, default=60, help="frames in the GIF (15 FPS)")
     p.set_defaults(func=cmd_render)
 
     args = parser.parse_args(argv)

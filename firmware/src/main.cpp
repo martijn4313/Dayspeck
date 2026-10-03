@@ -379,6 +379,19 @@ int wifiBars() {
 
 
 /**
+ * Autumn at the location (the leaves in the wind animation). Needs the synced time and the time zone;
+ * the southern hemisphere has its autumn in March-May.
+ */
+static bool autumnNow() {
+    if (!state.timeSynced || !timezoneKnown()) return false;
+    struct tm t = {};
+    time_t local = time(nullptr) + utcOffsetSeconds;
+    gmtime_r(&local, &t);
+    return isAutumn(t.tm_mon + 1, configLat < 0);
+}
+
+
+/**
  * Draw the clock screen from NTP time and the location's UTC offset
  */
 void renderClock() {
@@ -786,7 +799,10 @@ void loop() {
 #ifndef KIDS_MODE
         } else if (state.displayMode == 0) {
             WeatherData weather = getCurrentWeather();
-            if (weather.condition == WEATHER_RAIN) {
+            bool rain = weather.condition == WEATHER_RAIN;
+            bool gustsOn = weather.condition == WEATHER_WIND;
+            bool leavesOn = leavesBlowing(autumnNow(), weather.condition, weather.windKmh);
+            if (rain) {
                 float rainIntensity = min(weather.precipMm * 2.0f, 20.0f);
                 updateRainAnimation((int)weather.windKmh, rainIntensity);
                 state.rainAnimationActive = true;
@@ -795,6 +811,32 @@ void loop() {
                 // Rain stopped - reset animation completely
                 initRainAnimation();
                 state.rainAnimationActive = false;
+                state.displayDirty = true;
+            }
+            if (!rain && (gustsOn || leavesOn)) {
+                if (!state.windAnimationActive) initWindAnimation();
+                updateWindAnimation((int)weather.windKmh, gustsOn, leavesOn);
+                state.windAnimationActive = true;
+                state.displayDirty = true;
+            } else if (state.windAnimationActive) {
+                // The wind dropped, or it started to rain: stop the gusts and leaves
+                initWindAnimation();
+                state.windAnimationActive = false;
+                state.displayDirty = true;
+            }
+#else
+        } else if (state.displayMode == 0 || state.displayMode == 1) {
+            // Kids variant: autumn leaves blow across the clothes and the weather screen
+            WeatherData w = getCurrentWeather();
+            int weatherNow = kidsWeatherFor(w.code, w.gustKmh, KIDS_WINDY_GUST_KMH);
+            if (kidsLeavesBlowing(autumnNow(), weatherNow, w.gustKmh)) {
+                if (!state.windAnimationActive) initWindAnimation();
+                updateWindAnimation((int)w.gustKmh, false, true);
+                state.windAnimationActive = true;
+                state.displayDirty = true;
+            } else if (state.windAnimationActive) {
+                initWindAnimation();
+                state.windAnimationActive = false;
                 state.displayDirty = true;
             }
 #endif

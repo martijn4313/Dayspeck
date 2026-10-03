@@ -488,6 +488,12 @@ class App(tk.Tk):
                        command=self._refresh_preview, bg=BG_COLOR, fg=FG_COLOR,
                        selectcolor=BG_COLOR, activebackground=BG_COLOR, activeforeground=FG_COLOR).pack(anchor=tk.W, pady=(12, 2))
 
+        # Autumn: leaves blow along with the wind
+        self.autumn_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(frame, text="Autumn (leaves in the wind)", variable=self.autumn_var,
+                       command=self._refresh_preview, bg=BG_COLOR, fg=FG_COLOR,
+                       selectcolor=BG_COLOR, activebackground=BG_COLOR, activeforeground=FG_COLOR).pack(anchor=tk.W, pady=(0, 2))
+
         # Rain animation controls
         tk.Label(frame, text="Rain animation:", bg=BG_COLOR, fg=FG_COLOR).pack(anchor=tk.W, pady=(12, 2))
         self.sprite_rain_var = tk.BooleanVar(value=True)
@@ -501,7 +507,7 @@ class App(tk.Tk):
         tk.Label(frame, text="Horizon Y position:", bg=BG_COLOR, fg=FG_COLOR).pack(anchor=tk.W, pady=(4, 0))
         self.horizon_y_scale = tk.Scale(frame, from_=0, to=63, orient=tk.HORIZONTAL,
                                         bg=BG_COLOR, fg=FG_COLOR, highlightthickness=0)
-        self.horizon_y_scale.set(41)
+        self.horizon_y_scale.set(46)
         self.horizon_y_scale.bind("<ButtonRelease-1>", lambda _: self._refresh_preview())
         self.horizon_y_scale.pack(fill=tk.X)
         
@@ -570,7 +576,8 @@ class App(tk.Tk):
 
     # Mapping from slot name to the SceneState attribute it populates
     _SLOT_TO_STATE_ATTR = {
-        "skyline_base":  "skyline_bmp",
+        "scene_day":     "scene_day_bmp",
+        "scene_night":   "scene_night_bmp",
         "sun":           "sun_bmp",
         "moon":          "moon_bmp",
         "arrow_ur":      "arrow_ur_bmp",
@@ -615,6 +622,11 @@ class App(tk.Tk):
             # Reset animation so new sprites take effect
             self.state.rain_drops = []
             self.state.rain_splashes = []
+            return
+
+        # Handle leaf sprites: all poses in order
+        if name in LEAF_SPRITE_SLOTS:
+            self.state.leaf_bmps = [self.assets[slot] for slot in LEAF_SPRITE_SLOTS if slot in self.assets]
             return
 
     def _on_slot_click(self, name: str):
@@ -752,6 +764,7 @@ class App(tk.Tk):
         self.state.intensity = int(self.intensity_scale.get())
         self.state.wind_speed = int(self.wind_scale.get())
         self.state.night = self.night_var.get()
+        self.state.autumn = self.autumn_var.get()
         self.state.temp_str = self.temp_entry.get()
         self.state.trend = self.trend_var.get()
         self.state.precip_mm = float(self.precip_scale.get())
@@ -766,9 +779,9 @@ class App(tk.Tk):
         self._render_canvas()
 
         # Update C array output using the active slot name
-        if self.state.skyline_bmp and self._active_slot:
+        if self._active_slot in self.assets:
             c_code = Converter.to_c_array(
-                self.state.skyline_bmp,
+                self.assets[self._active_slot],
                 self._active_slot,
             )
             self.c_array_text.delete("1.0", tk.END)

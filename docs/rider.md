@@ -1,11 +1,12 @@
 # Rider variant
 
-![Three rider screens: good (check mark), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, strong wind)](images/rider-today.png){ .center }
+![Three rider screens: good (check mark, sun), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, wind and autumn leaves)](images/rider-today.png){ .center }
 
 - **Left half:** a big ride badge — ✓ good, ! caution, X don't ride.
-- **Right half, top:** city skyline with sun or moon, temperature and trend arrow, with a rain
-  animation when it rains.
-- **Right half, bottom:** weather icon, wind speed and precipitation.
+- **Right half:** a little village with temperature and trend arrow and the sun or moon above it. The
+  street lamp is lit at night. The weather is shown in the scene itself: rain falls and splashes on the
+  pavement, snow drifts, and wind blows (see below). Wind speed and precipitation are written on the street
+  at the bottom.
 - **Touch:** a short tap switches *today / tomorrow*. A long press steps through the other screens:
   the *7-day AM/PM grid*, the *next hours*, the *clock*, then back to the main screen. The week and
   hours views close by themselves after 30 s; the clock stays until you tap. A tap always returns to the
@@ -23,6 +24,20 @@
   says "Time not set yet" until then.
 - **Web UI** at `http://dayspeck.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
+
+## Wind and autumn leaves
+
+When it is windy (gusts above the wind threshold, and dry) curled gusts sweep across the village from left
+to right, faster and more of them the harder it blows.
+
+![An animation of the rider screen on a windy autumn day: gusts and leaves blow across the village](images/rider-wind.gif){ .center }
+
+In autumn leaves tumble along with the wind: from a wind speed of 20 km/h on, even on a day that is not
+windy enough for gusts, as long as it is not raining or snowing. Autumn is September to November, and March
+to May if the location is in the southern hemisphere. It needs the network time and the time zone, so the
+leaves only appear once the clock is synced.
+
+## The other screens
 
 The other screens, in order: the week grid, the next hours and the clock.
 

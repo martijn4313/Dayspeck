@@ -10,6 +10,8 @@ static RainDrop rainDrops[MAX_RAIN_DROPS];
 static Splash splashes[MAX_SPLASHES];
 static float currentRainIntensity = 5.0f;  // Track current rain intensity
 static int currentWindSpeed = 0;  // Track current wind speed
+static Gust gusts[MAX_GUSTS];
+static Leaf leaves[MAX_LEAVES];
 
 
 
@@ -89,28 +91,22 @@ void drawGiantBadge(Adafruit_SSD1306 &display, char type) {
     }
 }
 
-// Night overlay — streetlight glow + random stars
+// Night overlay — four stars in the strip above the scene (the lit street lamp is part of the night scene)
 // Using seed for deterministic but random-looking stars
 void applyNightOverlay(Adafruit_SSD1306 &display) {
     // Seed-based pseudo-random using simple hash
     unsigned int seed = 12345; // Fixed seed for deterministic stars
     
-    // Draw 3-5 single white pixels randomly in sky region (x: 64-127, y: 0-11)
+    // Draw single white pixels randomly in the sky strip (x: 64-127, y: 0-9)
     for (int i = 0; i < 5; i++) {
         seed = seed * 1103515245 + 12345; // LCG
         int starX = 64 + (seed % 64);
         seed = seed * 1103515245 + 12345;
-        int starY = seed % 12;
+        int starY = seed % 10;
         if (i < 4) { // Only 4 stars
             display.drawPixel(starX, starY, SSD1306_WHITE);
         }
     }
-    
-    // Draw 2x2 filled white rectangle at streetlight position
-    display.drawPixel(STREETLIGHT_BX, STREETLIGHT_BY, SSD1306_WHITE);
-    display.drawPixel(STREETLIGHT_BX + 1, STREETLIGHT_BY, SSD1306_WHITE);
-    display.drawPixel(STREETLIGHT_BX, STREETLIGHT_BY + 1, SSD1306_WHITE);
-    display.drawPixel(STREETLIGHT_BX + 1, STREETLIGHT_BY + 1, SSD1306_WHITE);
 }
 
 // Procedural rain — diagonal line loop
@@ -128,7 +124,7 @@ void drawProceduralRain(Adafruit_SSD1306 &display, int intensity) {
     }
 }
 
-// Procedural snow — scattered pixels + roof line
+// Procedural snow — scattered pixels + a line of snow on the street
 void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
     // Scatter intensity*4 white pixels randomly in x: 64-127, y: 0-31
     unsigned int seed = 54321;
@@ -140,16 +136,16 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
         display.drawPixel(x, y, SSD1306_WHITE);
     }
     
-    // At intensity >= 2: draw horizontal white line at church roof
+    // At intensity >= 2: draw a horizontal white line at the pavement edge
     if (intensity >= 2) {
         for (int x = 64; x < 127; x++) {
-            display.drawPixel(x, CHURCH_ROOF_Y, SSD1306_WHITE);
+            display.drawPixel(x, HORIZON_Y, SSD1306_WHITE);
         }
     }
 }
 
 // Reset a rain drop to random position at top
-// Reset a single rain drop to a new random position above the skyline
+// Reset a single rain drop to a new random position above the scene
 void resetRainDrop(RainDrop &drop) {
     // Calculate extended spawn zone based on wind for better coverage
     // Average fall frames = HORIZON_Y / avg_speed (roughly 9 frames)
@@ -158,7 +154,7 @@ void resetRainDrop(RainDrop &drop) {
     
     drop.x = RAIN_AREA_X_START + random(RAIN_AREA_X_END - RAIN_AREA_X_START + 1 + xSpawnExtend);
     drop.y = random(-8, -1);  // Start just above top edge
-    drop.targetY = HORIZON_Y - random(4);  // Ground level varies by 3 px, always above the card divider
+    drop.targetY = HORIZON_Y - random(4);  // Ground level varies by 3 px, always above the text
     drop.speed = 3 + random(4);  // Speed: 3-6 pixels per frame (matching Python)
     drop.spriteIdx = random(4);  // 0-3 sprite variants
     drop.active = true;
@@ -350,10 +346,122 @@ void drawRainAnimation(Adafruit_SSD1306 &display) {
     }
 }
 
-// Render skyline card — composite render of right top half
+// ── Wind animation ───────────────────────────────────────────────────────────
+// Curled gusts and, in autumn, tumbling leaves blow from the left edge of the scene to the right.
+// Mirrors tools/bitmaptool/wind.py; keep the two in step.
+
+// Vertical wobble of a tumbling leaf over 16 frames (a rough sine, +-3 px)
+static const int8_t LEAF_WOBBLE[16] = { 0, 1, 2, 3, 3, 3, 2, 1, 0, -1, -2, -3, -3, -3, -2, -1 };
+
+void initWindAnimation() {
+    // All slots idle, with staggered start delays so the first frames are not a burst
+    for (int i = 0; i < MAX_GUSTS; i++) {
+        gusts[i].active = false;
+        gusts[i].delay = i * 6;
+    }
+    for (int i = 0; i < MAX_LEAVES; i++) {
+        leaves[i].active = false;
+        leaves[i].delay = i * 5;
+    }
+}
+
+// windKmh: gust speed; leavesOn implies windKmh >= LEAF_MIN_WIND_KMH. A slot beyond the target count
+// finishes its run and is not reused.
+void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
+    int wantGusts = !gustsOn ? 0 : windKmh >= 65 ? 3 : windKmh >= 50 ? 2 : 1;
+    for (int i = 0; i < MAX_GUSTS; i++) {
+        Gust &g = gusts[i];
+        if (g.active) {
+            g.x += g.speed;
+            if (g.x > WIND_AREA_X_END) {
+                g.active = false;
+                g.delay = random(13);
+            }
+        } else if (i < wantGusts) {
+            if (g.delay > 0) {
+                g.delay--;
+            } else {
+                g.length = 8 + random(9);                              // 8-16
+                g.x = WIND_AREA_X_START - g.length;                    // starts just off the left edge
+                g.y = WIND_AREA_Y_TOP + random(WIND_AREA_Y_SPAN);
+                g.curl = 1 + random(2);
+                g.speed = 2 + windKmh / 25 + random(2);
+                g.active = true;
+            }
+        }
+    }
+
+    int wantLeaves = leavesOn ? min(MAX_LEAVES, 2 + (windKmh - LEAF_MIN_WIND_KMH) / 15) : 0;
+    for (int i = 0; i < MAX_LEAVES; i++) {
+        Leaf &f = leaves[i];
+        if (f.active) {
+            f.age++;
+            f.x += f.speed;
+            if (f.age % 3 == 0) f.yBase++;                             // sinks slowly
+            if (f.x > WIND_AREA_X_END || f.yBase > LEAF_MAX_Y) {
+                f.active = false;
+                f.delay = random(21);
+            }
+        } else if (i < wantLeaves) {
+            if (f.delay > 0) {
+                f.delay--;
+            } else {
+                f.x = LEAF_SPAWN_X;
+                f.yBase = LEAF_SPAWN_Y + random(LEAF_SPAWN_SPAN);
+                f.age = 0;
+                f.speed = 1 + windKmh / 30 + random(2);
+                f.phase = random(16);
+                f.active = true;
+            }
+        }
+    }
+}
+
+void drawWindAnimation(Adafruit_SSD1306 &display) {
+    for (int i = 0; i < MAX_GUSTS; i++) {
+        const Gust &g = gusts[i];
+        if (!g.active) continue;
+        int start = max(g.x, WIND_AREA_X_START);
+        int end = g.x + g.length;
+        if (end >= start) display.drawFastHLine(start, g.y, end - start + 1, SSD1306_WHITE);
+        if (end >= WIND_AREA_X_START) display.drawCircleHelper(end, g.y - g.curl, g.curl, 2 | 4, SSD1306_WHITE);
+    }
+
+    // The leaf is lying flat, tip up-right, ... as it tumbles
+    static const uint8_t* const sprites[4] = { leaf_1_bmp, leaf_2_bmp, leaf_3_bmp, leaf_4_bmp };
+    for (int i = 0; i < MAX_LEAVES; i++) {
+        const Leaf &f = leaves[i];
+        if (!f.active) continue;
+        int y = f.yBase + LEAF_WOBBLE[(f.age + f.phase) & 15];
+        const uint8_t* sprite = sprites[((f.age >> 1) + f.phase) & 3];
+#ifdef KIDS_MODE
+        // Inverted: visible on the dark background and on the filled pictures, and the digits are not erased
+        display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_INVERSE);
+#else
+        // A thin black outline that follows the leaf's shape (no box), so the village's line art stays
+        // whole around it; never over the divider
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                for (int r = 0; r < LEAF_1_BMP_H; r++) {
+                    uint8_t bits = pgm_read_byte(sprite + r);          // one byte per row, leftmost dot = bit 7
+                    for (int c = 0; c < LEAF_1_BMP_W; c++) {
+                        if ((bits & (0x80 >> c)) && f.x + c + dx >= WIND_AREA_X_START) {
+                            display.drawPixel(f.x + c + dx, y + r + dy, SSD1306_BLACK);
+                        }
+                    }
+                }
+            }
+        }
+        display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_WHITE);
+#endif
+    }
+}
+
+// Render the scene card — composite render of the right half above the text
 void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow) {
-    // Layer 1: blit skyline_base_bmp at (SKYLINE_X, SKYLINE_Y)
-    display.drawBitmap(SKYLINE_X, SKYLINE_Y, skyline_base_bmp, SKYLINE_BASE_BMP_W, SKYLINE_BASE_BMP_H, SSD1306_WHITE);
+    // Layer 1: blit the village at (SCENE_X, SCENE_Y): the night version has the street lamp lit
+    display.drawBitmap(SCENE_X, SCENE_Y, isNight ? scene_night_bmp : scene_day_bmp, SCENE_DAY_BMP_W, SCENE_DAY_BMP_H, SSD1306_WHITE);
     
     // Layer 2: if night → applyNightOverlay + blit moon; else → blit sun
     if (isNight) {
@@ -373,8 +481,9 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
         }
     } else if (weatherCondition == WEATHER_SNOW) {
         drawProceduralSnow(display, intensity);
+    } else {
+        drawWindAnimation(display);   // gusts and leaves, whatever is active (nothing when it is calm)
     }
-    // Wind has no effect in the sky: its icon is in the bottom card
     
     // Layer 4: draw tempStr text at (TEMP_X, TEMP_Y) with black background box
     // First draw black box behind text for readability
@@ -411,64 +520,19 @@ void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondi
     }
 }
 
-// Render bottom card — weather icon, wind and precipitation text (x: 64-127, y: 42-63)
+// Render the street band — wind and precipitation text on the empty street at the bottom of the scene
+// (the weather itself is shown by the sun or moon, the rain, the snow and the wind animation)
 void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm, bool isNight) {
-    // Icon area: x 66-90, y 44-62
-    const int ix = 66, iy = 44;
-    if (weatherCondition == WEATHER_RAIN || weatherCondition == WEATHER_SNOW) {
-        // Cloud
-        display.fillCircle(ix + 7, iy + 8, 5, SSD1306_WHITE);
-        display.fillCircle(ix + 14, iy + 5, 6, SSD1306_WHITE);
-        display.fillCircle(ix + 20, iy + 9, 4, SSD1306_WHITE);
-        display.fillRect(ix + 7, iy + 8, 14, 5, SSD1306_WHITE);
-        // Falling drops (rain) or flakes (snow)
-        for (int i = 0; i < 3; i++) {
-            int x = ix + 6 + i * 7;
-            if (weatherCondition == WEATHER_RAIN) {
-                display.drawLine(x + 1, iy + 15, x - 1, iy + 19, SSD1306_WHITE);
-            } else {
-                display.drawPixel(x, iy + 16, SSD1306_WHITE);
-                display.drawPixel(x - 1, iy + 18, SSD1306_WHITE);
-            }
-        }
-    } else if (weatherCondition == WEATHER_WIND) {
-        // Three gusts of different lengths, each ending in a curl (a half circle rising from the line end)
-        static const int8_t gustY[3]   = { 6, 12, 18 };    // relative to iy
-        static const int8_t gustLen[3] = { 14, 20, 12 };
-        static const int8_t gustR[3]   = { 3, 2, 2 };
-        for (int i = 0; i < 3; i++) {
-            int y = iy + gustY[i];
-            display.drawFastHLine(ix, y, gustLen[i], SSD1306_WHITE);
-            display.drawCircleHelper(ix + gustLen[i], y - gustR[i], gustR[i], 2 | 4, SSD1306_WHITE);
-        }
-    } else if (isNight) {
-        // Clear night: crescent moon (a disc with a second disc cut out) and three stars
-        const int cx = ix + 10, cy = iy + 10;
-        display.fillCircle(cx, cy, 8, SSD1306_WHITE);
-        display.fillCircle(cx + 5, cy - 3, 7, SSD1306_BLACK);
-        display.drawPixel(ix + 18, iy + 4, SSD1306_WHITE);                 // stars (single pixels: a "+" next
-        display.drawPixel(ix + 21, iy + 11, SSD1306_WHITE);                // to the speed would read as text)
-        display.drawPixel(ix + 3, iy + 1, SSD1306_WHITE);
-    } else {
-        // Clear: sun with rays
-        const int cx = ix + 11, cy = iy + 9;
-        display.fillCircle(cx, cy, 4, SSD1306_WHITE);
-        for (int a = 0; a < 8; a++) {
-            static const int8_t dx[8] = { 1, 1, 0, -1, -1, -1, 0, 1 };
-            static const int8_t dy[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
-            display.drawLine(cx + dx[a] * 6, cy + dy[a] * 6, cx + dx[a] * 8, cy + dy[a] * 8, SSD1306_WHITE);
-        }
-    }
-
-    // Text column: wind speed and precipitation
+    (void)weatherCondition;
+    (void)isNight;
     char buf[12];
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     snprintf(buf, sizeof(buf), "%dkm/h", windSpeed);
-    display.setCursor(93, 46);
+    display.setCursor(WIND_TEXT_X, WIND_TEXT_Y);
     display.print(buf);
     snprintf(buf, sizeof(buf), "%.1fmm", precipMm);
-    display.setCursor(93, 55);
+    display.setCursor(WIND_TEXT_X, PRECIP_TEXT_Y);
     display.print(buf);
 }
 
@@ -542,13 +606,10 @@ void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, 
     // Draw divider line
     display.drawLine(64, 0, 64, 63, SSD1306_WHITE);
     
-    // Right top: renderSkylineCard(...)
+    // Right half: the scene with temperature, sun or moon and weather effects
     renderSkylineCard(display, isNight, weatherCondition, intensity, windSpeed, tempStr, trendArrow);
     
-    // Draw horizontal divider between top and bottom cards
-    display.drawLine(64, 41, 127, 41, SSD1306_WHITE);
-    
-    // Right bottom: renderBottomCard(...)
+    // Wind and precipitation text on the street band of the scene
     renderBottomCard(display, weatherCondition, windSpeed, precipMm, isNight);
 }
 
@@ -929,6 +990,7 @@ void renderKidsView(Adafruit_SSD1306 &d, int outfitNow, int outfitLater, int tim
     if (outfitLater >= 0) drawOutfit(d, KIDS_LATER_X, outfitLater);
     else                  drawUnknown(d, KIDS_LATER_X);
     drawKidsMiddle(d, timeOfDaySymbol);
+    drawWindAnimation(d);    // autumn leaves, when they blow
 }
 
 // ---- Kids weather pictures (56x44 box) ------------------------------------------------------------
@@ -1058,6 +1120,7 @@ void renderKidsWeatherView(Adafruit_SSD1306 &d, int weatherNow, bool nightNow, i
         drawUnknown(d, KIDS_LATER_X);
     }
     drawKidsMiddle(d, timeOfDaySymbol);
+    drawWindAnimation(d);    // autumn leaves, when they blow
 }
 
 // Clock screen: HH:MM in large type, weekday and date below, year at the bottom

@@ -30,6 +30,7 @@ struct SystemState {
     // Environment
     bool          isNight;
     bool          rainAnimationActive;
+    bool          windAnimationActive;   // gusts and / or autumn leaves are animating
 
     // Network state
     bool          wifiConnected;

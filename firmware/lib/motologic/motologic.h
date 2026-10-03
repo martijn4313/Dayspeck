@@ -152,6 +152,21 @@ int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 // Temperature trend 'u' (rising), 'd' (falling) or 'f' (flat) from now to a few hours later; NAN = flat
 char temperatureTrend(float now, float later);
 
+// Autumn in the hemisphere of the location: September-November in the north, March-May in the south.
+// month is 1-12.
+bool isAutumn(int month, bool southern);
+
+// From this gust speed (km/h) leaves blow in autumn, even on a day that is not "windy"
+#define LEAF_MIN_WIND_KMH 20
+
+// Whether leaves blow along with the wind: autumn, a clear or windy sky (no rain or snow, which keep
+// the leaves down) and a gust speed of at least LEAF_MIN_WIND_KMH. condition is WEATHER_*, NAN wind = no.
+bool leavesBlowing(bool autumn, int condition, float windKmh);
+
+// Kids variant: leaves blow in autumn in dry weather (a KIDS_WEATHER_* picture of clear, partly cloudy,
+// cloudy or windy sky: not rain, thunderstorm or snow) from a gust speed of LEAF_MIN_WIND_KMH on.
+bool kidsLeavesBlowing(bool autumn, int kidsWeather, float windKmh);
+
 // True when `now` is before sunrise or after sunset. Sunrise/sunset are for some earlier or
 // current day and are rolled forward by whole days. All values are unix time (UTC).
 bool isNightAt(long now, long sunrise, long sunset);

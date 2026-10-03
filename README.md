@@ -1,6 +1,6 @@
 # Dayspeck
 
-<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, skyline and weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
+<p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, a village and the weather) next to the kids screen (a t-shirt now, a rain coat this afternoon)" width="640"></p>
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
 It comes in two flavours, built from the same code:
