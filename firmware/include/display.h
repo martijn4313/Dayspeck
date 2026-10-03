@@ -168,6 +168,10 @@ struct KidsColumn {
 // column a night lies before (a dotted line with a bed; -1 or 0 = none).
 void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_t count, int nowColumn,
                         int nightBefore, bool weather);
+// Kids variant: the countdown screen. The picture of the event (a cake with a candle per year and the initial,
+// a pumpkin, Sinterklaas' mitre and staff, a Christmas tree), the number of sleeps and, up to ten, as many
+// beds to count. On the day itself the picture with falling confetti (timeMs moves it).
+void renderKidsCountdown(Adafruit_SSD1306 &display, const KidsCountdown &c, unsigned long timeMs);
 // Setup access point instructions (full width): network name, password and IP address
 void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip);
 void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs);

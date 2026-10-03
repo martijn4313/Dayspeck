@@ -98,6 +98,15 @@ hidden in the rider build.
 | Scarf and mittens below | default 0 |
 | Wind picture above (km/h) | gusts above this show the wind picture in dry weather (default 50) |
 
+**Countdowns (kids build only)**: the [countdown screen](kids.md) to birthdays and holidays. Hidden in the rider
+build.
+
+| Field | Meaning |
+|-------|---------|
+| Birthday 1, Birthday 2 | the date of birth (the cake gets a candle for every year) and one letter for the cake; leave the date empty for none |
+| Halloween, Sinterklaas, Christmas | count down to 31 October, 5 December (pakjesavond) and 25 December |
+| Show from (sleeps before) | how many sleeps before the day the countdown starts, 1-60 (default 14) |
+
 Each limit must be equal to or below the one above it; the page refuses an order that does not go from warm
 to cold. A child who feels the cold sooner can get the winter coat from 8 °C instead of 5 °C, for example.
 

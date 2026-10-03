@@ -52,6 +52,9 @@ float warnWindKmh = DEFAULT_WARN_WIND_KMH;
 float rainProbPct = DEFAULT_RAIN_PROB_PCT;
 KidsLimits kidsLimits = { KIDS_HOT_FROM_C, KIDS_SHORTS_FROM_C, KIDS_SWEATER_BELOW_C,
                           KIDS_COAT_BELOW_C, KIDS_FREEZE_BELOW_C, KIDS_WINDY_GUST_KMH };
+KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS] = {};
+unsigned kidsHolidays = KIDS_ALL_HOLIDAYS;
+int kidsCountdownDays = KIDS_COUNTDOWN_DAYS;
 
 // Ride windows (start hour, length in hours); overridden by config.json
 RideWindow weekdayAM = { 7, 2 };

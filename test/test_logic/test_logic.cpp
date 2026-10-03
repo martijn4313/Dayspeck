@@ -422,6 +422,99 @@ void test_hex_to_bytes() {
     TEST_ASSERT_FALSE(hexToBytes(nullptr, b, 3));
 }
 
+void test_kids_initial() {
+    TEST_ASSERT_EQUAL_CHAR('E', kidsInitial("E"));
+    TEST_ASSERT_EQUAL_CHAR('E', kidsInitial("emma"));
+    TEST_ASSERT_EQUAL_CHAR(0, kidsInitial(""));
+    TEST_ASSERT_EQUAL_CHAR(0, kidsInitial("3"));
+    TEST_ASSERT_EQUAL_CHAR(0, kidsInitial("\xc3\x89"));   // not A-Z: no letter rather than a wrong one
+    TEST_ASSERT_EQUAL_CHAR(0, kidsInitial(nullptr));
+}
+
+void test_days_from_civil() {
+    TEST_ASSERT_EQUAL_INT32(0, daysFromCivil(1970, 1, 1));
+    TEST_ASSERT_EQUAL_INT32(-1, daysFromCivil(1969, 12, 31));
+    TEST_ASSERT_EQUAL_INT32(11017, daysFromCivil(2000, 3, 1));
+    TEST_ASSERT_EQUAL_INT32(1, daysFromCivil(2024, 3, 1) - daysFromCivil(2024, 2, 29));
+}
+
+void test_parse_iso_date() {
+    int y = 0, m = 0, d = 0;
+    TEST_ASSERT_TRUE(parseIsoDate("2021-05-14", y, m, d));
+    TEST_ASSERT_EQUAL_INT(2021, y);
+    TEST_ASSERT_EQUAL_INT(5, m);
+    TEST_ASSERT_EQUAL_INT(14, d);
+    TEST_ASSERT_TRUE(parseIsoDate("2020-02-29", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate("2021-02-29", y, m, d));    // not a leap year
+    TEST_ASSERT_FALSE(parseIsoDate("2021-13-01", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate("2021-04-31", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate("2021-5-14", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate("2021-05-14x", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate("", y, m, d));
+    TEST_ASSERT_FALSE(parseIsoDate(nullptr, y, m, d));
+}
+
+void test_days_until_next() {
+    int when = 0;
+    TEST_ASSERT_EQUAL_INT(28, daysUntilNext(2026, 10, 3, 10, 31, when));    // Halloween
+    TEST_ASSERT_EQUAL_INT(2026, when);
+    TEST_ASSERT_EQUAL_INT(0, daysUntilNext(2026, 10, 31, 10, 31, when));    // today
+    TEST_ASSERT_EQUAL_INT(364, daysUntilNext(2026, 11, 1, 10, 31, when));   // just past: next year
+    TEST_ASSERT_EQUAL_INT(2027, when);
+    TEST_ASSERT_EQUAL_INT(7, daysUntilNext(2026, 12, 29, 1, 5, when));      // over the new year
+    TEST_ASSERT_EQUAL_INT(2027, when);
+    TEST_ASSERT_EQUAL_INT(1, daysUntilNext(2027, 2, 27, 2, 29, when));      // 29 Feb on the 28th
+    TEST_ASSERT_EQUAL_INT(2, daysUntilNext(2028, 2, 27, 2, 29, when));      // a leap year
+}
+
+void test_countdown_picks_the_nearest_event() {
+    KidsBirthday b[2] = { { 2021, 11, 2, 'E' }, { 2019, 12, 20, 0 } };
+    // 3 October: nothing within 14 sleeps (Halloween is 28 away)
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 10, 3, b, 2, KIDS_ALL_HOLIDAYS, 14).active);
+    // 20 October: Halloween in 11 sleeps
+    KidsCountdown c = nextKidsCountdown(2026, 10, 20, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_TRUE(c.active);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_HALLOWEEN, c.kind);
+    TEST_ASSERT_EQUAL_INT(11, c.sleeps);
+    // 1 November: the first birthday tomorrow, 5 years old
+    c = nextKidsCountdown(2026, 11, 1, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_BIRTHDAY, c.kind);
+    TEST_ASSERT_EQUAL_INT(1, c.sleeps);
+    TEST_ASSERT_EQUAL_INT(5, c.age);
+    TEST_ASSERT_EQUAL_CHAR('E', c.initial);
+    // 1 December: Sinterklaas; 10 December: the second birthday (7) before Christmas
+    c = nextKidsCountdown(2026, 12, 1, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_SINTERKLAAS, c.kind);
+    TEST_ASSERT_EQUAL_INT(4, c.sleeps);
+    c = nextKidsCountdown(2026, 12, 10, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_BIRTHDAY, c.kind);
+    TEST_ASSERT_EQUAL_INT(7, c.age);
+    // 21 December: Christmas, and on the day itself 0 sleeps
+    c = nextKidsCountdown(2026, 12, 21, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_CHRISTMAS, c.kind);
+    c = nextKidsCountdown(2026, 12, 25, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_CHRISTMAS, c.kind);
+    TEST_ASSERT_EQUAL_INT(0, c.sleeps);
+}
+
+void test_countdown_settings() {
+    KidsBirthday b[2] = { { 2020, 10, 31, 'A' }, { 0, 0, 0, 0 } };   // the second one is not set
+    // a birthday wins a tie with a holiday
+    KidsCountdown c = nextKidsCountdown(2026, 10, 25, b, 2, KIDS_ALL_HOLIDAYS, 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_BIRTHDAY, c.kind);
+    TEST_ASSERT_EQUAL_INT(6, c.age);
+    // holidays switched off
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 12, 20, b, 2, 0, 14).active);
+    c = nextKidsCountdown(2026, 12, 20, b, 2, KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS), 14);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_CHRISTMAS, c.kind);
+    // the range
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 12, 20, b, 2, KIDS_ALL_HOLIDAYS, 4).active);
+    TEST_ASSERT_TRUE(nextKidsCountdown(2026, 12, 20, b, 2, KIDS_ALL_HOLIDAYS, 5).active);
+    // a birth date in the future is skipped
+    KidsBirthday future[1] = { { 2027, 10, 30, 0 } };
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 10, 25, future, 1, 0, 14).active);
+}
+
 void test_contrast_for_percent() {
     TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(1));
     TEST_ASSERT_EQUAL_UINT8(3, contrastForPercent(0));      // never 0 (dark on some panels)
@@ -455,6 +548,12 @@ int main(int, char**) {
     RUN_TEST(test_day_parts_roll_into_tomorrow);
     RUN_TEST(test_day_parts_at_night);
     RUN_TEST(test_contrast_for_percent);
+    RUN_TEST(test_kids_initial);
+    RUN_TEST(test_days_from_civil);
+    RUN_TEST(test_parse_iso_date);
+    RUN_TEST(test_days_until_next);
+    RUN_TEST(test_countdown_picks_the_nearest_event);
+    RUN_TEST(test_countdown_settings);
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
     RUN_TEST(test_wind_overrides_only_dry_weather);

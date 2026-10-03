@@ -36,6 +36,11 @@ extern float rainProbPct;
 
 // Kids variant: outfit limits (config.json "kids", defaults KIDS_* in config.h) and the wind picture
 extern KidsLimits kidsLimits;
+// Kids variant: countdowns (config.json "kids"): two birthdays (month 0 = not set), the holidays that count
+// down (KIDS_HOLIDAY mask) and from how many sleeps before the day
+extern KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS];
+extern unsigned kidsHolidays;
+extern int kidsCountdownDays;
 
 // Ride windows (from config.json): weekday / weekend, morning / evening
 extern RideWindow weekdayAM, weekdayPM, weekendAM, weekendPM;

@@ -53,6 +53,8 @@ static const char index_html[] PROGMEM = R"HTML(
         .label { font-weight: 600; display: inline-block; width: 180px; }
         input { width: 80px; }
         input[type=text], input[type=password], input[type=url] { width: 200px; }
+        input[type=date] { width: 140px; }
+        input.letter { width: 30px; }
         button { padding: 0.5rem 1rem; margin-top: 1rem; }
         #toast { display: none; position: sticky; top: 0; padding: 0.6rem 1rem; border-radius: 6px; color: #fff; z-index: 5; }
         #toast.ok { background: #2a7a3b; }
@@ -164,6 +166,20 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Winter coat and hat below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Scarf and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Wind picture above (km/h):</span> <input name="gust" type="number" step="1" min="1" max="150"> <small>gusts, dry weather</small><br>
+            <button type="submit">Save Settings</button>
+        </form>
+    </div>
+
+    <div class="card" id="countdownCard" style="display:none">
+        <h3>Countdowns (kids)</h3>
+        <p><small>A third screen, after the clothes, counts the sleeps to a birthday or holiday when it is near. The cake has a candle for every year and the letter on it.</small></p>
+        <form id="countdownForm">
+            <span class="label">Birthday 1:</span> <input name="birthday1" type="date"> <input name="initial1" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>date of birth, letter</small><br>
+            <span class="label">Birthday 2:</span> <input name="birthday2" type="date"> <input name="initial2" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>no date = none</small><br>
+            <span class="label">Halloween (31 Oct):</span> <input name="halloween" type="checkbox"><br>
+            <span class="label">Sinterklaas (5 Dec):</span> <input name="sinterklaas" type="checkbox"><br>
+            <span class="label">Christmas (25 Dec):</span> <input name="christmas" type="checkbox"><br>
+            <span class="label">Show from (sleeps before):</span> <input name="countdownDays" type="number" step="1" min="1" max="60"><br>
             <button type="submit">Save Settings</button>
         </form>
     </div>
@@ -361,6 +377,18 @@ static const char index_html[] PROGMEM = R"HTML(
                         k.coat.value = s.kids.coatBelowC;
                         k.freeze.value = s.kids.freezeBelowC;
                         k.gust.value = s.kids.windyGustKmh;
+
+                        document.getElementById('countdownCard').style.display = '';
+                        const c = document.forms.countdownForm;
+                        [1, 2].forEach(i => {
+                            const b = s.kids.birthdays[i - 1] || {};
+                            c['birthday' + i].value = b.date || '';
+                            c['initial' + i].value = b.initial || '';
+                        });
+                        c.halloween.checked = s.kids.halloween;
+                        c.sinterklaas.checked = s.kids.sinterklaas;
+                        c.christmas.checked = s.kids.christmas;
+                        c.countdownDays.value = s.kids.countdownDays;
                     }
 
                     const w = document.forms.weatherApiForm;
@@ -412,6 +440,7 @@ static const char index_html[] PROGMEM = R"HTML(
         submitForm('thresholdsForm', '/api/thresholds', 'Thresholds saved');
         submitForm('displayForm', '/api/display', 'Display settings saved');
         submitForm('kidsForm', '/api/kids', 'Clothing limits saved');
+        submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
         submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
         submitForm('locationForm', '/api/location', 'Location set', () => loadStatus(false));
@@ -741,6 +770,19 @@ static void handleApiStatus() {
     kids["coatBelowC"] = kidsLimits.coatBelowC;
     kids["freezeBelowC"] = kidsLimits.freezeBelowC;
     kids["windyGustKmh"] = kidsLimits.windyGustKmh;
+    JsonArray birthdays = kids["birthdays"].to<JsonArray>();
+    for (const KidsBirthday& b : kidsBirthdays) {
+        if (b.month == 0) continue;
+        JsonObject item = birthdays.add<JsonObject>();
+        char date[11];
+        snprintf(date, sizeof(date), "%04d-%02d-%02d", b.year, b.month, b.day);
+        item["date"] = date;
+        item["initial"] = b.initial ? String(b.initial) : String();
+    }
+    kids["halloween"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN)) != 0;
+    kids["sinterklaas"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS)) != 0;
+    kids["christmas"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
+    kids["countdownDays"] = kidsCountdownDays;
 
     JsonObject display = doc["display"].to<JsonObject>();
     display["previewHr"] = previewHr;
@@ -853,6 +895,54 @@ static bool argInt(const char* name, int lo, int hi, int& out) {
     if (!argFloat(name, (float)lo, (float)hi, v) || v != (float)(int)v) return false;
     out = (int)v;
     return true;
+}
+
+static void handleApiCountdown() {
+    int days;
+    if (!argInt("countdownDays", 1, KIDS_MAX_COUNTDOWN_DAYS, days)) {
+        sendMessage(400, "Invalid value: show from 1-60 sleeps before the day");
+        return;
+    }
+    KidsBirthday b[KIDS_MAX_BIRTHDAYS] = {};
+    String dates[KIDS_MAX_BIRTHDAYS];
+    for (int i = 0; i < KIDS_MAX_BIRTHDAYS; i++) {
+        String n = String(i + 1);
+        dates[i] = server.arg("birthday" + n);
+        dates[i].trim();
+        if (dates[i].length() == 0) continue;   // not set
+        if (!parseIsoDate(dates[i].c_str(), b[i].year, b[i].month, b[i].day)) {
+            sendMessage(400, "Invalid birthday: use a date of birth (YYYY-MM-DD)");
+            return;
+        }
+        b[i].initial = kidsInitial(server.arg("initial" + n).c_str());
+    }
+    unsigned holidays = 0;
+    if (server.hasArg("halloween")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN);
+    if (server.hasArg("sinterklaas")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS);
+    if (server.hasArg("christmas")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS);
+
+    bool saved = updateConfig([&](JsonDocument& doc) {
+        JsonArray list = doc["kids"]["birthdays"].to<JsonArray>();
+        for (int i = 0; i < KIDS_MAX_BIRTHDAYS; i++) {
+            if (b[i].month == 0) continue;
+            JsonObject item = list.add<JsonObject>();
+            item["date"] = dates[i];
+            item["initial"] = b[i].initial ? String(b[i].initial) : String();
+        }
+        doc["kids"]["halloween"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN)) != 0;
+        doc["kids"]["sinterklaas"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS)) != 0;
+        doc["kids"]["christmas"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
+        doc["kids"]["countdownDays"] = days;
+    });
+    if (!saved) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    memcpy(kidsBirthdays, b, sizeof(kidsBirthdays));
+    kidsHolidays = holidays;
+    kidsCountdownDays = days;
+    state.displayDirty = true;
+    sendMessage(200, "Countdowns saved");
 }
 
 static void handleApiDisplay() {
@@ -1226,6 +1316,7 @@ void initWebServer() {
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
     server.on("/api/display", guardedPost(handleApiDisplay));
     server.on("/api/kids", guardedPost(handleApiKids));
+    server.on("/api/countdown", guardedPost(handleApiCountdown));
     server.on("/api/location", guardedPost(handleApiLocation));
     server.on("/api/wifi/config", guardedPost(handleApiWifiConfig));
     server.on("/api/weatherconfig", guardedPost(handleApiWeatherConfig));

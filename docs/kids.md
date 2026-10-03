@@ -4,7 +4,8 @@ A second firmware build for children of about 4-5 who are starting to read. Inst
 rating it shows what to wear and what the weather is like, with pictures and numbers and no words. Both
 screens show **the day in three parts**: morning, afternoon and evening, read from left to right. The
 weather screen is the main screen; a tap on the touch sensor shows the clothes screen, and another tap (or
-30 s) goes back to the weather.
+30 s) goes back to the weather. When a birthday or holiday is near, a tap on the clothes screen first shows
+the **countdown** (see below).
 
 ![Kids clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
@@ -60,6 +61,25 @@ synced.
 
 ![An animation of the kids weather screen with autumn leaves blowing across it](images/kids-wind.gif){ .center }
 
+**Countdown.** From 14 sleeps before a birthday or holiday (adjustable), a third screen comes after the clothes
+screen: the picture of the day on the left, and on the right the number of sleeps (nights) still to go. With ten
+sleeps or fewer there is also a row of beds to count, one for every night, so one goes away each morning. On the day
+itself the picture stands in the middle with confetti falling around it.
+
+![Kids countdown screens: a birthday cake with five candles and the letter E, six sleeps to go; a pumpkin, twelve sleeps to Halloween; Sinterklaas' mitre and staff, three sleeps; Christmas day, a tree with confetti](images/kids-countdown.png){ .center }
+
+| Day | Picture |
+|-----|---------|
+| birthday (two can be set) | a cake with a candle for every year it turns (10 and older: the age as a number) and the child's letter on it |
+| Halloween, 31 October | a pumpkin |
+| Sinterklaas (pakjesavond), 5 December | the mitre and staff |
+| Christmas, 25 December | a Christmas tree |
+
+When two are in range, the nearest one is shown (a birthday wins a tie). The screen only exists while a
+countdown is running; for the rest of the year a tap goes from the clothes straight back to the weather. It
+needs the network time, like the autumn leaves. A birthday on 29 February counts down to 28 February in
+other years.
+
 **Settings.** In the web UI under *Display*: *Always sleep*: the screen stays off and a touch wakes it for
 30 s (the first touch only wakes it). It also works in the normal build. *Language* has no visible effect
 since the screens no longer show words.
@@ -69,6 +89,10 @@ for the wind picture), for a child who feels the cold sooner or later than the d
 from warm to cold; an equal pair skips that outfit, for example a sweater limit equal to the shorts limit has
 no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
 [configuration reference](configuration.md)) and are always in °C.
+
+Under *Countdowns (kids)* you enter the two birthdays (the date of birth, for the number of candles, and a
+letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps
+before the day the countdown starts.
 
 The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
 `firmware/lib/motologic/motologic.h`). The rain animation and the `OLD` tag are left out in this build (the autumn

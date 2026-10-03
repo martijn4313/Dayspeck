@@ -251,6 +251,88 @@ bool kidsLeavesBlowing(bool autumn, int kidsWeather, float windKmh) {
     return dry && windKmh >= LEAF_MIN_WIND_KMH;
 }
 
+char kidsInitial(const char* text) {
+    if (text == nullptr) return 0;
+    char c = text[0];
+    if (c >= 'a' && c <= 'z') return (char)(c - 'a' + 'A');
+    return (c >= 'A' && c <= 'Z') ? c : 0;
+}
+
+long daysFromCivil(int year, int month, int day) {
+    // Howard Hinnant's days_from_civil
+    year -= month <= 2;
+    long era = (year >= 0 ? year : year - 399) / 400;
+    long yoe = year - era * 400;
+    long doy = (153L * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
+    long doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    return era * 146097 + doe - 719468;
+}
+
+static bool isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+}
+
+static int daysInMonth(int year, int month) {
+    static const uint8_t DAYS[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    return (month == 2 && isLeapYear(year)) ? 29 : DAYS[month - 1];
+}
+
+bool parseIsoDate(const char* text, int& year, int& month, int& day) {
+    if (text == nullptr) return false;
+    for (int i = 0; i < 10; i++) {
+        bool dash = (i == 4 || i == 7);
+        if (dash ? text[i] != '-' : (text[i] < '0' || text[i] > '9')) return false;
+    }
+    if (text[10] != '\0') return false;
+    int y = (text[0] - '0') * 1000 + (text[1] - '0') * 100 + (text[2] - '0') * 10 + (text[3] - '0');
+    int m = (text[5] - '0') * 10 + (text[6] - '0');
+    int d = (text[8] - '0') * 10 + (text[9] - '0');
+    if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > daysInMonth(y, m)) return false;
+    year = y;
+    month = m;
+    day = d;
+    return true;
+}
+
+int daysUntilNext(int year, int month, int day, int onMonth, int onDay, int& occurrenceYear) {
+    long today = daysFromCivil(year, month, day);
+    for (int y = year; ; y++) {
+        int d = (onMonth == 2 && onDay == 29 && !isLeapYear(y)) ? 28 : onDay;
+        long when = daysFromCivil(y, onMonth, d);
+        if (when >= today) {
+            occurrenceYear = y;
+            return (int)(when - today);
+        }
+    }
+}
+
+KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday* birthdays, size_t count,
+                                unsigned holidays, int withinDays) {
+    KidsCountdown best = { false, 0, 0, 0, 0 };
+    for (size_t i = 0; i < count; i++) {
+        const KidsBirthday& b = birthdays[i];
+        if (b.month < 1 || b.month > 12 || b.day < 1) continue;
+        if (daysFromCivil(b.year, b.month, b.day) > daysFromCivil(year, month, day)) continue;   // not born yet
+        int when = 0;
+        int sleeps = daysUntilNext(year, month, day, b.month, b.day, when);
+        if (sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
+            best = { true, KIDS_EVENT_BIRTHDAY, sleeps, when - b.year, b.initial };
+        }
+    }
+    static const int8_t HOLIDAYS[][3] = {   // kind, month, day
+        { KIDS_EVENT_HALLOWEEN, 10, 31 }, { KIDS_EVENT_SINTERKLAAS, 12, 5 }, { KIDS_EVENT_CHRISTMAS, 12, 25 },
+    };
+    for (const auto& h : HOLIDAYS) {
+        if (!(holidays & KIDS_HOLIDAY(h[0]))) continue;
+        int when = 0;
+        int sleeps = daysUntilNext(year, month, day, h[1], h[2], when);
+        if (sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
+            best = { true, h[0], sleeps, 0, 0 };
+        }
+    }
+    return best;
+}
+
 bool isNightAt(long now, long sunrise, long sunset) {
     long days = (now >= sunrise) ? (now - sunrise) / 86400 : 0;
     long rise = sunrise + days * 86400;

@@ -30,7 +30,9 @@ def extract(name, source):
 STATUS = {
     "firmware": "0.2.0 (3f9c1ab)", "variant": "kids",
     "kids": {"hotFromC": 25, "shortsFromC": 20, "sweaterBelowC": 15, "coatBelowC": 5, "freezeBelowC": 0,
-             "windyGustKmh": 50},
+             "windyGustKmh": 50, "birthdays": [{"date": "2021-11-02", "initial": "E"},
+                                               {"date": "2019-12-20", "initial": "S"}],
+             "halloween": True, "sinterklaas": True, "christmas": True, "countdownDays": 14},
     "lat": 52.37, "lon": 4.89, "locationSource": "Manual Selection",
     "locationName": "Amsterdam, Noord-Holland, Nederland",
     "thresholds": {"maxRainMm": 2.0, "maxWindKmh": 60, "minTempC": 5, "warnWindKmh": 40, "rainProbPct": 50},
@@ -133,8 +135,8 @@ def main():
     html = extract("index_html", source)
 
     # Cards in page order: 0 location, 1 set location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
-    # 5 thresholds, 6 display, 7 clothing (kids build only), 8 weather API, 9 password, 10 debug,
-    # 11 firmware update
+    # 5 thresholds, 6 display, 7 clothing, 8 countdowns (both kids build only), 9 weather API, 10 password,
+    # 11 debug, 12 firmware update
     def search_place(p):
         p.route("https://geocoding-api.open-meteo.com/**",
                 lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(GEOCODING)))
@@ -163,7 +165,7 @@ def main():
         shoot(browser, base[0], out, "webui-location.png", 0, 1, search_place)
         shoot(browser, base[1], out, "webui-wifi.png", 2, 4, scan)
         shoot(browser, base[1], out, "webui-settings.png", 5, 8)
-        shoot(browser, base[1], out, "webui-update.png", 10, 11, logs)
+        shoot(browser, base[1], out, "webui-update.png", 11, 12, logs)
         browser.close()
     for s in servers:
         s.shutdown()
