@@ -28,6 +28,7 @@ ESP8266WebServer server(80);
 
 #define MAX_SSID_LOCATIONS   10
 #define MAX_SSID_LEN         32
+#define MAX_PLACE_NAME_LEN   64
 #define MAX_API_URL_LEN      128
 #define AUTH_MAX_FAILURES    10
 #define AUTH_LOCKOUT_MS      60000UL
@@ -38,83 +39,6 @@ static unsigned long rebootAtMs = 0;
 
 static uint8_t authFailures = 0;
 static unsigned long authLockUntilMs = 0;
-
-// Predefined locations: countries and cities with lat/lon
-static const char locationsJson[] PROGMEM = R"JSON(
-{
-  "United States": {
-    "New York": {"lat": 40.7128, "lon": -74.0060},
-    "Los Angeles": {"lat": 34.0522, "lon": -118.2437},
-    "Chicago": {"lat": 41.8781, "lon": -87.6298},
-    "Houston": {"lat": 29.7604, "lon": -95.3698},
-    "Phoenix": {"lat": 33.4484, "lon": -112.0740}
-  },
-  "United Kingdom": {
-    "London": {"lat": 51.5074, "lon": -0.1278},
-    "Manchester": {"lat": 53.4808, "lon": -2.2426},
-    "Birmingham": {"lat": 52.4862, "lon": -1.8904},
-    "Glasgow": {"lat": 55.8642, "lon": -4.2518},
-    "Liverpool": {"lat": 53.4084, "lon": -2.9916}
-  },
-  "Germany": {
-    "Berlin": {"lat": 52.5200, "lon": 13.4050},
-    "Munich": {"lat": 48.1351, "lon": 11.5820},
-    "Hamburg": {"lat": 53.5511, "lon": 9.9937},
-    "Cologne": {"lat": 50.9375, "lon": 6.9603},
-    "Frankfurt": {"lat": 50.1109, "lon": 8.6821}
-  },
-  "France": {
-    "Paris": {"lat": 48.8566, "lon": 2.3522},
-    "Marseille": {"lat": 43.2965, "lon": 5.3698},
-    "Lyon": {"lat": 45.7640, "lon": 4.8357},
-    "Toulouse": {"lat": 43.6047, "lon": 1.4442},
-    "Nice": {"lat": 43.7102, "lon": 7.2620}
-  },
-  "Italy": {
-    "Rome": {"lat": 41.9028, "lon": 12.4964},
-    "Milan": {"lat": 45.4642, "lon": 9.1900},
-    "Naples": {"lat": 40.8518, "lon": 14.2681},
-    "Turin": {"lat": 45.0703, "lon": 7.6869},
-    "Palermo": {"lat": 38.1157, "lon": 13.3615}
-  },
-  "Spain": {
-    "Madrid": {"lat": 40.4168, "lon": -3.7038},
-    "Barcelona": {"lat": 41.3851, "lon": 2.1734},
-    "Valencia": {"lat": 39.4699, "lon": -0.3763},
-    "Seville": {"lat": 37.3886, "lon": -5.9823},
-    "Zaragoza": {"lat": 41.6488, "lon": -0.8891}
-  },
-  "Netherlands": {
-    "Amsterdam": {"lat": 52.3676, "lon": 4.9041},
-    "Rotterdam": {"lat": 51.9244, "lon": 4.4777},
-    "The Hague": {"lat": 52.0705, "lon": 4.3007},
-    "Utrecht": {"lat": 52.0907, "lon": 5.1214},
-    "Eindhoven": {"lat": 51.4416, "lon": 5.4697}
-  },
-  "Canada": {
-    "Toronto": {"lat": 43.6532, "lon": -79.3832},
-    "Vancouver": {"lat": 49.2827, "lon": -123.1207},
-    "Montreal": {"lat": 45.5017, "lon": -73.5673},
-    "Calgary": {"lat": 51.0447, "lon": -114.0719},
-    "Ottawa": {"lat": 45.4215, "lon": -75.6972}
-  },
-  "Australia": {
-    "Sydney": {"lat": -33.8688, "lon": 151.2093},
-    "Melbourne": {"lat": -37.8136, "lon": 144.9631},
-    "Brisbane": {"lat": -27.4698, "lon": 153.0251},
-    "Perth": {"lat": -31.9505, "lon": 115.8605},
-    "Adelaide": {"lat": -34.9285, "lon": 138.6007}
-  },
-  "Japan": {
-    "Tokyo": {"lat": 35.6762, "lon": 139.6503},
-    "Osaka": {"lat": 34.6937, "lon": 135.5023},
-    "Nagoya": {"lat": 35.1815, "lon": 136.9066},
-    "Sapporo": {"lat": 43.0618, "lon": 141.3545},
-    "Fukuoka": {"lat": 33.5904, "lon": 130.4017}
-  }
-}
-)JSON";
-
 
 static const char index_html[] PROGMEM = R"HTML(
 <!DOCTYPE html>
@@ -133,6 +57,8 @@ static const char index_html[] PROGMEM = R"HTML(
         #toast { display: none; position: sticky; top: 0; padding: 0.6rem 1rem; border-radius: 6px; color: #fff; z-index: 5; }
         #toast.ok { background: #2a7a3b; }
         #toast.err { background: #b3261e; }
+        #placeResults { margin-bottom: 1rem; }
+        #placeResults button { display: block; width: 100%; text-align: left; margin-top: 0.4rem; }
         .banner { background: #fff3cd; border: 1px solid #e0b100; border-radius: 8px; padding: 0.75rem 1rem; margin: 1rem 0; }
         #verboseLogs { display: none; margin-top: 10px; font-family: monospace; font-size: 12px; background: #222; color: #0f0; padding: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
     </style>
@@ -147,22 +73,26 @@ static const char index_html[] PROGMEM = R"HTML(
 
     <div class="card">
         <h3>Location</h3>
+        <span class="label">Place:</span> <span id="locationName"></span><br>
         <span class="label">Latitude:</span> <span id="lat"></span><br>
         <span class="label">Longitude:</span> <span id="lon"></span><br>
-        <span class="label">Source:</span> <span id="locationSource"></span>
+        <span class="label">Source:</span> <span id="locationSource"></span><br>
+        <a id="mapLink" target="_blank" rel="noopener">Show on the map</a>
     </div>
 
     <div class="card">
-        <h3>Manual Location Selection</h3>
+        <h3>Set Location</h3>
+        <form id="placeSearch">
+            <span class="label">Search a place:</span> <input id="placeQuery" type="text" maxlength="64" placeholder="town or village" required>
+            <button type="submit">Search</button>
+        </form>
+        <div id="placeResults"></div>
         <form id="locationForm">
-            <span class="label">Country:</span>
-            <select name="country" id="countrySelect" required>
-                <option value="">Select Country</option>
-            </select><br>
-            <span class="label">City:</span>
-            <select name="city" id="citySelect" required>
-                <option value="">Select City</option>
-            </select><br>
+            <span class="label">Name:</span> <input name="place" type="text" maxlength="64"><br>
+            <span class="label">Latitude:</span> <input name="lat" type="number" step="any" min="-90" max="90" required><br>
+            <span class="label">Longitude:</span> <input name="lon" type="number" step="any" min="-180" max="180" required><br>
+            <small>A search fills these in. Without internet (setup mode) type the coordinates, e.g. from a map app.
+            They are rounded to 2 decimals (about 1 km).</small><br>
             <button type="submit">Set Location</button>
         </form>
     </div>
@@ -338,32 +268,56 @@ static const char index_html[] PROGMEM = R"HTML(
         }
 
         // Everything below inserts device or network supplied text with textContent, never innerHTML
-        let locations = {};
-        const countrySelect = document.getElementById('countrySelect');
-        const citySelect = document.getElementById('citySelect');
-
-        fetch('/api/locations')
-            .then(r => r.json())
-            .then(data => {
-                locations = data;
-                Object.keys(locations).forEach(country => countrySelect.appendChild(option(country, country)));
-            })
-            .catch(() => toast('Could not load the location list', false));
-
-        countrySelect.addEventListener('change', function() {
-            citySelect.replaceChildren(option('', 'Select City'));
-            if (locations[this.value]) {
-                Object.keys(locations[this.value]).forEach(city => citySelect.appendChild(option(city, city)));
-            }
+        // Place search: the browser asks Open-Meteo's geocoding service directly (the device needs no internet
+        // access or TLS for it). Only the chosen coordinates and name are sent to the device.
+        const placeResults = document.getElementById('placeResults');
+        document.getElementById('placeSearch').addEventListener('submit', e => {
+            e.preventDefault();
+            const query = document.getElementById('placeQuery').value.trim();
+            if (!query) return;
+            placeResults.textContent = 'Searching...';
+            const lang = (navigator.language || 'en').slice(0, 2);
+            fetch('https://geocoding-api.open-meteo.com/v1/search?count=8&format=json&language=' +
+                  encodeURIComponent(lang) + '&name=' + encodeURIComponent(query))
+                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(data => {
+                    const places = data.results || [];
+                    placeResults.replaceChildren();
+                    if (!places.length) {
+                        placeResults.textContent = 'No places found. Try another spelling, or enter the coordinates below.';
+                        return;
+                    }
+                    places.forEach(p => {
+                        const parts = [p.name, p.admin2, p.admin1, p.country].filter((v, i, a) => v && a.indexOf(v) === i);
+                        const label = parts.join(', ');
+                        const b = document.createElement('button');
+                        b.type = 'button';
+                        b.textContent = label;
+                        b.addEventListener('click', () => {
+                            const f = document.forms.locationForm;
+                            f.elements.place.value = label.slice(0, 64);
+                            f.elements.lat.value = p.latitude.toFixed(2);
+                            f.elements.lon.value = p.longitude.toFixed(2);
+                            placeResults.textContent = 'Selected ' + label + '. Press Set Location to use it.';
+                        });
+                        placeResults.appendChild(b);
+                    });
+                })
+                .catch(() => {
+                    placeResults.textContent = 'The search needs an internet connection. Enter the coordinates below instead.';
+                });
         });
 
         function loadStatus(full) {
             return fetch('/api/status')
                 .then(r => r.json())
                 .then(s => {
-                    document.getElementById('lat').textContent = s.lat.toFixed(4);
-                    document.getElementById('lon').textContent = s.lon.toFixed(4);
+                    document.getElementById('lat').textContent = String(+s.lat.toFixed(4));
+                    document.getElementById('lon').textContent = String(+s.lon.toFixed(4));
                     document.getElementById('locationSource').textContent = s.locationSource;
+                    document.getElementById('locationName').textContent = s.locationName || '(no name)';
+                    document.getElementById('mapLink').href = 'https://www.openstreetmap.org/?mlat=' + s.lat +
+                        '&mlon=' + s.lon + '#map=12/' + s.lat + '/' + s.lon;
                     renderSsidLocations(s.ssidLocations || []);
                     if (!full) return;
 
@@ -717,10 +671,6 @@ static void handleRoot() {
     server.send_P(200, "text/html; charset=utf-8", index_html);
 }
 
-static void handleApiLocations() {
-    server.send_P(200, "application/json", locationsJson);
-}
-
 // Hands the page its CSRF token and the OTA path. Only same-origin script can read the reply.
 static void handleApiToken() {
     JsonDocument doc;
@@ -739,6 +689,7 @@ static void handleApiStatus() {
     doc["lat"] = configLat;
     doc["lon"] = configLon;
 
+    doc["locationName"] = manualLocation ? locationName : String();
     if (manualLocation) {
         doc["locationSource"] = "Manual Selection";
     } else if (ssidBasedLocation) {
@@ -882,21 +833,22 @@ static void handleApiDisplay() {
 }
 
 static void handleApiLocation() {
-    String country = server.arg("country");
-    String city = server.arg("city");
-
-    JsonDocument locations;
-    if (deserializeJson(locations, (const __FlashStringHelper*)locationsJson) ||
-        country.length() == 0 || city.length() == 0 || locations[country][city].isNull()) {
-        sendMessage(400, "Invalid country or city selected");
+    float lat, lon;
+    if (!argFloat("lat", -90, 90, lat) || !argFloat("lon", -180, 180, lon)) {
+        sendMessage(400, "Latitude must be -90 to 90 and longitude -180 to 180");
         return;
     }
-    float lat = locations[country][city]["lat"];
-    float lon = locations[country][city]["lon"];
+    // Two decimals (about 1 km) is plenty for a forecast grid of a few km, and does not pinpoint a house
+    lat = roundf(lat * 100.0f) / 100.0f;
+    lon = roundf(lon * 100.0f) / 100.0f;
+    String name = server.arg("place");
+    name.trim();
+    if (name.length() > MAX_PLACE_NAME_LEN) name = name.substring(0, MAX_PLACE_NAME_LEN);
 
     bool saved = updateConfig([&](JsonDocument& doc) {
         doc["lat"] = lat;
         doc["lon"] = lon;
+        doc["locationName"] = name;
         doc["manualLocation"] = true;
     });
     if (!saved) {
@@ -905,9 +857,12 @@ static void handleApiLocation() {
     }
     configLat = lat;
     configLon = lon;
+    locationName = name;
     manualLocation = true;
     state.fetchNow = true;
-    sendMessage(200, "Location set to " + city + ", " + country);
+    char coords[32];
+    snprintf(coords, sizeof(coords), "%.2f, %.2f", lat, lon);
+    sendMessage(200, "Location set to " + (name.length() ? name + " (" + coords + ")" : String(coords)));
 }
 
 static void handleApiWifiScan() {
@@ -1198,7 +1153,6 @@ void initWebServer() {
     server.on("/", guarded(handleRoot));
     server.on("/api/token", guarded(handleApiToken));
     server.on("/api/status", guarded(handleApiStatus));
-    server.on("/api/locations", guarded(handleApiLocations));
     server.on("/api/logs", guarded(handleApiLogs));
     server.on("/api/wifi/scan", guarded(handleApiWifiScan));
     server.on("/api/ota", guarded(handleApiOta));

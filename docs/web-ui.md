@@ -17,12 +17,22 @@ it worked. The settings are stored in [`config.json`](configuration.md) on the d
 
 ## Location and the default-password banner
 
-![The location card and the manual location selection, below a banner that asks for a new password](images/webui-location.png){ .center }
+![The location card and the place search with three results for Amsterdam, below a banner that asks for a new password](images/webui-location.png){ .center }
 
-- **Location** shows the coordinates the forecast uses and where they came from: *Manual Selection*,
-  *SSID-based*, *Configuration file* or *Default Fallback*.
-- **Manual Location Selection**: pick a country and a city and press *Set Location*. The device then
-  ignores any [per-network location](#per-network-locations).
+- **Location** shows the place, the coordinates the forecast uses and where they came from: *Manual
+  Selection*, *SSID-based*, *Configuration file* or *Default Fallback*. *Show on the map* opens the
+  spot on OpenStreetMap, so you can check it.
+- **Set Location**: type a town or village and press *Search*. Pick the right one from the list (it shows
+  the municipality, province and country, to tell places with the same name apart); that fills in the
+  name and coordinates. Press *Set Location* to use it. The device then ignores any
+  [per-network location](#per-network-locations).
+    - The search runs in your browser, against [Open-Meteo's geocoding](https://open-meteo.com/en/docs/geocoding-api)
+      service (free, no account), and covers places worldwide down to villages. Only the place you pick
+      is sent to the device.
+    - Without internet, for example in the setup network, the search cannot work: type the latitude and
+      longitude yourself, e.g. copied from a map app.
+    - Coordinates are rounded to 2 decimals, about 1 km. That is finer than the forecast grid (a few km)
+      and does not pinpoint your house.
 - The yellow banner only shows while the device still has its default password. Set your own in the
   [Admin Password](#admin-password) card.
 
@@ -46,7 +56,7 @@ minutes without a connection (see [first boot](first-boot.md)).
 *SSID Location Settings* ties a location to a WiFi network, so a device that moves between home and the
 office shows the local forecast at each. Pick a scanned network (press *Scan Networks* first), enter its
 latitude and longitude and press *Add Location*. Up to 10 can be stored; *Delete* removes one. A location
-chosen with *Manual Location Selection* takes precedence.
+set with *Set Location* takes precedence.
 
 ## Ride thresholds, display and weather
 
