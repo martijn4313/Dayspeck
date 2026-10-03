@@ -2,9 +2,9 @@
 
 A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
 rating it shows what to wear and what the weather is like, with pictures and numbers and no words. Both
-screens show **the day in three parts**: morning, afternoon and evening, read from left to right. A tap on
-the touch sensor switches between the clothes and the weather screen (the weather screen closes by itself
-after 30 s).
+screens show **the day in three parts**: morning, afternoon and evening, read from left to right. The
+weather screen is the main screen; a tap on the touch sensor shows the clothes screen, and another tap (or
+30 s) goes back to the weather.
 
 ![Kids clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
