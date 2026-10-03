@@ -5,7 +5,7 @@ shows `UPD` in the top-left corner, and the web UI's *Firmware Update* card offe
 Nothing installs by itself. The install takes about a minute (the display shows the progress), then
 the device restarts. Settings are kept.
 
-How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://github.com/martijn4313/WeatherWise/blob/main/plans/ota_plan.md)):
+How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://github.com/martijn4313/Dayspeck/blob/main/plans/ota_plan.md)):
 
 - **No TLS on the device**: it would not fit next to a second firmware image. A small relay
   (`tools/ota-relay`, a free Cloudflare Worker, or any plain HTTP server) passes the release on
@@ -25,7 +25,7 @@ How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://gith
    `firmware/include/ota_pubkey.h`. A build without that file cannot install pull updates.
    If the key is lost, generate a new one; devices then need one manual upload (or a serial flash)
    of a build with the new public key.
-2. **Relay.** Deploy `tools/ota-relay` (see its [README](https://github.com/martijn4313/WeatherWise/blob/main/tools/ota-relay/README.md)) and put its `http://` address in the web UI
+2. **Relay.** Deploy `tools/ota-relay` (see its [README](https://github.com/martijn4313/Dayspeck/blob/main/tools/ota-relay/README.md)) and put its `http://` address in the web UI
    under *Update server*, or in `OTA_DEFAULT_URL` in `config.h`.
 3. **Serial flash, once.** Devices built before the 64 KB filesystem layout have too little free
    flash for any over-the-air update: flash them over serial (`pio run -t upload` and

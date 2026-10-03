@@ -18,4 +18,4 @@ plans/                  improvement plan and design notes
 
 CI (`.github/workflows/ci.yml`) runs the unit tests, builds all firmware environments and the
 filesystem image, checks that the firmware leaves room for an update, and lints and tests the Python
-tools. Tags `vX.Y.Z` publish a signed release (`.github/workflows/release.yml`). See the [improvement plan](https://github.com/martijn4313/WeatherWise/blob/main/plans/improvement_plan.md) for the roadmap.
+tools. Tags `vX.Y.Z` publish a signed release (`.github/workflows/release.yml`). See the [improvement plan](https://github.com/martijn4313/Dayspeck/blob/main/plans/improvement_plan.md) for the roadmap.

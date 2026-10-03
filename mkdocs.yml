@@ -1,7 +1,7 @@
 site_name: Dayspeck
 site_description: A small ESP8266 weather display for riders and kids
-site_url: https://martijn4313.github.io/WeatherWise/
-repo_url: https://github.com/martijn4313/WeatherWise
+site_url: https://martijn4313.github.io/Dayspeck/
+repo_url: https://github.com/martijn4313/Dayspeck
 edit_uri: edit/main/docs/
 
 theme:
