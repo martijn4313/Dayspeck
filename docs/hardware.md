@@ -20,13 +20,23 @@ A kit without a touch pad or button can use any momentary switch to ground on a 
 | Touch input | a TTP223 module or a push button |
 | 3.3 V supply, ≥ 300 mA | the ESP8266 draws current spikes when transmitting |
 
-Wiring (all 3.3 V):
+## Wiring
 
-| ESP-01 pin | GPIO | Connects to |
-|-----------|------|-------------|
-| 0 | GPIO0 | OLED **SDA** |
-| 2 | GPIO2 | OLED **SCL** |
-| RX | GPIO3 | touch sensor output |
+Everything runs on 3.3 V. Do not connect the ESP-01 to 5 V.
+
+![Wiring diagram: ESP-01 GPIO2 to the OLED SCL, GPIO0 to the OLED SDA, RX (GPIO3) to the touch sensor output, VCC and CH_PD to 3.3 V, GND to ground](images/wiring.svg){ .center }
+
+| ESP-01 pin | Connects to |
+|-----------|-------------|
+| VCC | 3.3 V supply, OLED **VCC** and touch sensor **VCC** |
+| CH_PD (EN) | 3.3 V (the module stays off without it) |
+| GND | ground, OLED **GND** and touch sensor **GND** |
+| GPIO0 | OLED **SDA** |
+| GPIO2 | OLED **SCL** |
+| RX (GPIO3) | touch sensor **OUT** |
+
+The ESP-01's TX and RST pins stay unconnected. With a push button instead of a touch module, connect
+one side to RX (GPIO3) and the other to GND (no VCC needed).
 
 Notes:
 

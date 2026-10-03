@@ -14,7 +14,8 @@ It comes in two flavours, built from the same code:
 
 1. Check the [hardware](hardware.md) and wire it up.
 2. [Build and flash](build.md) the firmware.
-3. Follow the [first boot](first-boot.md) steps to connect it to your WiFi.
+3. Follow the [first boot](first-boot.md) steps to connect it to your WiFi, then tune it in the
+   [web UI](web-ui.md).
 
 Then see [how the ride rating works](ride-rating.md), the [configuration reference](configuration.md)
 and how to [update over the air](ota.md).

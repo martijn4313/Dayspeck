@@ -39,6 +39,7 @@ nav:
       - Hardware: hardware.md
       - Build and flash: build.md
       - First boot: first-boot.md
+      - Web UI: web-ui.md
       - Configuration: configuration.md
   - Maintaining:
       - Over-the-air updates: ota.md
