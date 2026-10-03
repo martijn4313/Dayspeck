@@ -127,28 +127,38 @@ struct KidsOutlook {
     int  outfit;     // OUTFIT_*
     int  weather;    // KIDS_WEATHER_*
     bool night;      // draw the moon instead of the sun
-    int  tempC;      // average temperature, rounded
-    int  hour;       // index of the hour it is about: the middle of a window, or the hour of an event
+    int  tempC;      // average temperature, rounded (decides the outfit)
+    int  maxTempC;   // highest temperature, rounded (the number on the weather screen)
+    int  hour;       // index of the middle hour
 };
 
 // Summary of hours [from, to): the most severe precipitation if there is any (at least 0.2 mm in an
 // hour, or a storm), otherwise the most common sky; outfit from the average temperature.
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
 
-// "Later" for the kids screens. hours[0] is the first hour after now. Normally the summary of the
-// first `window` hours; but when an hour in [window, lookahead) deviates strongly from that summary
-// (heavy rain of 1 mm or more, a storm or snow while the window is dry, or a temperature two warmth
-// steps away), that hour instead, so the screen can warn "rain this afternoon".
-KidsOutlook kidsLaterOutlook(const KidsHour* hours, size_t count, size_t window, size_t lookahead,
-                             const KidsLimits& l);
+// Parts of the day on the kids screens, by local hour: morning 07-12, afternoon 12-18, evening 18-22.
+// The hours from 22 to 07 belong to no part: that is the night, when the kids sleep.
+#define KIDS_PART_MORNING    0
+#define KIDS_PART_AFTERNOON  1
+#define KIDS_PART_EVENING    2
+#define KIDS_MORNING_FROM_HR    7
+#define KIDS_AFTERNOON_FROM_HR 12
+#define KIDS_EVENING_FROM_HR   18
+#define KIDS_EVENING_UNTIL_HR  22
+int partOfDay(int localHour);   // KIDS_PART_*, or -1 at night
 
-// Time of day of a local hour, for the symbol between the halves
-#define KIDS_TIME_MORNING    0   // 06-11
-#define KIDS_TIME_AFTERNOON  1   // 12-17
-#define KIDS_TIME_EVENING    2   // 18-21
-#define KIDS_TIME_NIGHT      3   // 22-05
-#define KIDS_TIME_TOMORROW   4   // after sleeping (drawn as a bed)
-int timeOfDay(int localHour);
+// One column of the kids screens: a part of the day and the forecast hours [from, to) that belong to it
+struct KidsPart {
+    int    part;         // KIDS_PART_*
+    size_t from, to;
+    bool   afterSleep;   // a night lies between the previous column (or now) and this one
+    bool   now;          // the current hour belongs to it
+};
+
+// Split forecast hours into the next parts of the day. localHours[i] is the local hour of forecast
+// hour i, and hour 0 is the current one. Fills at most maxParts parts, the current part first (only
+// its remaining hours); returns how many.
+size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts);
 
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);

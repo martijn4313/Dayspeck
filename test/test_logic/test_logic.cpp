@@ -296,43 +296,74 @@ void test_kids_window() {
     TEST_ASSERT_FALSE(kidsWindowOutlook(none, 0, 2, K).valid);
 }
 
-void test_kids_later_warns_for_rain_after_the_window() {
-    KidsHour h[10];
-    for (int i = 0; i < 10; i++) h[i] = hr(18, 0, 1);
-    KidsOutlook o = kidsLaterOutlook(h, 10, 6, 10, K);
-    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);
-    TEST_ASSERT_EQUAL(2, o.hour);                        // middle of the window
-
-    h[8] = hr(17, 0.6f, 61);                             // light rain later: no warning
-    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsLaterOutlook(h, 10, 6, 10, K).weather);
-
-    h[8] = hr(17, 2.0f, 63);                             // heavy rain later: show that hour
-    o = kidsLaterOutlook(h, 10, 6, 10, K);
-    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
-    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
-    TEST_ASSERT_EQUAL(8, o.hour);
-
-    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsLaterOutlook(h, 10, 6, 8, K).weather);   // beyond the look-ahead
+void test_kids_window_highest_temperature() {
+    KidsHour h[3] = { hr(9, 0, 1), hr(14, 0, 1), hr(16, 0, 1) };
+    KidsOutlook o = kidsWindowOutlook(h, 0, 3, K);
+    TEST_ASSERT_EQUAL(13, o.tempC);      // the average decides the outfit
+    TEST_ASSERT_EQUAL(16, o.maxTempC);   // the highest is the number to show
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, o.outfit);
 }
 
-void test_kids_later_warns_for_a_big_temperature_change() {
-    KidsHour h[10];
-    for (int i = 0; i < 10; i++) h[i] = hr(17, 0, 1);   // mild
-    h[7] = hr(13, 0, 1);                                 // one step colder: no warning
-    TEST_ASSERT_EQUAL(2, kidsLaterOutlook(h, 10, 6, 10, K).hour);   // still the window
-    h[9] = hr(3, 0, 1);                                  // two steps colder
-    KidsOutlook o = kidsLaterOutlook(h, 10, 6, 10, K);
-    TEST_ASSERT_EQUAL(9, o.hour);
-    TEST_ASSERT_EQUAL(OUTFIT_COLD, o.outfit);
+void test_part_of_day() {
+    TEST_ASSERT_EQUAL(-1, partOfDay(6));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(11));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(12));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(18));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(21));
+    TEST_ASSERT_EQUAL(-1, partOfDay(22));
+    TEST_ASSERT_EQUAL(-1, partOfDay(0));
 }
 
-void test_time_of_day() {
-    TEST_ASSERT_EQUAL(KIDS_TIME_NIGHT, timeOfDay(5));
-    TEST_ASSERT_EQUAL(KIDS_TIME_MORNING, timeOfDay(6));
-    TEST_ASSERT_EQUAL(KIDS_TIME_MORNING, timeOfDay(11));
-    TEST_ASSERT_EQUAL(KIDS_TIME_AFTERNOON, timeOfDay(12));
-    TEST_ASSERT_EQUAL(KIDS_TIME_EVENING, timeOfDay(18));
-    TEST_ASSERT_EQUAL(KIDS_TIME_NIGHT, timeOfDay(22));
+// Local hours of `count` forecast hours from `first` on
+static void hoursFrom(int first, int* out, size_t count) {
+    for (size_t i = 0; i < count; i++) out[i] = (first + (int)i) % 24;
+}
+
+void test_day_parts_in_the_morning() {
+    int h[24];
+    hoursFrom(10, h, 24);                       // 10:00
+    KidsPart p[3];
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
+    TEST_ASSERT_EQUAL(0, p[0].from);            // only what is left of the morning: 10 and 11
+    TEST_ASSERT_EQUAL(2, p[0].to);
+    TEST_ASSERT_TRUE(p[0].now);
+    TEST_ASSERT_FALSE(p[0].afterSleep);
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[1].part);
+    TEST_ASSERT_EQUAL(6, p[1].to - p[1].from);
+    TEST_ASSERT_FALSE(p[1].now);
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[2].part);
+    TEST_ASSERT_FALSE(p[2].afterSleep);
+}
+
+void test_day_parts_roll_into_tomorrow() {
+    int h[24];
+    hoursFrom(19, h, 24);                       // 19:00: evening, then tomorrow morning and afternoon
+    KidsPart p[3];
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[0].part);
+    TEST_ASSERT_TRUE(p[0].now);
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[1].part);
+    TEST_ASSERT_TRUE(p[1].afterSleep);          // the night lies before it
+    TEST_ASSERT_EQUAL(12, p[1].from);           // 07:00 is 12 hours after 19:00
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[2].part);
+    TEST_ASSERT_FALSE(p[2].afterSleep);
+    TEST_ASSERT_EQUAL(23, p[2].to);             // the data ends at 18:00 tomorrow: 12:00-17:00 (5 hours) left
+}
+
+void test_day_parts_at_night() {
+    int h[24];
+    hoursFrom(23, h, 24);                       // 23:00: nothing is "now"; the morning is after sleeping
+    KidsPart p[3];
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
+    TEST_ASSERT_FALSE(p[0].now);
+    TEST_ASSERT_TRUE(p[0].afterSleep);
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[2].part);
+
+    TEST_ASSERT_EQUAL(0, kidsDayParts(h, 3, p, 3));   // only night hours: no parts
 }
 
 void test_kids_weather() {
@@ -418,9 +449,11 @@ int main(int, char**) {
     RUN_TEST(test_kids_limits_must_go_from_warm_to_cold);
     RUN_TEST(test_kids_outfits_follow_changed_limits);
     RUN_TEST(test_kids_window);
-    RUN_TEST(test_kids_later_warns_for_rain_after_the_window);
-    RUN_TEST(test_kids_later_warns_for_a_big_temperature_change);
-    RUN_TEST(test_time_of_day);
+    RUN_TEST(test_kids_window_highest_temperature);
+    RUN_TEST(test_part_of_day);
+    RUN_TEST(test_day_parts_in_the_morning);
+    RUN_TEST(test_day_parts_roll_into_tomorrow);
+    RUN_TEST(test_day_parts_at_night);
     RUN_TEST(test_contrast_for_percent);
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);

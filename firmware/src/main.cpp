@@ -313,49 +313,39 @@ static bool nightAt(time_t t) {
 }
 
 /**
- * Kids variant: what to wear and the weather, now (left) and later (right)
+ * Kids variant: the next three parts of the day (morning, afternoon, evening), as outfits or as weather
  */
 void renderKids() {
-    WeatherData w = getCurrentWeather();
-    int weatherNow = kidsWeatherFor(w.code, w.gustKmh, kidsLimits.windyGustKmh);
-    int outfitNow = outfitFor(w.tempC, weatherNow, state.isNight, kidsLimits);
-
-    // The forecast from the next hour on: hours[k] starts at firstEpoch + (k + 1) hours
+    // Forecast hours from the current one on; the current hour uses what is measured now
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
     size_t n = getUpcomingHours(slices, firstEpoch);
     KidsHour hours[24];
+    int localHours[24];
     size_t count = 0;
-    for (size_t i = 1; i < n && count < 24; i++, count++) {
-        const HourSlice& s = slices[i];
-        time_t t = firstEpoch + (time_t)i * 3600;
+    for (; count < n && count < 24; count++) {
+        const HourSlice& s = slices[count];
+        time_t t = firstEpoch + (time_t)count * 3600;
         hours[count] = KidsHour{ (float)s.tempC, s.rainTenthMm / 10.0f, (float)s.gustKmh,
                                  s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid };
+        localHours[count] = localHourOf(t);
     }
-    auto hourOf = [&](int k) { return localHourOf(firstEpoch + (time_t)(k + 1) * 3600); };
-
-    KidsOutlook later;
-    int symbol;
-    int hourNow = state.timeSynced ? localHour() : localHourOf(firstEpoch);
-    if (hourNow >= KIDS_TOMORROW_FROM_HR || hourNow < 5) {
-        // Evening and night: what to wear after sleeping, the morning from KIDS_MORNING_HR
-        size_t start = 0;
-        while (start < count && hourOf((int)start) != KIDS_MORNING_HR) start++;
-        size_t end = start + KIDS_WINDOW_HOURS < count ? start + KIDS_WINDOW_HOURS : count;
-        later = kidsWindowOutlook(hours, start, end, kidsLimits);
-        symbol = KIDS_TIME_TOMORROW;
-    } else {
-        // Daytime: the next hours, or something big that comes after them
-        later = kidsLaterOutlook(hours, count, KIDS_WINDOW_HOURS, KIDS_LOOKAHEAD_HOURS, kidsLimits);
-        symbol = timeOfDay(hourOf(later.hour));
+    if (count > 0) {
+        WeatherData w = getCurrentWeather();
+        hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true };
     }
 
-    if (state.displayMode == 1) {
-        renderKidsWeatherView(display, weatherNow, state.isNight, kidsShownTemp(w.tempC),
-                              later.valid, later.weather, later.night, kidsShownTemp((float)later.tempC), symbol);
-    } else {
-        renderKidsView(display, outfitNow, later.valid ? later.outfit : -1, symbol);
+    KidsPart parts[3];
+    size_t np = kidsDayParts(localHours, count, parts, 3);
+    KidsColumn cols[3];
+    int nowColumn = -1, nightBefore = -1;
+    for (size_t i = 0; i < np; i++) {
+        KidsOutlook o = kidsWindowOutlook(hours, parts[i].from, parts[i].to, kidsLimits);
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.maxTempC) };
+        if (parts[i].now) nowColumn = (int)i;
+        if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
+    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, state.displayMode == 1);
 }
 #endif
 

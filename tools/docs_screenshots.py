@@ -84,7 +84,8 @@ def rider_wind_gif(path: Path, warmup: int = 20, count: int = 60):
 
 
 def kids_wind_gif(path: Path, source: Path, warmup: int = 20, count: int = 60):
-    """The kids weather screen (cloud now, wind later) with autumn leaves blowing over it."""
+    """The kids weather screen (an evening, rain tomorrow morning, a windy afternoon) with autumn leaves
+    blowing over it: the fourth screen of kids-weather.png."""
     base = grid_of(Image.open(source), SCREEN_W + GAP, SCREEN_H + 16)
     state = rider_state()
     gusts, leaves = WindAnimation.init()
@@ -111,7 +112,7 @@ def main():
     row(screens).save(out / "rider-today.png")
     print("wrote", out / "rider-today.png")
 
-    # hero: the rider screen next to the second kids clothes screen
+    # hero: the rider screen next to the second kids clothes screen (an autumn morning)
     kids = Image.open(out / "kids-clothes.png").convert("RGBA").crop(
         (SCREEN_W + GAP, 0, 2 * SCREEN_W + GAP, SCREEN_H))
     row([screens[0], kids]).save(out / "hero.png")

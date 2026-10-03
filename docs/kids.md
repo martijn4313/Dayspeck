@@ -1,14 +1,15 @@
 # Kids variant: what do I wear today?
 
 A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
-rating it shows what to wear and what the weather is like, with big pictures and numbers and no
-words. Both screens are split in two: **left is now, right is later**, with an arrow between them and
-a small symbol that says when "later" is. A tap on the touch sensor switches between the clothes and
-the weather screen (the weather screen closes by itself after 30 s).
+rating it shows what to wear and what the weather is like, with pictures and numbers and no words. Both
+screens show **the day in three parts**: morning, afternoon and evening, read from left to right. A tap on
+the touch sensor switches between the clothes and the weather screen (the weather screen closes by itself
+after 30 s).
 
-![Kids clothes screens: sun cap, t-shirt and shorts now, t-shirt and shorts this afternoon; t-shirt now, rain coat and boots this afternoon; winter coat now, winter coat with scarf and mittens tomorrow](images/kids-clothes.png){ .center }
+![Kids clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
-**Clothes screen.** The outfits, from warm to cold (the limits are the defaults, see *Settings* below):
+**Clothes screen.** One outfit per part of the day. The outfits, from warm to cold (the limits are the
+defaults, see *Settings* below):
 
 | When | Picture |
 |------|---------|
@@ -20,27 +21,36 @@ the weather screen (the weather screen closes by itself after 30 s).
 | 0 to under 5 °C | winter coat and hat |
 | below 0 °C, or snow | winter coat, hat, scarf and mittens |
 
-**Now and later.** The left half is the weather right now. The right half is the next 6 hours: their average
-temperature and the wettest weather in that time. When something big happens in
-the 6 hours after that (1 mm of rain or more in an hour, a thunderstorm or snow while the next hours are
-dry, or a temperature two outfits warmer or colder), the right half shows that instead, so a sunny
-morning can still say "rain coat this afternoon". From 18:00 until 05:00 the right half shows tomorrow
-morning (from 7:00) instead.
+The outfit of a part goes by its average temperature and its wettest weather: one hour with 0.2 mm of rain
+or more (or a thunderstorm) makes it a rain coat.
 
-The symbol under the arrow says when "later" is:
+**The three parts.** The parts of the day are morning (7-12), afternoon (12-18) and evening (18-22). The
+screen always shows the **next three**, starting with the current one, so it never shows what is past:
+
+| Time | Columns |
+|------|---------|
+| 10:00 | the rest of this morning, this afternoon, this evening |
+| 14:00 | the rest of this afternoon, this evening, tomorrow morning |
+| 19:00 | the rest of this evening, tomorrow morning, tomorrow afternoon |
+| at night | tomorrow morning, afternoon and evening |
+
+The current part has **three dots** underneath. Where a night lies between two columns there is a dotted
+line with a **bed** at the top: that part comes after sleeping. The current part also uses what is
+measured right now, not only the forecast.
+
+The symbol at the top of a column says which part it is:
 
 | Symbol | Meaning |
 |--------|---------|
-| half sun with an arrow up | morning (6-12) |
-| small sun | afternoon (12-18) |
-| half sun with an arrow down | evening (18-22) |
-| moon | night |
-| bed | tomorrow morning, after sleeping |
+| half sun on the horizon, arrow up | morning (the sun comes up) |
+| small sun | afternoon (the sun is high) |
+| half sun on the horizon, arrow down | evening (the sun goes down) |
 
-![Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning](images/kids-weather.png){ .center }
+![Kids weather screens: 10:00 sun 13, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; an evening moon 15, rain 12 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
-**Weather screen:** the same split, with a big picture (sun or moon, partly cloudy, cloud, rain,
-thunderstorm, snow, wind) and the temperature on each side: a number to read, no unit.
+**Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
+rain, thunderstorm, snow, wind) and its **highest temperature**, like the forecast on the news: a number to
+read, no unit.
 
 **Autumn leaves.** In autumn leaves blow across both screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
@@ -60,8 +70,8 @@ from warm to cold; an equal pair skips that outfit, for example a sweater limit 
 no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
 [configuration reference](configuration.md)) and are always in °C.
 
-The 6 hour window, the look-ahead and the evening switch are compile-time settings (`KIDS_*` in
-`firmware/include/config.h`). The rain animation and the `OLD` tag are left out in this build (the autumn
+The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
+`firmware/lib/motologic/motologic.h`). The rain animation and the `OLD` tag are left out in this build (the autumn
 leaves are not); WiFi, location, the web UI and OTA work as before.
 
 ```sh

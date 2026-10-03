@@ -8,7 +8,7 @@ It comes in two flavours, built from the same code:
 
 - **[Rider](rider.md)** (default): answers one question at a glance, *can I ride today?*
 - **[Kids](kids.md)**: for children of 4-5 who are learning to read. It answers *what do I wear today?*
-  with pictures and numbers.
+  with pictures and numbers, for the morning, afternoon and evening.
 
 ## Where to start
 
