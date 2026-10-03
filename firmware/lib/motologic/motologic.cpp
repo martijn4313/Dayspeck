@@ -179,32 +179,6 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
     return o;
 }
 
-KidsOutlook kidsDayOutlook(const KidsHour* hours, size_t from, size_t to, size_t highHours, const KidsLimits& l) {
-    KidsOutlook o = kidsWindowOutlook(hours, from, to, l);
-    if (!o.valid) return o;
-
-    // The temperatures of the valid hours, warmest first (a day has at most a few dozen hours)
-    float temps[48];
-    size_t n = 0;
-    for (size_t i = from; i < to && n < 48; i++) {
-        if (hours[i].valid && !isnan(hours[i].tempC)) temps[n++] = hours[i].tempC;
-    }
-    if (n == 0) return o;                                   // no usable temperature: keep the window summary
-    for (size_t i = 1; i < n; i++) {                        // insertion sort, descending
-        float t = temps[i];
-        size_t j = i;
-        while (j > 0 && temps[j - 1] < t) { temps[j] = temps[j - 1]; j--; }
-        temps[j] = t;
-    }
-    if (highHours < 1) highHours = 1;
-    if (highHours > n) highHours = n;
-    float sum = 0;
-    for (size_t i = 0; i < highHours; i++) sum += temps[i];
-    o.tempC = (int)lroundf(sum / highHours);
-    o.outfit = outfitFor(temps[n - 1], o.weather, o.night, l);    // the coldest hour
-    return o;
-}
-
 KidsOutlook kidsLaterOutlook(const KidsHour* hours, size_t count, size_t window, size_t lookahead,
                              const KidsLimits& l) {
     if (window > count) window = count;
