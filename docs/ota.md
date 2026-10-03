@@ -29,7 +29,7 @@ How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://gith
    under *Update server*, or in `OTA_DEFAULT_URL` in `config.h`.
 3. **Serial flash, once.** Devices built before the 64 KB filesystem layout have too little free
    flash for any over-the-air update: flash them over serial (`pio run -t upload` and
-   `pio run -t uploadfs`, or `motoclock-rider-serial.bin` and `motoclock-fs-serial.bin` from a
+   `pio run -t uploadfs`, or `dayspeck-rider-serial.bin` and `dayspeck-fs-serial.bin` from a
    release). The filesystem moves, so the WiFi settings, location and password start from scratch.
 
 ## Publishing a release
@@ -45,7 +45,7 @@ a new one installs fine but then misbehaves (a serial flash fixes it).
 
 ## Manual upload
 
-The *Manual upload* form in the web UI takes a signed `motoclock-rider.bin.gz` (or `-kids`) from a
+The *Manual upload* form in the web UI takes a signed `dayspeck-rider.bin.gz` (or `-kids`) from a
 release. To upload your own build, sign it with your key first:
 `python tools/ota_tool.py sign --key ota_private.pem --in .pio/build/esp01_1m/firmware.bin --out fw.bin.gz`.
 A build without a key accepts unsigned images; upload a compressed one
