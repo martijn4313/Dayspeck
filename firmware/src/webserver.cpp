@@ -271,12 +271,12 @@ static const char index_html[] PROGMEM = R"HTML(
         <button id="otaInstallBtn" style="display:none"></button>
         <div id="otaFeedback"></div>
         <form id="otaSettingsForm">
-            <span class="label">Update server:</span> <input name="url" type="url" maxlength="128" placeholder="http://motoclock-ota.you.workers.dev"><br>
+            <span class="label">Update server:</span> <input name="url" type="url" maxlength="128" placeholder="http://dayspeck-ota.you.workers.dev"><br>
             <span class="label">Check daily:</span> <input name="autoCheck" type="checkbox"><br>
             <button type="submit">Save Settings</button>
         </form>
         <h4>Manual upload</h4>
-        <p><small>A signed <code>motoclock-rider.bin.gz</code> or <code>motoclock-kids.bin.gz</code> from a release.</small></p>
+        <p><small>A signed <code>dayspeck-rider.bin.gz</code> or <code>dayspeck-kids.bin.gz</code> from a release.</small></p>
         <form id="otaForm">
             <input type="file" name="update" accept=".gz,.bin" required><br>
             <button type="submit">Upload and Update</button>

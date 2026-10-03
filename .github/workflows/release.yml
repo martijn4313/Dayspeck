@@ -71,17 +71,17 @@ jobs:
           kids=.pio/build/esp01_1m_kids/firmware.bin
           mkdir dist
           # Over the air: gzip-compressed and signed. Serial flashing: the raw images.
-          python tools/ota_tool.py sign --key "$key" --in "$rider" --out dist/motoclock-rider.bin.gz
-          python tools/ota_tool.py sign --key "$key" --in "$kids" --out dist/motoclock-kids.bin.gz
-          cp "$rider" dist/motoclock-rider-serial.bin
-          cp "$kids" dist/motoclock-kids-serial.bin
-          cp .pio/build/esp01_1m/littlefs.bin dist/motoclock-fs-serial.bin
+          python tools/ota_tool.py sign --key "$key" --in "$rider" --out dist/dayspeck-rider.bin.gz
+          python tools/ota_tool.py sign --key "$key" --in "$kids" --out dist/dayspeck-kids.bin.gz
+          cp "$rider" dist/dayspeck-rider-serial.bin
+          cp "$kids" dist/dayspeck-kids-serial.bin
+          cp .pio/build/esp01_1m/littlefs.bin dist/dayspeck-fs-serial.bin
           # Release notes on the device: the subject line of the annotated tag, if any
           git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
           notes=$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")
           python tools/ota_tool.py manifest --key "$key" --version "${GITHUB_REF_NAME#v}" --notes "$notes" \
-            --variant rider=dist/motoclock-rider.bin.gz \
-            --variant kids=dist/motoclock-kids.bin.gz \
+            --variant rider=dist/dayspeck-rider.bin.gz \
+            --variant kids=dist/dayspeck-kids.bin.gz \
             --out dist/ota-manifest.txt
           rm -f "$key"
 

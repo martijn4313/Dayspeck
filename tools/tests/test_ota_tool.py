@@ -59,8 +59,8 @@ def test_manifest_is_signed_and_binds_the_image(key):
     rider = ota_tool.signed_image(key, b"\xe9rider")
     kids = ota_tool.signed_image(key, b"\xe9kids")
     text = ota_tool.build_manifest(key, "1.2.3", {
-        "rider": ("motoclock-rider.bin.gz", rider),
-        "kids": ("motoclock-kids.bin.gz", kids),
+        "rider": ("dayspeck-rider.bin.gz", rider),
+        "kids": ("dayspeck-kids.bin.gz", kids),
     }, notes="Fixes")
     line, sig_hex, rest = text.split(b"\n")
     assert rest == b""
@@ -69,7 +69,7 @@ def test_manifest_is_signed_and_binds_the_image(key):
     assert payload["version"] == "1.2.3"
     assert payload["notes"] == "Fixes"
     assert payload["variants"]["rider"] == {
-        "file": "motoclock-rider.bin.gz", "size": len(rider),
+        "file": "dayspeck-rider.bin.gz", "size": len(rider),
         "sha256": hashlib.sha256(ota_tool.signed_part(rider)).hexdigest()}
     assert payload["variants"]["kids"]["sha256"] == hashlib.sha256(ota_tool.signed_part(kids)).hexdigest()
 
@@ -122,13 +122,13 @@ def test_cli_round_trip(tmp_path):
 
     image = tmp_path / "fw.bin"
     image.write_bytes(b"\xe9" + b"\x00" * 100)
-    signed = tmp_path / "motoclock-rider.bin.gz"
+    signed = tmp_path / "dayspeck-rider.bin.gz"
     ota_tool.main(["sign", "--key", str(private), "--in", str(image), "--out", str(signed)])
     manifest = tmp_path / "ota-manifest.txt"
     ota_tool.main(["manifest", "--key", str(private), "--version", "0.3.0", "--out", str(manifest),
                    "--variant", f"rider={signed}"])
     payload = json.loads(manifest.read_bytes().split(b"\n")[0])
-    assert payload["variants"]["rider"]["file"] == "motoclock-rider.bin.gz"
+    assert payload["variants"]["rider"]["file"] == "dayspeck-rider.bin.gz"
     assert payload["variants"]["rider"]["size"] == signed.stat().st_size
 
 

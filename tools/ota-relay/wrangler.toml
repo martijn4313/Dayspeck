@@ -1,6 +1,6 @@
-name = "motoclock-ota"
+name = "dayspeck-ota"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-REPO = "martijn4313/WeatherWise"
+REPO = "martijn4313/Dayspeck"

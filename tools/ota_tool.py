@@ -9,13 +9,13 @@
         Fails unless KEY is the private half of the public key in firmware/include/ota_pubkey.h
         (devices would reject everything signed with any other key).
 
-    python tools/ota_tool.py sign --key KEY --in firmware.bin --out motoclock-rider.bin.gz
+    python tools/ota_tool.py sign --key KEY --in firmware.bin --out dayspeck-rider.bin.gz
         Gzip-compresses the image (the 1 MB ESP-01 only has room for a compressed update; the
         bootloader unpacks it) and appends the signature in the ESP8266 core's format:
         gzip image | RSA PKCS#1 v1.5 signature of SHA-256(gzip image) | uint32 LE signature length.
 
     python tools/ota_tool.py manifest --key KEY --version X.Y.Z --out ota-manifest.txt \\
-            --variant rider=motoclock-rider.bin.gz [--variant kids=...] [--notes TEXT]
+            --variant rider=dayspeck-rider.bin.gz [--variant kids=...] [--notes TEXT]
         Writes the release manifest: line 1 is compact JSON, line 2 the hex signature of line 1.
         Each variant lists the signed file to download, its size and the SHA-256 of its signed
         part, which binds the image to this (signed) version so an older signed image cannot be
