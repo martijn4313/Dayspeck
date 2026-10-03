@@ -230,6 +230,13 @@ char temperatureTrend(float now, float later) {
     return 'f';
 }
 
+bool kidsLimitsValid(const KidsLimits& l) {
+    if (isnan(l.hotFromC) || isnan(l.shortsFromC) || isnan(l.sweaterBelowC) || isnan(l.coatBelowC) ||
+        isnan(l.freezeBelowC) || isnan(l.windyGustKmh)) return false;
+    return l.freezeBelowC <= l.coatBelowC && l.coatBelowC <= l.sweaterBelowC &&
+           l.sweaterBelowC <= l.shortsFromC && l.shortsFromC <= l.hotFromC && l.windyGustKmh > 0;
+}
+
 bool isAutumn(int month, bool southern) {
     return southern ? (month >= 3 && month <= 5) : (month >= 9 && month <= 11);
 }

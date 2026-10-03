@@ -153,6 +153,20 @@ void loadConfig() {
         if (doc["thresholds"]["rainProbPct"].is<float>()) rainProbPct = doc["thresholds"]["rainProbPct"];
     }
 
+    // Kids outfit limits: all or nothing, and only when they go from warm to cold
+    if (doc["kids"].is<JsonObject>()) {
+        JsonObject o = doc["kids"];
+        KidsLimits k = kidsLimits;
+        if (o["hotFromC"].is<float>()) k.hotFromC = o["hotFromC"];
+        if (o["shortsFromC"].is<float>()) k.shortsFromC = o["shortsFromC"];
+        if (o["sweaterBelowC"].is<float>()) k.sweaterBelowC = o["sweaterBelowC"];
+        if (o["coatBelowC"].is<float>()) k.coatBelowC = o["coatBelowC"];
+        if (o["freezeBelowC"].is<float>()) k.freezeBelowC = o["freezeBelowC"];
+        if (o["windyGustKmh"].is<float>()) k.windyGustKmh = o["windyGustKmh"];
+        if (kidsLimitsValid(k)) kidsLimits = k;
+        else logMessage("config.json: the kids limits are not ordered from warm to cold, using the defaults");
+    }
+
     // Ride windows: [start hour, length in hours]
     loadWindow(doc["wd_am"], weekdayAM);
     loadWindow(doc["wd_pm"], weekdayPM);
@@ -286,9 +300,6 @@ void renderDisplay() {
 }
 
 #ifdef KIDS_MODE
-static const KidsLimits kidsLimits = { KIDS_HOT_FROM_C, KIDS_SHORTS_FROM_C, KIDS_SWEATER_BELOW_C,
-                                       KIDS_COAT_BELOW_C, KIDS_FREEZE_BELOW_C, KIDS_WINDY_GUST_KMH };
-
 // Temperature as shown on the kids screens (the API is always metric)
 static int kidsShownTemp(float tempC) {
     if (isnan(tempC)) return 0;
@@ -306,7 +317,7 @@ static bool nightAt(time_t t) {
  */
 void renderKids() {
     WeatherData w = getCurrentWeather();
-    int weatherNow = kidsWeatherFor(w.code, w.gustKmh, KIDS_WINDY_GUST_KMH);
+    int weatherNow = kidsWeatherFor(w.code, w.gustKmh, kidsLimits.windyGustKmh);
     int outfitNow = outfitFor(w.tempC, weatherNow, state.isNight, kidsLimits);
 
     // The forecast from the next hour on: hours[k] starts at firstEpoch + (k + 1) hours
@@ -830,7 +841,7 @@ void loop() {
         } else if (state.displayMode == 0 || state.displayMode == 1) {
             // Kids variant: autumn leaves blow across the clothes and the weather screen
             WeatherData w = getCurrentWeather();
-            int weatherNow = kidsWeatherFor(w.code, w.gustKmh, KIDS_WINDY_GUST_KMH);
+            int weatherNow = kidsWeatherFor(w.code, w.gustKmh, kidsLimits.windyGustKmh);
             if (kidsLeavesBlowing(autumnNow(), weatherNow, w.gustKmh)) {
                 if (!state.windAnimationActive) initWindAnimation();
                 updateWindAnimation((int)w.gustKmh, false, true);

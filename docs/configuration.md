@@ -15,6 +15,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `thresholds.minTempC` | below this the rating is "caution" |
 | `thresholds.warnWindKmh` | gusts above this give "caution" |
 | `thresholds.rainProbPct` | a chance of rain from this percentage on gives "caution"; 101 switches it off |
+| `kids.hotFromC`, `kids.shortsFromC`, `kids.sweaterBelowC`, `kids.coatBelowC`, `kids.freezeBelowC` | kids build: the outfit limits in °C, from warm to cold (defaults 25, 20, 15, 5, 0); each must be equal to or below the one before it, otherwise all of them fall back to the defaults |
+| `kids.windyGustKmh` | kids build: gusts above this show the wind picture (default 50) |
 | `wd_am`, `wd_pm` | weekday morning / evening ride window: `[start hour, hours]` |
 | `we_am`, `we_pm` | the same for Saturday and Sunday |
 | `ssidLocations` | `[{"ssid", "lat", "lon"}]` — use this location when connected to that network |

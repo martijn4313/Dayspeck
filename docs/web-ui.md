@@ -86,6 +86,21 @@ set with *Set Location* takes precedence.
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
+**Clothing (kids build only)**: the limits of the outfits on the [kids screens](kids.md), in °C. The card is
+hidden in the rider build.
+
+| Field | Meaning |
+|-------|---------|
+| Sun cap, t-shirt and shorts from | the sun cap on sunny days from this temperature on (default 25) |
+| T-shirt and shorts from | shorts from here on (default 20) |
+| Sweater below | a sweater below this, a t-shirt above (default 15) |
+| Winter coat and hat below | default 5 |
+| Scarf and mittens below | default 0 |
+| Wind picture above (km/h) | gusts above this show the wind picture in dry weather (default 50) |
+
+Each limit must be equal to or below the one above it; the page refuses an order that does not go from warm
+to cold. A child who feels the cold sooner can get the winter coat from 8 °C instead of 5 °C, for example.
+
 **Weather API Config**: the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
 imperial only changes the temperature on the display) and *Verbose Debug*, which logs extra detail.
 The address must start with `http://`, as the device cannot do TLS.

@@ -34,6 +34,9 @@ extern float minTempC;
 extern float warnWindKmh;
 extern float rainProbPct;
 
+// Kids variant: outfit limits (config.json "kids", defaults KIDS_* in config.h) and the wind picture
+extern KidsLimits kidsLimits;
+
 // Ride windows (from config.json): weekday / weekend, morning / evening
 extern RideWindow weekdayAM, weekdayPM, weekendAM, weekendPM;
 

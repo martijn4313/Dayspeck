@@ -154,6 +154,20 @@ static const char index_html[] PROGMEM = R"HTML(
         </form>
     </div>
 
+    <div class="card" id="kidsCard" style="display:none">
+        <h3>Clothing (kids)</h3>
+        <p><small>What the kids screens show, by temperature (&deg;C, always metric). Each limit must be equal to or below the one above it.</small></p>
+        <form id="kidsForm">
+            <span class="label">Sun cap, t-shirt and shorts from:</span> <input name="hot" type="number" step="1" min="-30" max="50"> <small>sunny daytime only</small><br>
+            <span class="label">T-shirt and shorts from:</span> <input name="shorts" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Sweater below:</span> <input name="sweater" type="number" step="1" min="-30" max="50"> <small>t-shirt above</small><br>
+            <span class="label">Winter coat and hat below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Scarf and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Wind picture above (km/h):</span> <input name="gust" type="number" step="1" min="1" max="150"> <small>gusts, dry weather</small><br>
+            <button type="submit">Save Settings</button>
+        </form>
+    </div>
+
     <div class="card">
         <h3>Weather API Config</h3>
         <form id="weatherApiForm">
@@ -338,6 +352,17 @@ static const char index_html[] PROGMEM = R"HTML(
                     d.quietStart.value = s.display.quietStart;
                     d.quietEnd.value = s.display.quietEnd;
 
+                    if (s.variant === 'kids') {
+                        document.getElementById('kidsCard').style.display = '';
+                        const k = document.forms.kidsForm;
+                        k.hot.value = s.kids.hotFromC;
+                        k.shorts.value = s.kids.shortsFromC;
+                        k.sweater.value = s.kids.sweaterBelowC;
+                        k.coat.value = s.kids.coatBelowC;
+                        k.freeze.value = s.kids.freezeBelowC;
+                        k.gust.value = s.kids.windyGustKmh;
+                    }
+
                     const w = document.forms.weatherApiForm;
                     w.apiUrl.value = s.weatherApi.url;
                     w.units.value = s.weatherApi.units;
@@ -386,6 +411,7 @@ static const char index_html[] PROGMEM = R"HTML(
 
         submitForm('thresholdsForm', '/api/thresholds', 'Thresholds saved');
         submitForm('displayForm', '/api/display', 'Display settings saved');
+        submitForm('kidsForm', '/api/kids', 'Clothing limits saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
         submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
         submitForm('locationForm', '/api/location', 'Location set', () => loadStatus(false));
@@ -707,6 +733,15 @@ static void handleApiStatus() {
     thresholds["warnWindKmh"] = warnWindKmh;
     thresholds["rainProbPct"] = rainProbPct;
 
+    doc["variant"] = OTA_VARIANT;   // the web UI shows the clothing limits in the kids build only
+    JsonObject kids = doc["kids"].to<JsonObject>();
+    kids["hotFromC"] = kidsLimits.hotFromC;
+    kids["shortsFromC"] = kidsLimits.shortsFromC;
+    kids["sweaterBelowC"] = kidsLimits.sweaterBelowC;
+    kids["coatBelowC"] = kidsLimits.coatBelowC;
+    kids["freezeBelowC"] = kidsLimits.freezeBelowC;
+    kids["windyGustKmh"] = kidsLimits.windyGustKmh;
+
     JsonObject display = doc["display"].to<JsonObject>();
     display["previewHr"] = previewHr;
     display["dimAtNight"] = displayDimAtNight;
@@ -780,6 +815,37 @@ static void handleApiThresholds() {
     rainProbPct = prob;
     state.fetchNow = true;   // ratings are computed from the forecast: refresh with the new limits
     sendMessage(200, "Thresholds saved");
+}
+
+static void handleApiKids() {
+    float hot, shorts, sweater, coat, freeze, gust;
+    if (!argFloat("hot", -30, 50, hot) || !argFloat("shorts", -30, 50, shorts) ||
+        !argFloat("sweater", -30, 50, sweater) || !argFloat("coat", -30, 50, coat) ||
+        !argFloat("freeze", -30, 50, freeze) || !argFloat("gust", 1, 150, gust)) {
+        sendMessage(400, "Invalid value: temperatures -30 to 50 C, wind 1-150 km/h");
+        return;
+    }
+    KidsLimits k = { hot, shorts, sweater, coat, freeze, gust };
+    if (!kidsLimitsValid(k)) {
+        sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= scarf below");
+        return;
+    }
+
+    bool saved = updateConfig([&](JsonDocument& doc) {
+        doc["kids"]["hotFromC"] = hot;
+        doc["kids"]["shortsFromC"] = shorts;
+        doc["kids"]["sweaterBelowC"] = sweater;
+        doc["kids"]["coatBelowC"] = coat;
+        doc["kids"]["freezeBelowC"] = freeze;
+        doc["kids"]["windyGustKmh"] = gust;
+    });
+    if (!saved) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    kidsLimits = k;
+    state.displayDirty = true;
+    sendMessage(200, "Clothing limits saved");
 }
 
 static bool argInt(const char* name, int lo, int hi, int& out) {
@@ -1159,6 +1225,7 @@ void initWebServer() {
 
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
     server.on("/api/display", guardedPost(handleApiDisplay));
+    server.on("/api/kids", guardedPost(handleApiKids));
     server.on("/api/location", guardedPost(handleApiLocation));
     server.on("/api/wifi/config", guardedPost(handleApiWifiConfig));
     server.on("/api/weatherconfig", guardedPost(handleApiWeatherConfig));
