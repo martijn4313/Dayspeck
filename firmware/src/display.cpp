@@ -438,8 +438,21 @@ void drawWindAnimation(Adafruit_SSD1306 &display) {
         // Inverted: visible on the dark background and on the filled pictures, and the digits are not erased
         display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_INVERSE);
 #else
-        int hx = max(f.x - 1, WIND_AREA_X_START);
-        display.fillRect(hx, y - 1, f.x + 6 - hx, 7, SSD1306_BLACK);    // black halo, never over the divider
+        // A thin black outline that follows the leaf's shape (no box), so the village's line art stays
+        // whole around it; never over the divider
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                for (int r = 0; r < LEAF_1_BMP_H; r++) {
+                    uint8_t bits = pgm_read_byte(sprite + r);          // one byte per row, leftmost dot = bit 7
+                    for (int c = 0; c < LEAF_1_BMP_W; c++) {
+                        if ((bits & (0x80 >> c)) && f.x + c + dx >= WIND_AREA_X_START) {
+                            display.drawPixel(f.x + c + dx, y + r + dy, SSD1306_BLACK);
+                        }
+                    }
+                }
+            }
+        }
         display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_WHITE);
 #endif
     }

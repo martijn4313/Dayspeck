@@ -2,7 +2,7 @@
 
 Integer maths only, so the C++ in firmware/src/display.cpp can follow it line by line. Gusts and leaves
 travel from the left edge of the scene to the right, like the wind. They stop at the divider (x < 65 is
-the ride badge) and leaves keep a black halo so they read over the line art of the village.
+the ride badge) and rider leaves keep a thin black outline so they read over the line art of the village.
 """
 
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ class WindArea:
     leaf_y0: int = LEAF_SPAWN_Y
     leaf_y_span: int = LEAF_SPAWN_SPAN
     leaf_max_y: int = LEAF_MAX_Y
-    leaf_xor: bool = False      # kids: leaves invert what is behind them; rider: a black halo behind each leaf
+    leaf_xor: bool = False      # kids: leaves invert what is behind them; rider: a thin black outline around each leaf
 
 
 RIDER_AREA = WindArea()
@@ -135,7 +135,14 @@ class WindAnimation:
                 if sprite:
                     canvas.blit_xor(f.x, y, sprite)
                 continue
-            hx = max(f.x - 1, area.x_start)
-            canvas.fill_rect(hx, y - 1, f.x + 6 - hx, 7, on=False)     # black halo, never over the divider
             if sprite:
+                # A thin black outline that follows the leaf's shape (no box), so the village's line art
+                # stays whole around it; never over the divider
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        if dx or dy:
+                            for r, sprite_row in enumerate(sprite):
+                                for c, lit in enumerate(sprite_row):
+                                    if lit and f.x + c + dx >= area.x_start:
+                                        canvas.set_pixel(f.x + c + dx, y + r + dy, False)
                 canvas.blit(f.x, y, sprite)

@@ -307,3 +307,27 @@ def test_kids_leaves_invert_what_they_cross_and_keep_clear_of_the_digits():
     canvas.pixels = [[True] * 128 for _ in range(64)]
     canvas.blit_xor(10, 10, leaf)
     assert not canvas.pixels[12][12] and canvas.pixels[12][16] and canvas.pixels[9][12]
+
+
+def test_rider_leaf_has_a_shaped_outline_not_a_box():
+    from bitmaptool.wind import Leaf, WindAnimation
+    leaf_sprite = [
+        [False, False, False, True, True],
+        [False, False, True, True, True],
+        [False, True, True, True, False],
+        [False, True, True, False, False],
+        [True, False, False, False, False],
+    ]
+    canvas = OLEDCanvas()
+    canvas.pixels = [[True] * 128 for _ in range(64)]
+    leaf = Leaf(x=100, y_base=20, age=0, phase=0, active=True)
+    WindAnimation.draw(canvas, [], [leaf], [leaf_sprite] * 4)
+    y = 20                                                     # LEAF_WOBBLE[0] == 0
+    cleared = {(x, yy) for yy in range(64) for x in range(128) if not canvas.pixels[yy][x]}
+    assert cleared                                              # the outline exists
+    for (x, yy) in cleared:                                     # ... and every cleared pixel touches the leaf
+        assert any(leaf_sprite[r][c] and abs(x - (100 + c)) <= 1 and abs(yy - (y + r)) <= 1
+                   for r in range(5) for c in range(5))
+    assert canvas.pixels[y - 1][99]                             # the corner of the old 7x7 box is untouched
+    assert canvas.pixels[y + 5][105]
+    assert canvas.pixels[y][103] and canvas.pixels[y + 4][100]  # the leaf pixels themselves are lit
