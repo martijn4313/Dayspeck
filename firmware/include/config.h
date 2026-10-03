@@ -50,7 +50,8 @@
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
 // Kids variant (build the esp01_1m_kids environment, -DKIDS_MODE): instead of the ride rating the display
-// shows what to wear now and later. Outfits by temperature (C), from warm to cold:
+// shows what to wear now and later. Outfits by temperature (C), from warm to cold. These are the defaults:
+// config.json ("kids") and the web UI ("Clothing") override them.
 #define KIDS_HOT_FROM_C        25   // sun cap, t-shirt and shorts (sunny daytime only)
 #define KIDS_SHORTS_FROM_C     20   // t-shirt and shorts
 #define KIDS_SWEATER_BELOW_C   15   // sweater below this, a t-shirt above

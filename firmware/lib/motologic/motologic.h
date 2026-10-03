@@ -97,6 +97,10 @@ struct KidsLimits {
     float windyGustKmh;   // gusts above this show the wind picture (dry weather only)
 };
 
+// The outfit limits must go from warm to cold: freezeBelowC <= coatBelowC <= sweaterBelowC <= shortsFromC <=
+// hotFromC (an equal pair skips that step), and the wind picture needs a positive gust speed.
+bool kidsLimitsValid(const KidsLimits& l);
+
 // Outfit for a temperature and a KIDS_WEATHER_* picture. Snow means the full winter outfit,
 // rain or a storm the rain coat (unless it is cold enough for the winter coat). NAN = mild.
 int outfitFor(float tempC, int kidsWeather, bool night, const KidsLimits& l);

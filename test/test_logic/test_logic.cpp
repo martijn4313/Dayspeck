@@ -233,6 +233,47 @@ void test_outfit() {
 
 static KidsHour hr(float t, float rain, int code) { return KidsHour{ t, rain, 10, code, false, true }; }
 
+void test_kids_limits_must_go_from_warm_to_cold() {
+    TEST_ASSERT_TRUE(kidsLimitsValid(K));
+    KidsLimits l = K;
+    l.shortsFromC = l.hotFromC + 1;                      // shorts only above the sun cap limit: wrong order
+    TEST_ASSERT_FALSE(kidsLimitsValid(l));
+    l = K;
+    l.coatBelowC = l.sweaterBelowC + 1;                  // winter coat before the sweater
+    TEST_ASSERT_FALSE(kidsLimitsValid(l));
+    l = K;
+    l.freezeBelowC = l.coatBelowC + 0.5f;
+    TEST_ASSERT_FALSE(kidsLimitsValid(l));
+    l = K;
+    l.sweaterBelowC = l.shortsFromC;                     // equal limits are fine: that step is skipped
+    TEST_ASSERT_TRUE(kidsLimitsValid(l));
+    l = K;
+    l.windyGustKmh = 0;
+    TEST_ASSERT_FALSE(kidsLimitsValid(l));
+    l = K;
+    l.hotFromC = NAN;
+    TEST_ASSERT_FALSE(kidsLimitsValid(l));
+}
+
+void test_kids_outfits_follow_changed_limits() {
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, outfitFor(17, KIDS_WEATHER_CLEAR, false, K));     // default: t-shirt at 17
+    KidsLimits l = K;
+    l.shortsFromC = 16;                                                               // a warm-blooded child
+    TEST_ASSERT_EQUAL(OUTFIT_WARM, outfitFor(17, KIDS_WEATHER_CLEAR, false, l));
+    l = K;
+    l.shortsFromC = 22;
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, outfitFor(21, KIDS_WEATHER_CLEAR, false, l));
+    l = K;
+    l.coatBelowC = 8;                                                                 // winter coat from 8 degrees down
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, outfitFor(7, KIDS_WEATHER_CLEAR, false, l));
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, outfitFor(8, KIDS_WEATHER_CLEAR, false, l));
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, outfitFor(8, KIDS_WEATHER_CLEAR, false, K));       // default: still a sweater at 8
+    l = K;
+    l.windyGustKmh = 30;
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_WIND, kidsWeatherFor(2, 35, l.windyGustKmh));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_PARTLY, kidsWeatherFor(2, 35, K.windyGustKmh));
+}
+
 void test_kids_window() {
     KidsHour h[4] = { hr(16, 0, 1), hr(18, 0, 1), hr(18, 0, 3), hr(20, 0, 1) };
     KidsOutlook o = kidsWindowOutlook(h, 0, 4, K);
@@ -374,6 +415,8 @@ int main(int, char**) {
     RUN_TEST(test_rate_window_sums_rain);
     RUN_TEST(test_rate_window_missing_hours);
     RUN_TEST(test_outfit);
+    RUN_TEST(test_kids_limits_must_go_from_warm_to_cold);
+    RUN_TEST(test_kids_outfits_follow_changed_limits);
     RUN_TEST(test_kids_window);
     RUN_TEST(test_kids_later_warns_for_rain_after_the_window);
     RUN_TEST(test_kids_later_warns_for_a_big_temperature_change);

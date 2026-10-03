@@ -28,7 +28,9 @@ def extract(name, source):
 
 
 STATUS = {
-    "firmware": "0.2.0 (3f9c1ab)",
+    "firmware": "0.2.0 (3f9c1ab)", "variant": "kids",
+    "kids": {"hotFromC": 25, "shortsFromC": 20, "sweaterBelowC": 15, "coatBelowC": 5, "freezeBelowC": 0,
+             "windyGustKmh": 50},
     "lat": 52.37, "lon": 4.89, "locationSource": "Manual Selection",
     "locationName": "Amsterdam, Noord-Holland, Nederland",
     "thresholds": {"maxRainMm": 2.0, "maxWindKmh": 60, "minTempC": 5, "warnWindKmh": 40, "rainProbPct": 50},
@@ -47,7 +49,7 @@ LOGS = {"logs": ["[00:00:03] WiFi connected to HomeNet, 192.168.1.42",
                  "[00:00:06] Time synced (NTP)",
                  "[00:00:09] Weather updated: 14.2 C, wind 18 km/h",
                  "[00:15:00] Weather updated: 14.5 C, wind 17 km/h"]}
-OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "rider", "keySet": True,
+OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "kids", "keySet": True,
        "url": "http://dayspeck-ota.example.workers.dev", "autoCheck": True, "checkedMinutesAgo": 42,
        "latest": "0.3.0", "notes": "Adds the web UI manual and the Dayspeck name.", "available": True,
        "size": 412000, "freeSpace": 700000, "error": ""}
@@ -131,7 +133,8 @@ def main():
     html = extract("index_html", source)
 
     # Cards in page order: 0 location, 1 set location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
-    # 5 thresholds, 6 display, 7 weather API, 8 password, 9 debug, 10 firmware update
+    # 5 thresholds, 6 display, 7 clothing (kids build only), 8 weather API, 9 password, 10 debug,
+    # 11 firmware update
     def search_place(p):
         p.route("https://geocoding-api.open-meteo.com/**",
                 lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(GEOCODING)))
@@ -159,8 +162,8 @@ def main():
         browser = pw.chromium.launch(**kwargs)
         shoot(browser, base[0], out, "webui-location.png", 0, 1, search_place)
         shoot(browser, base[1], out, "webui-wifi.png", 2, 4, scan)
-        shoot(browser, base[1], out, "webui-settings.png", 5, 7)
-        shoot(browser, base[1], out, "webui-update.png", 9, 10, logs)
+        shoot(browser, base[1], out, "webui-settings.png", 5, 8)
+        shoot(browser, base[1], out, "webui-update.png", 10, 11, logs)
         browser.close()
     for s in servers:
         s.shutdown()
