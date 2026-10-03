@@ -59,12 +59,17 @@
 #define KIDS_WINDY_GUST_KMH    50   // gusts above this show the wind picture
 // Rain or a storm gives the rain coat and boots (above KIDS_COAT_BELOW_C), snow the full winter outfit.
 // "Later": the next KIDS_WINDOW_HOURS, unless something big happens in the hours up to
-// KIDS_LOOKAHEAD_HOURS. From KIDS_TOMORROW_FROM_HR until 05:00 it is tomorrow morning instead,
-// KIDS_MORNING_HR onwards.
+// KIDS_LOOKAHEAD_HOURS. From KIDS_TOMORROW_FROM_HR until 05:00 it is tomorrow instead: the day from
+// KIDS_MORNING_HR until KIDS_DAY_TO_HR. The picture is the weather of that day, the number is its high
+// (the average of the KIDS_HIGH_HOURS warmest hours, "the highest-ish"), and the outfit is chosen for its
+// coldest hour: a child cannot change in the middle of the day, and mornings and evenings in autumn can be
+// a lot colder than noon.
 #define KIDS_WINDOW_HOURS       6
 #define KIDS_LOOKAHEAD_HOURS   12
 #define KIDS_TOMORROW_FROM_HR  18
 #define KIDS_MORNING_HR         7
+#define KIDS_DAY_TO_HR         19   // the day's hours are KIDS_MORNING_HR .. KIDS_DAY_TO_HR - 1
+#define KIDS_HIGH_HOURS         3
 
 // Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
 // config.json "display.nightBrightness")

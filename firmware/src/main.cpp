@@ -327,11 +327,12 @@ void renderKids() {
     int symbol;
     int hourNow = state.timeSynced ? localHour() : localHourOf(firstEpoch);
     if (hourNow >= KIDS_TOMORROW_FROM_HR || hourNow < 5) {
-        // Evening and night: what to wear after sleeping, the morning from KIDS_MORNING_HR
+        // Evening and night: tomorrow, the day from KIDS_MORNING_HR to KIDS_DAY_TO_HR: its weather and high,
+        // and the outfit for its coldest hour
         size_t start = 0;
         while (start < count && hourOf((int)start) != KIDS_MORNING_HR) start++;
-        size_t end = start + KIDS_WINDOW_HOURS < count ? start + KIDS_WINDOW_HOURS : count;
-        later = kidsWindowOutlook(hours, start, end, kidsLimits);
+        size_t end = start + (KIDS_DAY_TO_HR - KIDS_MORNING_HR) < count ? start + (KIDS_DAY_TO_HR - KIDS_MORNING_HR) : count;
+        later = kidsDayOutlook(hours, start, end, KIDS_HIGH_HOURS, kidsLimits);
         symbol = KIDS_TIME_TOMORROW;
     } else {
         // Daytime: the next hours, or something big that comes after them

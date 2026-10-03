@@ -255,6 +255,55 @@ void test_kids_window() {
     TEST_ASSERT_FALSE(kidsWindowOutlook(none, 0, 2, K).valid);
 }
 
+void test_kids_day_shows_the_high_and_dresses_for_the_coldest_hour() {
+    // An autumn day, 07:00-18:00: cold start, warm noon, cold evening
+    const float t[12] = { 4, 5, 7, 10, 13, 16, 18, 17, 15, 12, 8, 6 };
+    KidsHour h[12];
+    for (int i = 0; i < 12; i++) h[i] = hr(t[i], 0, 1);
+    KidsOutlook o = kidsDayOutlook(h, 0, 12, 3, K);
+    TEST_ASSERT_TRUE(o.valid);
+    TEST_ASSERT_EQUAL(17, o.tempC);                      // the three warmest hours: (18 + 17 + 16) / 3
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, o.outfit);            // dressed for the 4 degrees of the morning
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);
+
+    // A single warm spike does not become "the high"
+    h[6] = hr(30, 0, 1);
+    TEST_ASSERT_EQUAL(21, kidsDayOutlook(h, 0, 12, 3, K).tempC);   // (30 + 17 + 16) / 3
+
+    // The coldest hour decides, wherever it is: a cold evening counts as much as a cold morning
+    for (int i = 0; i < 12; i++) h[i] = hr(18, 0, 1);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, kidsDayOutlook(h, 0, 12, 3, K).outfit);
+    h[11] = hr(2, 0, 1);
+    KidsOutlook cold = kidsDayOutlook(h, 0, 12, 3, K);
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, cold.outfit);
+    TEST_ASSERT_EQUAL(18, cold.tempC);                   // ... while the number is still the warm part of the day
+}
+
+void test_kids_day_uses_the_whole_days_weather_and_skips_invalid_hours() {
+    KidsHour h[12];
+    for (int i = 0; i < 12; i++) h[i] = hr(10, 0, 1);
+    h[9] = hr(9, 1.5f, 63);                              // rain in the afternoon: the day is rainy
+    KidsOutlook o = kidsDayOutlook(h, 0, 12, 3, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);            // rain coat: the coldest hour (9) is above 5
+
+    h[9] = hr(3, 1.5f, 63);                              // ... but below 5 degrees it is the winter coat
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, kidsDayOutlook(h, 0, 12, 3, K).outfit);
+
+    for (int i = 0; i < 12; i++) h[i] = hr(10, 0, 1);
+    h[0] = hr(-5, 0, 1);
+    h[0].valid = false;                                  // a missing hour is not "the coldest"
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, kidsDayOutlook(h, 0, 12, 3, K).outfit);
+
+    KidsHour few[2] = { hr(12, 0, 1), hr(14, 0, 1) };    // fewer hours than the high count
+    TEST_ASSERT_EQUAL(13, kidsDayOutlook(few, 0, 2, 3, K).tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, kidsDayOutlook(few, 0, 2, 3, K).outfit);   // 12 degrees: sweater
+
+    KidsHour none[2] = { hr(1, 0, 0), hr(1, 0, 0) };
+    none[0].valid = none[1].valid = false;
+    TEST_ASSERT_FALSE(kidsDayOutlook(none, 0, 2, 3, K).valid);
+}
+
 void test_kids_later_warns_for_rain_after_the_window() {
     KidsHour h[10];
     for (int i = 0; i < 10; i++) h[i] = hr(18, 0, 1);
@@ -375,6 +424,8 @@ int main(int, char**) {
     RUN_TEST(test_rate_window_missing_hours);
     RUN_TEST(test_outfit);
     RUN_TEST(test_kids_window);
+    RUN_TEST(test_kids_day_shows_the_high_and_dresses_for_the_coldest_hour);
+    RUN_TEST(test_kids_day_uses_the_whole_days_weather_and_skips_invalid_hours);
     RUN_TEST(test_kids_later_warns_for_rain_after_the_window);
     RUN_TEST(test_kids_later_warns_for_a_big_temperature_change);
     RUN_TEST(test_time_of_day);

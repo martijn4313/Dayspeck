@@ -24,8 +24,17 @@ the weather screen (the weather screen closes by itself after 30 s).
 temperature and the wettest weather in that time. When something big happens in
 the 6 hours after that (1 mm of rain or more in an hour, a thunderstorm or snow while the next hours are
 dry, or a temperature two outfits warmer or colder), the right half shows that instead, so a sunny
-morning can still say "rain coat this afternoon". From 18:00 until 05:00 the right half shows tomorrow
-morning (from 7:00) instead.
+morning can still say "rain coat this afternoon".
+
+**Tomorrow.** From 18:00 until 05:00 the right half shows tomorrow instead, the day from 7:00 to 19:00:
+
+- the **number** is the day's high, the way people say what the weather will be: the average of the three
+  warmest hours, so one warm spike does not count;
+- the **outfit** is chosen for the **coldest hour** of the day. A child cannot change halfway, and in the
+  autumn the morning or the evening can be much colder than noon, so shorts at noon can still mean a
+  sweater at breakfast. The outfit can therefore be warmer-looking or colder-looking than the number suggests;
+- the **picture** is the weather of the whole day: the wettest weather if there is any (an afternoon shower
+  gives the rain coat), otherwise the most common sky.
 
 The symbol under the arrow says when "later" is:
 
@@ -35,7 +44,7 @@ The symbol under the arrow says when "later" is:
 | small sun | afternoon (12-18) |
 | half sun with an arrow down | evening (18-22) |
 | moon | night |
-| bed | tomorrow morning, after sleeping |
+| bed | tomorrow, after sleeping |
 
 ![Kids weather screens: sun 18 now, rain 15 this afternoon; partly cloudy 12, thunderstorm 21 this evening; moon 6, snow -2 tomorrow; cloud 9, wind 11 this morning](images/kids-weather.png){ .center }
 

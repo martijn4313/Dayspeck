@@ -131,6 +131,11 @@ struct KidsOutlook {
 // hour, or a storm), otherwise the most common sky; outfit from the average temperature.
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
 
+// A whole day (hours [from, to), normally 07:00-19:00 tomorrow) for the kids screens. Weather picture as in
+// kidsWindowOutlook(); tempC is the day's high, the average of its `highHours` warmest hours; the outfit is
+// chosen for the coldest hour of the day, so the child is not cold in the morning or the evening.
+KidsOutlook kidsDayOutlook(const KidsHour* hours, size_t from, size_t to, size_t highHours, const KidsLimits& l);
+
 // "Later" for the kids screens. hours[0] is the first hour after now. Normally the summary of the
 // first `window` hours; but when an hour in [window, lookahead) deviates strongly from that summary
 // (heavy rain of 1 mm or more, a storm or snow while the window is dry, or a temperature two warmth
