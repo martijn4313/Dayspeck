@@ -160,6 +160,50 @@ struct KidsPart {
 // its remaining hours); returns how many.
 size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts);
 
+// Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)
+#define KIDS_EVENT_BIRTHDAY     0
+#define KIDS_EVENT_HALLOWEEN    1   // 31 October
+#define KIDS_EVENT_SINTERKLAAS  2   // 5 December (pakjesavond)
+#define KIDS_EVENT_CHRISTMAS    3   // 25 December
+#define KIDS_HOLIDAY(kind)      (1u << (kind))   // bit of a holiday in the `holidays` mask
+#define KIDS_ALL_HOLIDAYS       (KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN) | KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS) | \
+                                 KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS))
+#define KIDS_COUNTDOWN_DAYS     14  // default: a countdown shows from this many sleeps before the day
+#define KIDS_MAX_COUNTDOWN_DAYS 60
+#define KIDS_MAX_BIRTHDAYS      2
+
+struct KidsBirthday {
+    int  year, month, day;   // date of birth; month 0 = not set
+    char initial;            // letter drawn on the cake ('A'-'Z'), 0 = none
+};
+
+// What the countdown screen shows
+struct KidsCountdown {
+    bool active;     // false: nothing within range
+    int  kind;       // KIDS_EVENT_*
+    int  sleeps;     // nights until the day, 0 = it is today
+    int  age;        // birthday: the age on that day
+    char initial;    // birthday: its letter, 0 = none
+};
+
+// The letter for the cake from a name or initial: its first character as a capital A-Z, otherwise 0
+char kidsInitial(const char* text);
+
+// Days since 1970-01-01 of a date in the proleptic Gregorian calendar (month 1-12)
+long daysFromCivil(int year, int month, int day);
+
+// "YYYY-MM-DD" (a valid date, year 1900-2100) and nothing more
+bool parseIsoDate(const char* text, int& year, int& month, int& day);
+
+// Days from today (year, month, day) to the next `month`/`day`, today included (0). A 29 February
+// falls on 28 February in other years. occurrenceYear gets the year it falls in.
+int daysUntilNext(int year, int month, int day, int onMonth, int onDay, int& occurrenceYear);
+
+// The nearest birthday or enabled holiday (KIDS_HOLIDAY mask) within `withinDays` sleeps from today; a
+// birthday wins a tie. Birthdays that are not set, or lie in the future, are skipped.
+KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday* birthdays, size_t count,
+                                unsigned holidays, int withinDays);
+
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 

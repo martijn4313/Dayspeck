@@ -1045,15 +1045,19 @@ static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part) {
     else                           d.fillTriangle(cx + 2, y + 1, cx + 8, y + 1, cx + 5, y + 4, SSD1306_WHITE);
 }
 
-// The night between two columns: a dotted line, with a bed at its top ("after sleeping")
-static void drawNightDivider(Adafruit_SSD1306 &d, int column) {
-    int x = column * KIDS_COL_STEP - 1;
-    for (int y = 13; y < 64; y += 3) d.drawPixel(x, y, SSD1306_WHITE);
-    int bx = x - 7, by = 4;
+// A bed, 14x9, left edge at bx, top at by - 2
+static void drawBed(Adafruit_SSD1306 &d, int bx, int by) {
     d.fillRect(bx, by - 2, 2, 9, SSD1306_WHITE);        // headboard
     d.fillRect(bx, by + 3, 14, 3, SSD1306_WHITE);       // mattress
     d.fillRect(bx + 12, by + 1, 2, 6, SSD1306_WHITE);   // foot end
     d.fillRect(bx + 3, by, 4, 3, SSD1306_WHITE);        // pillow
+}
+
+// The night between two columns: a dotted line, with a bed at its top ("after sleeping")
+static void drawNightDivider(Adafruit_SSD1306 &d, int column) {
+    int x = column * KIDS_COL_STEP - 1;
+    for (int y = 13; y < 64; y += 3) d.drawPixel(x, y, SSD1306_WHITE);
+    drawBed(d, x - 7, 4);
 }
 
 void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t count, int nowColumn,
@@ -1087,6 +1091,141 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
     }
     if (nightBefore > 0 && nightBefore < (int)count) drawNightDivider(d, nightBefore);
     drawWindAnimation(d);    // autumn leaves, when they blow
+}
+
+// ---- Kids variant: the countdown screen ----------------------------------------------------------
+// The picture of the event on the left, the number of sleeps on the right and, up to ten, that many beds to
+// count (one goes away every night). On the day itself the picture stands in the middle with confetti.
+
+// Pictures of the events, about 44x56, centred on cx, standing on y = 59
+
+// Birthday cake: a candle for every year (up to 9; older shows the age as a number) and the initial
+static void drawCake(Adafruit_SSD1306 &d, int cx, int age, char initial) {
+    d.fillRect(cx - 21, 58, 43, 2, SSD1306_WHITE);                    // plate
+    d.fillRect(cx - 17, 35, 35, 23, SSD1306_WHITE);
+    d.drawFastHLine(cx - 17, 40, 35, SSD1306_BLACK);                  // icing, dripping down
+    for (int x = cx - 14; x <= cx + 14; x += 7) d.fillCircle(x, 41, 2, SSD1306_WHITE);
+    if (initial) {
+        d.setTextSize(2);
+        d.setTextColor(SSD1306_BLACK);
+        d.setCursor(cx - 5, 44);
+        d.print(initial);
+        d.setTextColor(SSD1306_WHITE);
+    }
+    if (age > 9) {
+        char num[12];
+        snprintf(num, sizeof(num), "%d", age);
+        d.setTextSize(2);
+        d.setCursor(cx - ((int)strlen(num) * 12 - 2) / 2, 17);
+        d.print(num);
+        return;
+    }
+    int step = age <= 5 ? 6 : 4;
+    int x0 = cx - ((age - 1) * step + 2) / 2;
+    for (int i = 0; i < age; i++) {
+        int x = x0 + i * step;
+        d.fillRect(x, 27, 2, 8, SSD1306_WHITE);                       // candle
+        d.drawPixel(x, 22, SSD1306_WHITE);                            // flame
+        d.fillRect(x, 23, 2, 2, SSD1306_WHITE);
+    }
+}
+
+// Halloween pumpkin with a carved face and a stem
+static void drawPumpkin(Adafruit_SSD1306 &d, int cx) {
+    d.fillCircle(cx - 9, 45, 13, SSD1306_WHITE);
+    d.fillCircle(cx + 9, 45, 13, SSD1306_WHITE);
+    d.fillCircle(cx, 44, 15, SSD1306_WHITE);
+    d.drawCircleHelper(cx - 4, 44, 14, 1 | 8, SSD1306_BLACK);         // ribs
+    d.drawCircleHelper(cx + 4, 44, 14, 2 | 4, SSD1306_BLACK);
+    d.fillRect(cx - 7, 34, 15, 22, SSD1306_WHITE);                    // keep the face clear of the ribs
+    d.fillTriangle(cx - 12, 44, cx - 4, 44, cx - 8, 37, SSD1306_BLACK);   // eyes
+    d.fillTriangle(cx + 4, 44, cx + 12, 44, cx + 8, 37, SSD1306_BLACK);
+    d.fillTriangle(cx - 2, 48, cx + 2, 48, cx, 45, SSD1306_BLACK);        // nose
+    d.fillRect(cx - 11, 51, 23, 4, SSD1306_BLACK);                        // grin with two teeth
+    d.fillTriangle(cx - 11, 51, cx - 15, 48, cx - 11, 54, SSD1306_BLACK);
+    d.fillTriangle(cx + 11, 51, cx + 15, 48, cx + 11, 54, SSD1306_BLACK);
+    d.fillRect(cx - 5, 51, 3, 2, SSD1306_WHITE);
+    d.fillRect(cx + 3, 53, 3, 2, SSD1306_WHITE);
+    fillQuad(d, cx - 2, 30, cx + 2, 30, cx + 5, 22, cx + 2, 21);          // stem
+    d.drawCircleHelper(cx + 9, 26, 4, 1 | 2, SSD1306_WHITE);              // curly tendril
+}
+
+// Sinterklaas: the mitre with its cross, and the staff with the curl
+static void drawMitre(Adafruit_SSD1306 &d, int cx) {
+    int mx = cx - 5;
+    d.fillRect(mx - 13, 36, 27, 23, SSD1306_WHITE);
+    d.fillTriangle(mx - 13, 37, mx + 13, 37, mx, 9, SSD1306_WHITE);
+    d.fillCircle(mx - 5, 30, 8, SSD1306_WHITE);                      // rounded shoulders
+    d.fillCircle(mx + 5, 30, 8, SSD1306_WHITE);
+    d.fillRect(mx - 1, 22, 3, 21, SSD1306_BLACK);                    // cross
+    d.fillRect(mx - 7, 28, 15, 3, SSD1306_BLACK);
+    d.drawFastHLine(mx - 13, 48, 27, SSD1306_BLACK);                 // band at the rim
+    d.drawFastHLine(mx - 13, 54, 27, SSD1306_BLACK);
+    int sx = cx + 16;
+    d.fillRect(sx, 18, 2, 42, SSD1306_WHITE);                        // staff
+    d.drawCircleHelper(sx - 3, 15, 4, 1 | 2, SSD1306_WHITE);         // the curl at the top
+    d.drawCircleHelper(sx - 3, 15, 5, 1 | 2, SSD1306_WHITE);
+    d.drawCircleHelper(sx - 3, 15, 4, 4, SSD1306_WHITE);
+}
+
+// Christmas tree with a star on top and baubles
+static void drawTree(Adafruit_SSD1306 &d, int cx) {
+    d.fillTriangle(cx, 11, cx - 11, 26, cx + 11, 26, SSD1306_WHITE);
+    d.fillTriangle(cx, 19, cx - 16, 38, cx + 16, 38, SSD1306_WHITE);
+    d.fillTriangle(cx, 29, cx - 21, 52, cx + 21, 52, SSD1306_WHITE);
+    d.fillRect(cx - 3, 52, 7, 7, SSD1306_WHITE);                     // trunk
+    d.drawFastHLine(cx - 3, 7, 7, SSD1306_WHITE);                    // star
+    d.drawFastVLine(cx, 4, 7, SSD1306_WHITE);
+    d.drawLine(cx - 2, 5, cx + 2, 9, SSD1306_WHITE);
+    d.drawLine(cx + 2, 5, cx - 2, 9, SSD1306_WHITE);
+    static const int8_t BAUBLES[][2] = { {-3, 22}, {5, 32}, {-7, 34}, {1, 41}, {-11, 47}, {10, 46}, {-2, 49} };
+    for (const auto& b : BAUBLES) d.fillCircle(cx + b[0], b[1], 1, SSD1306_BLACK);
+}
+
+static void drawEvent(Adafruit_SSD1306 &d, int cx, const KidsCountdown &c) {
+    switch (c.kind) {
+    case KIDS_EVENT_HALLOWEEN:   drawPumpkin(d, cx); break;
+    case KIDS_EVENT_SINTERKLAAS: drawMitre(d, cx); break;
+    case KIDS_EVENT_CHRISTMAS:   drawTree(d, cx); break;
+    default:                     drawCake(d, cx, c.age, c.initial); break;
+    }
+}
+
+// Confetti for the day itself: pieces falling at their own speed, inverted so they show on the picture too
+static void drawConfetti(Adafruit_SSD1306 &d, unsigned long timeMs) {
+    unsigned long frame = timeMs / RAIN_FRAME_INTERVAL;
+    for (int i = 0; i < 16; i++) {
+        int speed = 1 + i % 3;
+        int y = (int)((frame * speed + i * 23) % 72) - 4;
+        int x = (i * 37 + 11) % 124 + (int)((frame / 6 + i) % 3) - 1;   // a little sway
+        if (i % 2) d.fillRect(x, y, 2, 2, SSD1306_INVERSE);
+        else       d.drawFastHLine(x, y, 3, SSD1306_INVERSE);
+    }
+}
+
+void renderKidsCountdown(Adafruit_SSD1306 &d, const KidsCountdown &c, unsigned long timeMs) {
+    d.clearDisplay();
+    d.setTextColor(SSD1306_WHITE);
+    d.setTextWrap(false);
+    if (c.sleeps <= 0) {
+        drawEvent(d, 64, c);
+        drawConfetti(d, timeMs);
+        return;
+    }
+    drawEvent(d, 23, c);
+
+    const int cx = 88;                                  // middle of the right part
+    char num[8];
+    snprintf(num, sizeof(num), "%d", c.sleeps);
+    bool beds = c.sleeps <= 10;
+    int size = beds ? 3 : 4;                            // 6 px per character and size step
+    d.setTextSize(size);
+    d.setCursor(cx - ((int)strlen(num) * 6 * size - size) / 2, beds ? 3 : 18);
+    d.print(num);
+    if (!beds) return;
+    for (int i = 0; i < c.sleeps; i++) {                // two rows of five, read like a line of text
+        drawBed(d, 49 + (i % 5) * 16, i < 5 ? 34 : 50);
+    }
 }
 
 // Clock screen: HH:MM in large type, weekday and date below, year at the bottom

@@ -7,7 +7,8 @@ It comes in two flavours, built from the same code:
 
 - **Rider** (default): answers one question at a glance, **can I ride today?**
 - **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I
-  wear today?** with pictures and numbers, for the morning, afternoon and evening.
+  wear today?** with pictures and numbers, for the morning, afternoon and evening, and counts the sleeps
+  to birthdays, Halloween, Sinterklaas and Christmas.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 

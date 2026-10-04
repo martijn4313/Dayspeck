@@ -165,6 +165,27 @@ void loadConfig() {
         if (o["windyGustKmh"].is<float>()) k.windyGustKmh = o["windyGustKmh"];
         if (kidsLimitsValid(k)) kidsLimits = k;
         else logMessage("config.json: the kids limits are not ordered from warm to cold, using the defaults");
+
+        // Countdowns: [{"date": "YYYY-MM-DD", "initial": "A"}], the holidays and the range in sleeps
+        if (o["birthdays"].is<JsonArray>()) {
+            size_t i = 0;
+            for (JsonObject b : o["birthdays"].as<JsonArray>()) {
+                if (i >= KIDS_MAX_BIRTHDAYS) break;
+                KidsBirthday kb = {};
+                if (parseIsoDate(b["date"] | "", kb.year, kb.month, kb.day)) {
+                    kb.initial = kidsInitial(b["initial"] | "");
+                    kidsBirthdays[i++] = kb;
+                }
+            }
+        }
+        const char* const HOLIDAY_KEYS[] = { "halloween", "sinterklaas", "christmas" };
+        const int HOLIDAY_KINDS[] = { KIDS_EVENT_HALLOWEEN, KIDS_EVENT_SINTERKLAAS, KIDS_EVENT_CHRISTMAS };
+        for (int i = 0; i < 3; i++) {
+            if (!o[HOLIDAY_KEYS[i]].is<bool>()) continue;
+            if (o[HOLIDAY_KEYS[i]]) kidsHolidays |= KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
+            else kidsHolidays &= ~KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
+        }
+        if (o["countdownDays"].is<int>()) kidsCountdownDays = constrain((int)o["countdownDays"], 1, KIDS_MAX_COUNTDOWN_DAYS);
     }
 
     // Ride windows: [start hour, length in hours]
@@ -313,6 +334,19 @@ static bool nightAt(time_t t) {
 }
 
 /**
+ * Kids variant: the nearest birthday or holiday within range, from the local date (none until the clock is set)
+ */
+static KidsCountdown kidsCountdownNow() {
+    KidsCountdown none = {};
+    if (!state.timeSynced || !timezoneKnown()) return none;
+    struct tm t = {};
+    time_t local = time(nullptr) + utcOffsetSeconds;
+    gmtime_r(&local, &t);
+    return nextKidsCountdown(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, kidsBirthdays, KIDS_MAX_BIRTHDAYS,
+                             kidsHolidays, kidsCountdownDays);
+}
+
+/**
  * Kids variant: the next three parts of the day (morning, afternoon, evening), as outfits or as weather
  */
 void renderKids() {
@@ -448,7 +482,14 @@ void render() {
         renderLoadingView(display, line1, line2, millis());
 #ifdef KIDS_MODE
     } else if (state.weatherValid) {
-        renderKids();
+        KidsCountdown countdown = {};
+        if (state.displayMode == 2) countdown = kidsCountdownNow();
+        if (countdown.active) {
+            renderKidsCountdown(display, countdown, millis());
+        } else {
+            if (state.displayMode == 2) state.displayMode = 0;   // the countdown ended (midnight) while it was shown
+            renderKids();
+        }
 #endif
     } else if (state.displayMode == 1) {
         renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay);
@@ -500,9 +541,12 @@ void handleTouch() {
     }
 
 #ifdef KIDS_MODE
-    // Kids variant: a tap (or long press) switches between the weather (main screen) and the clothes
+    // Kids variant: a tap (or long press) goes from the weather (main screen) to the clothes, then to the
+    // countdown while a birthday or holiday is near, and back to the weather
     if (event != TOUCH_NONE) {
-        state.displayMode = state.displayMode == 0 ? 1 : 0;
+        if (state.displayMode == 0) state.displayMode = 1;
+        else if (state.displayMode == 1 && kidsCountdownNow().active) state.displayMode = 2;
+        else state.displayMode = 0;
         state.weeklyEnteredMs = millis();
         state.displayDirty = true;
     }
@@ -843,6 +887,9 @@ void loop() {
                 state.windAnimationActive = false;
                 state.displayDirty = true;
             }
+        } else if (state.displayMode == 2) {
+            KidsCountdown countdown = kidsCountdownNow();
+            if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself
 #endif
         }
         state.lastFrameMs = millis();
