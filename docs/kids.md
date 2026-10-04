@@ -1,8 +1,9 @@
 # Kids variant: what do I wear today?
 
 A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
-rating it shows what to wear and what the weather is like, with pictures and numbers and no words. Both
-screens show **the day in three parts**: morning, afternoon and evening, read from left to right. The
+rating it shows what to wear and what the weather is like, with pictures and numbers and no words, and it
+counts the sleeps to birthdays and holidays. The
+weather and clothes screens show **the day in three parts**: morning, afternoon and evening, read from left to right. The
 weather screen is the main screen; a tap on the touch sensor shows the clothes screen, and another tap (or
 30 s) goes back to the weather. When a birthday or holiday is near, a tap on the clothes screen first shows
 the **countdown** (see below).

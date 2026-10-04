@@ -53,7 +53,9 @@ defined in `bitmaps.h` the firmware falls back to simple procedural drops and sp
 
 `python tools/docs_screenshots.py` regenerates `docs/images/rider-today.png`, `hero.png` and the two animations
 `rider-wind.gif` and `kids-wind.gif` from the simulator and `bitmaps.h`; `python tools/webui_screenshots.py`
-does the web UI pictures. Run them again after changing the artwork or the drawing code.
+does the web UI pictures. Run them again after changing the artwork or the drawing code. The kids screens
+(`kids-clothes.png`, `kids-weather.png`, `kids-countdown.png`) are not part of the simulator: they are rendered
+by compiling `firmware/src/display.cpp` on the host against the Adafruit GFX library.
 
 ## Layout
 
