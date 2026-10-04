@@ -234,6 +234,17 @@ bool kidsLimitsValid(const KidsLimits& l) {
            l.sweaterBelowC <= l.shortsFromC && l.shortsFromC <= l.hotFromC && l.windyGustKmh > 0;
 }
 
+int cycleNextStep(int step, bool kids, bool clockUsable, bool countdownActive) {
+    if (kids) {
+        int next = (step + 1) % CYCLE_STEPS_KIDS;
+        if (next == 2 && !countdownActive) next = 0;
+        return next;
+    }
+    int next = (step + 1) % CYCLE_STEPS_RIDER;
+    if (next == 4 && !clockUsable) next = 0;
+    return next;
+}
+
 bool isAutumn(int month, bool southern) {
     return southern ? (month >= 3 && month <= 5) : (month >= 9 && month <= 11);
 }

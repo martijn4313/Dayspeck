@@ -29,7 +29,9 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `previewHr` | from this local hour on, the main screen shows tomorrow's ride by default; 24 = never |
 | `display.dimAtNight` | dim the panel at night |
 | `display.nightBrightness` | brightness at night in percent, 1-100 (default 10); raise it if the screen looks blank at night |
-| `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s |
+| `display.alwaysSleep` | the panel stays off; a touch wakes it for 30 s (ignored when the touch sensor is off) |
+| `display.touchEnabled` | the touch sensor on GPIO3 is read (default `true`); set `false` when none is connected |
+| `display.cycleSeconds` | step through the screens by itself every this many seconds, 2-3600; 0 = off (default) |
 | `display.language` | `en` (default) or `nl`; currently without visible effect (the kids screens show no words) |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
 | `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |

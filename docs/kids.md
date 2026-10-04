@@ -54,6 +54,10 @@ The symbol at the top of a column says which part it is:
 rain, thunderstorm, snow, wind) and its **highest temperature**, like the forecast on the news: a number to
 read, no unit.
 
+**Without a touch sensor.** The touch sensor is optional here too (web UI, *Display*). With *Cycle screens
+every (s)* the kids screens follow each other by themselves: the weather, the clothes and, while a birthday
+or holiday is near, the countdown. A tap still steps on and the screen stays for a full cycle time.
+
 **Autumn leaves.** In autumn leaves blow across both screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
 numbers, and show as inverted dots so the pictures stay readable. Autumn is September to November, and

@@ -17,6 +17,7 @@
 #include "security.h"
 #include "version.h"
 #include "ota.h"
+#include "touch.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
@@ -149,6 +150,8 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Night brightness (%):</span> <input name="nightBrightness" type="number" min="1" max="100"> <small>raise it if the screen looks blank at night</small><br>
             <span class="label">Sleep at night after (min):</span> <input name="sleepMinutes" type="number" min="0" max="600"> <small>0 = never; a touch wakes it</small><br>
             <span class="label">Always sleep:</span> <input name="alwaysSleep" type="checkbox"> <small>screen off; a touch wakes it for 30 s</small><br>
+            <span class="label">Touch sensor:</span> <input name="touchEnabled" type="checkbox"> <small>GPIO3; off if none is connected</small><br>
+            <span class="label">Cycle screens every (s):</span> <input name="cycleSeconds" type="number" min="0" max="3600"> <small>0 = off; a tap also steps on</small><br>
             <span class="label">Language (kids build):</span> <select name="language"><option value="en">English</option><option value="nl">Nederlands</option></select><br>
             <span class="label">Screen off from (hour):</span> <input name="quietStart" type="number" min="-1" max="23"> <small>-1 = off</small><br>
             <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
@@ -364,6 +367,8 @@ static const char index_html[] PROGMEM = R"HTML(
                     d.nightBrightness.value = s.display.nightBrightness;
                     d.sleepMinutes.value = s.display.sleepMinutes;
                     d.alwaysSleep.checked = s.display.alwaysSleep;
+                    d.touchEnabled.checked = s.display.touchEnabled;
+                    d.cycleSeconds.value = s.display.cycleSeconds;
                     d.language.value = s.display.language;
                     d.quietStart.value = s.display.quietStart;
                     d.quietEnd.value = s.display.quietEnd;
@@ -790,6 +795,8 @@ static void handleApiStatus() {
     display["nightBrightness"] = displayNightBrightness;
     display["sleepMinutes"] = displaySleepMinutes;
     display["alwaysSleep"] = displayAlwaysSleep;
+    display["touchEnabled"] = displayTouchEnabled;
+    display["cycleSeconds"] = displayCycleSeconds;
     display["language"] = displayLanguage;
     display["quietStart"] = quietStartHr;
     display["quietEnd"] = quietEndHr;
@@ -946,11 +953,15 @@ static void handleApiCountdown() {
 }
 
 static void handleApiDisplay() {
-    int preview, sleepMin, qStart, qEnd, nightPct;
+    int preview, sleepMin, qStart, qEnd, nightPct, cycleSecs;
     if (!argInt("previewHr", 0, 24, preview) || !argInt("sleepMinutes", 0, 600, sleepMin) ||
         !argInt("quietStart", -1, 23, qStart) || !argInt("quietEnd", -1, 23, qEnd) ||
-        !argInt("nightBrightness", 1, 100, nightPct)) {
-        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes, night brightness 1-100 %");
+        !argInt("nightBrightness", 1, 100, nightPct) || !argInt("cycleSeconds", 0, 3600, cycleSecs)) {
+        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes, night brightness 1-100 %, cycle 0-3600 seconds");
+        return;
+    }
+    if (cycleSecs == 1) {
+        sendMessage(400, "Cycle the screens every 2 seconds or more, or 0 to switch it off");
         return;
     }
     if ((qStart < 0) != (qEnd < 0)) {
@@ -959,6 +970,11 @@ static void handleApiDisplay() {
     }
     bool dim = server.hasArg("dimAtNight");
     bool alwaysSleep = server.hasArg("alwaysSleep");
+    bool touchOn = server.hasArg("touchEnabled");
+    if (!touchOn && alwaysSleep) {
+        sendMessage(400, "Always sleep needs the touch sensor: it is the only way to wake the screen");
+        return;
+    }
     String language = server.arg("language");
     if (language != "en" && language != "nl") language = "en";
 
@@ -968,6 +984,8 @@ static void handleApiDisplay() {
         doc["display"]["nightBrightness"] = nightPct;
         doc["display"]["sleepMinutes"] = sleepMin;
         doc["display"]["alwaysSleep"] = alwaysSleep;
+        doc["display"]["touchEnabled"] = touchOn;
+        doc["display"]["cycleSeconds"] = cycleSecs;
         doc["display"]["language"] = language;
         doc["display"]["quietStart"] = qStart;
         doc["display"]["quietEnd"] = qEnd;
@@ -981,6 +999,10 @@ static void handleApiDisplay() {
     displayNightBrightness = nightPct;
     displaySleepMinutes = sleepMin;
     displayAlwaysSleep = alwaysSleep;
+    if (touchOn && !displayTouchEnabled) touch_init();   // switched on while running: set the pin up now
+    displayTouchEnabled = touchOn;
+    displayCycleSeconds = cycleSecs;
+    state.lastCycleMs = millis();
     displayLanguage = language;
     quietStartHr = qStart;
     quietEndHr = qEnd;

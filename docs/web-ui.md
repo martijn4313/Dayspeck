@@ -80,7 +80,9 @@ set with *Set Location* takes precedence.
 | Dim at night | lower the brightness at night; a touch gives full brightness for 30 s |
 | Night brightness (%) | the brightness when dimmed (1-100). Raise it if the screen looks blank at night |
 | Sleep at night after (min) | switch the panel off after this many idle minutes at night; 0 = never |
-| Always sleep | the screen stays off; a touch wakes it for 30 s |
+| Always sleep | the screen stays off; a touch wakes it for 30 s (needs the touch sensor) |
+| Touch sensor | the sensor on GPIO3 is read. Switch it off when none is connected; switching it on takes effect at once |
+| Cycle screens every (s) | the device steps through its screens by itself, this many seconds each; 0 = off (see [screens](rider.md#without-a-touch-sensor)) |
 | Language (kids build) | `en` or `nl`; the kids screens show no words, so this has no visible effect |
 | Screen off from / until (hour) | quiet hours, for example 23 and 6. Set both, or both to -1 for none |
 

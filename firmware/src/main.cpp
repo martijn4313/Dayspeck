@@ -49,6 +49,8 @@ int  displaySleepMinutes = 0;
 int  quietStartHr = -1;
 int  quietEndHr = -1;
 bool displayAlwaysSleep = false;
+bool displayTouchEnabled = true;
+int  displayCycleSeconds = 0;
 String displayLanguage = "en";
 String locationName;
 
@@ -203,6 +205,15 @@ void loadConfig() {
     if (doc["display"]["quietEnd"].is<int>()) quietEndHr = constrain((int)doc["display"]["quietEnd"], -1, 23);
 
     if (doc["display"]["alwaysSleep"].is<bool>()) displayAlwaysSleep = doc["display"]["alwaysSleep"];
+    if (doc["display"]["touchEnabled"].is<bool>()) displayTouchEnabled = doc["display"]["touchEnabled"];
+    if (doc["display"]["cycleSeconds"].is<int>()) {
+        int secs = (int)doc["display"]["cycleSeconds"];
+        displayCycleSeconds = (secs >= 2) ? constrain(secs, 2, 3600) : 0;   // 0 = off; 1 s would be a flicker
+    }
+    if (!displayTouchEnabled && displayAlwaysSleep) {
+        displayAlwaysSleep = false;   // nothing could wake the screen again
+        logMessage("config.json: display.alwaysSleep needs the touch sensor, ignored");
+    }
     if (doc["display"]["language"].is<String>()) {
         String lang = doc["display"]["language"].as<String>();
         if (lang == "en" || lang == "nl") displayLanguage = lang;
@@ -522,6 +533,55 @@ void render() {
 
 
 /**
+ * Automatic screen cycling (display.cycleSeconds): the steps are those of cycleNextStep() in motologic. The
+ * step is derived from what is on screen, so a touch that picked another screen continues from there.
+ */
+static int currentCycleStep() {
+#ifdef KIDS_MODE
+    return state.displayMode < CYCLE_STEPS_KIDS ? state.displayMode : 0;
+#else
+    switch (state.displayMode) {
+        case 0:  return state.showTomorrow ? 1 : 0;
+        case 1:  return 2;
+        case 2:  return 3;
+        default: return 4;
+    }
+#endif
+}
+
+static void applyCycleStep(int step) {
+#ifdef KIDS_MODE
+    state.displayMode = (uint8_t)step;              // 0 weather, 1 clothes, 2 countdown
+#else
+    static const uint8_t modes[CYCLE_STEPS_RIDER] = { 0, 0, 1, 2, 3 };
+    state.displayMode = modes[step];
+    state.showTomorrow = (step == 1);               // step 1 shows the other day than the default one
+#endif
+    state.weeklyEnteredMs = millis();
+    state.displayDirty = true;
+}
+
+static void cycleScreens() {
+    // Nothing to cycle while it is off, the panel is off or there is no forecast yet: hold the timer
+    if (displayCycleSeconds <= 0 || state.displayOff || !state.weatherValid) {
+        state.lastCycleMs = millis();
+        return;
+    }
+    if (!intervalPassed(state.lastCycleMs, (unsigned long)displayCycleSeconds * 1000UL)) return;
+    state.lastCycleMs = millis();
+#ifdef KIDS_MODE
+    bool kids = true;
+    bool countdownActive = kidsCountdownNow().active;
+#else
+    bool kids = false;
+    bool countdownActive = false;
+#endif
+    bool clockUsable = state.timeSynced && timezoneKnown();
+    applyCycleStep(cycleNextStep(currentCycleStep(), kids, clockUsable, countdownActive));
+}
+
+
+/**
  * Touch: short tap = today/tomorrow (or leave a detail view), long press = next view
  * (primary -> week -> next hours -> clock -> primary).
  * touch_get_event() consumes the event, so it must be read exactly once per iteration.
@@ -531,6 +591,7 @@ void handleTouch() {
 
     if (event != TOUCH_NONE) {
         state.lastActivityMs = millis();
+        state.lastCycleMs = millis();   // the screen you just chose stays for a full cycle time
         if (state.displayOff) {
             // The first touch only wakes the panel
             state.displayOff = false;
@@ -568,8 +629,10 @@ void handleTouch() {
         state.displayDirty = true;
     }
 
-    // The week and hours views close themselves; the clock stays until a tap
-    if (state.displayMode != 0 && state.displayMode != 3 && intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
+    // The week and hours views close themselves; the clock stays until a tap. While the screens cycle by
+    // themselves, every screen stays for the cycle time instead.
+    if (displayCycleSeconds == 0 && state.displayMode != 0 && state.displayMode != 3 &&
+        intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
         state.displayMode = 0;
         state.displayDirty = true;
     }
@@ -773,7 +836,7 @@ void setup() {
     renderLoadingView(display, "Dayspeck", "Booting...", 0);
     display.display();
 
-    touch_init();
+    if (displayTouchEnabled) touch_init();
     initRainAnimation();
     randomSeed(ESP.getChipId() ^ micros());
 
@@ -806,8 +869,9 @@ void setup() {
  * Main loop - non-blocking apart from the periodic weather fetch
  */
 void loop() {
-    touch_update();
+    if (displayTouchEnabled) touch_update();
     handleTouch();
+    cycleScreens();
 
     manageWifi();
     handleWebServer();
