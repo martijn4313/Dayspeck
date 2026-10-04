@@ -210,6 +210,14 @@ int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 // Temperature trend 'u' (rising), 'd' (falling) or 'f' (flat) from now to a few hours later; NAN = flat
 char temperatureTrend(float now, float later);
 
+// Automatic cycling through the screens. The steps in order: rider 0 main view, 1 the other day (today /
+// tomorrow), 2 week grid, 3 next hours, 4 clock; kids 0 weather, 1 clothes, 2 countdown (only while a birthday
+// or holiday is near). Returns the step after `step`: the clock is skipped while the time is not known and
+// the countdown while there is none.
+#define CYCLE_STEPS_RIDER 5
+#define CYCLE_STEPS_KIDS  3
+int cycleNextStep(int step, bool kids, bool clockUsable, bool countdownActive);
+
 // Autumn in the hemisphere of the location: September-November in the north, March-May in the south.
 // month is 1-12.
 bool isAutumn(int month, bool southern);

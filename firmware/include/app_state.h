@@ -14,6 +14,7 @@ struct SystemState {
     uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix, 2 = next hours, 3 = clock
     bool          displayDirty;
     unsigned long weeklyEnteredMs;    // when the weekly / hourly view was opened
+    unsigned long lastCycleMs;        // when the automatic screen cycling last stepped on (or a touch restarted it)
     unsigned long lastActivityMs;     // last touch (for the sleep timer)
     bool          displayOff;         // panel switched off (quiet hours / sleep timer)
     bool          previewActive;      // after previewHr the default view is tomorrow
@@ -79,6 +80,8 @@ extern int  quietStartHr;         // quiet hours: panel off from start (inclusiv
 extern int  quietEndHr;
 extern int  displayNightBrightness;   // percent (1-100) used at night when displayDimAtNight is set
 extern bool displayAlwaysSleep;   // panel stays off; a touch wakes it for 30 s
+extern bool displayTouchEnabled;  // the touch sensor on GPIO3 is read (config.json display.touchEnabled, default on)
+extern int  displayCycleSeconds;  // step through the screens by itself every this many seconds; 0 = off
 extern String locationName;       // name of the manually chosen place (web UI search), may be empty
 extern String displayLanguage;    // kids variant words: "en" (default) or "nl"
 

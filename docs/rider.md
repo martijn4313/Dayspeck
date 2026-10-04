@@ -25,6 +25,18 @@
 - **Web UI** at `http://dayspeck.local` (or the device IP): location, WiFi, thresholds, logs and
   firmware updates (checked daily, installed with one click; a `UPD` mark shows when one is ready).
 
+## Without a touch sensor
+
+The touch sensor is optional. In the web UI under *Display* (or with `display.touchEnabled` in
+`config.json`) it can be switched off, and with *Cycle screens every (s)* (`display.cycleSeconds`) the device
+shows its screens in turn by itself, each for that many seconds: the main view, the other day (today or
+tomorrow), the week grid, the next hours and the clock (once the time is known). A touch sensor keeps working
+while it cycles: a tap picks a screen and it stays for a full cycle time. While the screens cycle, the week and
+hours views do not close after 30 s, because every screen already stays for the cycle time.
+
+*Always sleep* needs the touch sensor, because it is the only way to wake a switched-off screen; the quiet
+hours and the night sleep timer work without one.
+
 ## Wind and autumn leaves
 
 When it is windy (gusts above the wind threshold, and dry) curled gusts sweep across the village from left
