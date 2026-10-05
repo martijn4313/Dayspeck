@@ -1,12 +1,20 @@
 # Kids screens: what do I wear today?
 
-A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
-rating it shows what to wear and what the weather is like, with pictures and numbers and no words, and it
-counts the sleeps to birthdays and holidays. The
-weather and clothes screens show **the day in three parts**: morning, afternoon and evening, read from left to right. The
-weather screen is the main screen; a tap on the touch sensor shows the clothes screen, and another tap (or
-30 s) goes back to the weather. When a birthday or holiday is near, a tap on the clothes screen first shows
-the **countdown** (see below).
+Screens for children of about 4-5 who are starting to read. Instead of the ride rating they show what to
+wear and what the weather is like, with pictures and numbers and no words, and they count the sleeps to
+birthdays and holidays. With the *Kids* preset (see [Screens](screens.md)) the **village** is the home screen;
+a tap on the touch sensor shows the weather, the next tap the clothes, and another tap (or 30 s) goes back
+home. When a birthday or holiday is near, a tap on the clothes screen first shows the **countdown** (see
+below). The weather and clothes screens show **the day in three parts**: morning, afternoon and evening,
+read from left to right.
+
+**Village (home screen).** On the left the outfit for now, big; on the right the animated village of the
+ride screen with the temperature, the sun or the moon, rain, snow, gusts and autumn leaves. On the street
+a small picture says which part of the day the outfit is for. In the evening and at night it is tomorrow
+morning's outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit
+as the first one on the clothes screen.
+
+![Kids village screens: an autumn morning with a sweater and leaves blowing over the village; a hot afternoon with a sun cap, t-shirt and shorts; a cold evening with the winter coat and hat for tomorrow morning, after the bed](images/kids-village.png){ .center }
 
 ![Kids clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
@@ -68,10 +76,10 @@ no unit.
 
 **Without a touch sensor.** The touch sensor is optional here too (web UI, *Display*). With *Cycle screens
 every (s)* under [Screens](screens.md) the screens of the tap list follow each other by themselves: with the
-kids preset the weather, the clothes and, while a birthday or holiday is near, the countdown. A tap still
+kids preset the village, the weather, the clothes and, while a birthday or holiday is near, the countdown. A tap still
 steps on and the screen stays for a full cycle time.
 
-**Autumn leaves.** In autumn leaves blow across both screens when the wind is up (gusts from 20 km/h on,
+**Autumn leaves.** In autumn leaves blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
 numbers, and show as inverted dots so the pictures stay readable. Autumn is September to November, and
 March to May in the southern hemisphere; it needs the network time, so the leaves appear once the clock is
@@ -113,9 +121,9 @@ letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and
 before the day the countdown starts.
 
 The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
-`firmware/lib/motologic/motologic.h`). The kids screens have no rain animation and no `OLD` or `UPD` mark
-(the autumn leaves do blow across them).
+`firmware/lib/motologic/motologic.h`). The weather and clothes screens have no rain animation and no `OLD` or `UPD`
+mark (the autumn leaves do blow across them); the village has the animations of the ride screen, and no marks.
 
 **Getting the kids screens.** They are part of the one firmware: in the web UI under [Screens](screens.md)
-choose the *Kids* preset (weather, clothes, countdown on a tap; the weather report for the parents on a long
-press) and press *Save Settings*, or mix them with the rider screens.
+choose the *Kids* preset (village, weather, clothes, countdown on a tap; the weather report for the parents
+on a long press) and press *Save Settings*, or mix them with the rider screens.

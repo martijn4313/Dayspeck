@@ -475,7 +475,7 @@ size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT
 }
 
 static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
-    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report"
+    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report", "village"
 };
 
 const char* screenName(int id) {

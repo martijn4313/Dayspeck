@@ -18,6 +18,7 @@ the home screen and the ride rating one long press away, or only the clock and t
 | `weather` | [Kids](kids.md): the weather for the next three parts of the day |
 | `clothes` | Kids: what to wear for the next three parts of the day |
 | `countdown` | Kids: the sleeps to a birthday or holiday (skipped while none is near) |
+| `village` | Kids: what to wear now, next to the animated village of the ride screen |
 | `report` | [The weather report](#the-weather-report): the day in a few short sentences |
 
 ## Tap, long press, back home
@@ -39,7 +40,7 @@ the home screen and the ride rating one long press away, or only the clock and t
 | Preset | Tap | Long press |
 |--------|-----|------------|
 | Rider (the default) | ride rating, the other day | week grid, next hours, clock |
-| Kids | kids weather, clothes, countdown | weather report |
+| Kids | kids village, weather, clothes, countdown | weather report |
 
 After choosing a preset you can still change the lists, then press *Save Settings*.
 

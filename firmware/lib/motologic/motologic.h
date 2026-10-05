@@ -262,7 +262,8 @@ size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT
 #define SCREEN_CLOTHES     6   // kids: what to wear in three parts of the day
 #define SCREEN_COUNTDOWN   7   // kids: sleeps to a birthday or holiday (only while one is near)
 #define SCREEN_REPORT      8   // a short weather report in words, for the parents
-#define SCREEN_COUNT       9
+#define SCREEN_VILLAGE     9   // kids home screen: what to wear now, next to the animated village
+#define SCREEN_COUNT      10
 #define MAX_SCREEN_SLOTS   6
 
 const char* screenName(int id);            // "ride", "rideOther", "week", ...; "" for an unknown id

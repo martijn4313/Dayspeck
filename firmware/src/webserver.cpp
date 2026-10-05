@@ -398,7 +398,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     // The kids settings only matter when a kids screen is in use
                     const used = s.display.screens.tap.concat(s.display.screens.hold);
                     document.getElementById('kidsCard').style.display =
-                        used.includes('weather') || used.includes('clothes') ? '' : 'none';
+                        used.includes('weather') || used.includes('clothes') || used.includes('village') ? '' : 'none';
                     document.getElementById('countdownCard').style.display = used.includes('countdown') ? '' : 'none';
                     const k = document.forms.kidsForm;
                     k.hot.value = s.kids.hotFromC;
@@ -470,11 +470,11 @@ static const char index_html[] PROGMEM = R"HTML(
         const SCREENS = [
             ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
             ['hours', 'Next hours'], ['clock', 'Clock'], ['weather', 'Kids: weather'],
-            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown'], ['report', 'Weather report']
+            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown'], ['report', 'Weather report'], ['village', 'Kids: village']
         ];
         const PRESETS = {
             rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },
-            kids: { tap: ['weather', 'clothes', 'countdown'], hold: ['report'] }
+            kids: { tap: ['village', 'weather', 'clothes', 'countdown'], hold: ['report'] }
         };
         const MAX_SLOTS = 6;
         function addSlot(boxId, value) {
