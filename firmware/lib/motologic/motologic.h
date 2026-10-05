@@ -127,8 +127,8 @@ struct KidsOutlook {
     int  outfit;     // OUTFIT_*
     int  weather;    // KIDS_WEATHER_*
     bool night;      // draw the moon instead of the sun
-    int  tempC;      // average temperature, rounded (decides the outfit)
-    int  maxTempC;   // highest temperature, rounded (the number on the weather screen)
+    int  tempC;      // average temperature, rounded (kidsPartOutlook: the part's own temperature)
+    int  maxTempC;   // highest temperature, rounded
     int  hour;       // index of the middle hour
 };
 
@@ -159,6 +159,12 @@ struct KidsPart {
 // hour i, and hour 0 is the current one. Fills at most maxParts parts, the current part first (only
 // its remaining hours); returns how many.
 size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts);
+
+// One column of the kids screens: the weather picture of the part (as kidsWindowOutlook), and one
+// characteristic temperature that is both the number on the weather screen and what the outfit goes by:
+// the morning its lowest (the walk to school), the afternoon its highest, the evening its first hour
+// (18:00, before bedtime). For the current part only its remaining hours count. tempC holds that number.
+KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l);
 
 // Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)
 #define KIDS_EVENT_BIRTHDAY     0

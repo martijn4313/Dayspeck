@@ -182,6 +182,28 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
     return o;
 }
 
+KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l) {
+    KidsOutlook o = kidsWindowOutlook(hours, part.from, part.to, l);
+    if (!o.valid) return o;
+    float t = NAN;
+    for (size_t i = part.from; i < part.to; i++) {
+        const KidsHour& h = hours[i];
+        if (!h.valid || isnan(h.tempC)) continue;
+        if (isnan(t)) {
+            t = h.tempC;
+            if (part.part == KIDS_PART_EVENING) break;          // the start of the evening
+        } else if (part.part == KIDS_PART_MORNING) {
+            if (h.tempC < t) t = h.tempC;                       // the coldest of the morning
+        } else if (h.tempC > t) {
+            t = h.tempC;                                        // the warmest of the afternoon
+        }
+    }
+    if (isnan(t)) return o;
+    o.tempC = (int)lroundf(t);
+    o.outfit = outfitFor(t, o.weather, o.night, l);
+    return o;
+}
+
 int partOfDay(int localHour) {
     if (localHour >= KIDS_MORNING_FROM_HR && localHour < KIDS_AFTERNOON_FROM_HR) return KIDS_PART_MORNING;
     if (localHour >= KIDS_AFTERNOON_FROM_HR && localHour < KIDS_EVENING_FROM_HR) return KIDS_PART_AFTERNOON;

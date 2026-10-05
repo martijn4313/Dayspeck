@@ -422,8 +422,9 @@ void renderKids(bool weather) {
     KidsColumn cols[3];
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
-        KidsOutlook o = kidsWindowOutlook(hours, parts[i].from, parts[i].to, kidsLimits);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.maxTempC) };
+        // One number per part, shown on the weather screen and the one the outfit goes by
+        KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.tempC) };
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
@@ -524,11 +525,22 @@ static uint16_t availableScreens() {
     return available;
 }
 
+static const WindArea *windAnimationArea = nullptr;   // where the running gusts and leaves blow
 static void stopWindAnimation();
 
+// The area gusts and leaves blow in on a screen; nullptr for the screens without them
+static const WindArea *windAreaFor(int screen) {
+    if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER) return &WIND_AREA_RIDE;
+    if (screen == SCREEN_WEATHER || screen == SCREEN_CLOTHES) return &WIND_AREA_KIDS;
+    return nullptr;
+}
+
 static void showScreen(ScreenNav nav) {
-    // Gusts and leaves blow in a different area on another screen: they start afresh on the next frame
-    if (state.windAnimationActive) stopWindAnimation();
+    // Between screens with the same area the leaves fly on where they were (a seamless switch); on a screen
+    // without them they pause. Only a screen with the other area starts them afresh, so leaves from one
+    // area are never drawn in the other.
+    const WindArea *next = windAreaFor(screenAt(nav, screensTap, screensHold));
+    if (state.windAnimationActive && next && next != windAnimationArea) stopWindAnimation();
     state.screen = nav;
     state.screenEnteredMs = millis();
     state.displayDirty = true;
@@ -873,8 +885,6 @@ void setup() {
  * The wind animation runs in one area at a time (the ride screen's right half, or the whole kids screen):
  * coming from a screen with the other area starts it afresh
  */
-static const WindArea *windAnimationArea = nullptr;
-
 static void startWindAnimation(const WindArea &area) {
     if (!state.windAnimationActive || windAnimationArea != &area) {
         initWindAnimation(area);

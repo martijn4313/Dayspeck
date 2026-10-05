@@ -154,10 +154,10 @@ struct KidsColumn {
     int  outfit;    // OUTFIT_* (clothes screen)
     int  weather;   // KIDS_WEATHER_* (weather screen)
     bool night;     // moon instead of sun
-    int  temp;      // the highest temperature, as shown (weather screen)
+    int  temp;      // the part's temperature, as shown (weather screen): see kidsPartOutlook
 };
 // Kids variant: the next parts of the day in up to three columns, outfits (weather = false) or weather
-// pictures with the highest temperature. nowColumn gets dots underneath (-1 = none); nightBefore is the
+// pictures with the part's temperature. nowColumn gets dots underneath (-1 = none); nightBefore is the
 // column a night lies before (a dotted line with a bed; -1 or 0 = none).
 void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_t count, int nowColumn,
                         int nightBefore, bool weather);

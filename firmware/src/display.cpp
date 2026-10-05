@@ -802,7 +802,7 @@ void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBar
 // ---- Kids variant: the day in three parts --------------------------------------------------------
 // Two screens with the same layout: three columns of 42 px for the next three parts of the day (morning,
 // afternoon, evening; the current one first). Each column has the time-of-day symbol at the top, then an
-// outfit (clothes screen) or a weather picture with the highest temperature (weather screen). Dots under a
+// outfit (clothes screen) or a weather picture with the part's temperature (weather screen). Dots under a
 // column mark "now"; a dotted line with a bed marks the night between today and tomorrow.
 
 #define KIDS_COL_W     42

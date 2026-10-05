@@ -23,8 +23,20 @@ defaults, see *Settings* below):
 | 0 to under 5 °C | winter coat and hat |
 | below 0 °C, or snow | winter coat, hat, scarf and mittens |
 
-The outfit of a part goes by its average temperature and its wettest weather: one hour with 0.2 mm of rain
-or more (or a thunderstorm) makes it a rain coat.
+**One number per part.** Each part of the day has one temperature that the weather screen shows and the
+outfit goes by, so the number and the picture always match:
+
+| Part | Its temperature | Why |
+|------|-----------------|-----|
+| morning (7-12) | the **lowest** | that is the walk to school, usually right at the start |
+| afternoon (12-18) | the **highest** | how people talk about the day: "this afternoon it gets 17" |
+| evening (18-22) | the temperature at **18:00** | when the kids may still play outside; 22:00 is bedtime |
+
+For the current part only the hours still to come count (with what is measured right now for this hour).
+A morning of 10° at 7:30 and 17° from 11:00 shows **10 and a sweater**, not the 16 of late morning.
+
+The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
+thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).
 
 **The three parts.** The parts of the day are morning (7-12), afternoon (12-18) and evening (18-22). The
 screen always shows the **next three**, starting with the current one, so it never shows what is past:
@@ -48,11 +60,11 @@ The symbol at the top of a column says which part it is:
 | small sun | afternoon (the sun is high) |
 | half sun on the horizon, arrow down | evening (the sun goes down) |
 
-![Kids weather screens: 10:00 sun 13, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; an evening moon 15, rain 12 and wind 17 tomorrow](images/kids-weather.png){ .center }
+![Kids weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; an evening moon 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
 **Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
-rain, thunderstorm, snow, wind) and its **highest temperature**, like the forecast on the news: a number to
-read, no unit.
+rain, thunderstorm, snow, wind) and its temperature (see *One number per part* above): a number to read,
+no unit.
 
 **Without a touch sensor.** The touch sensor is optional here too (web UI, *Display*). With *Cycle screens
 every (s)* under [Screens](screens.md) the screens of the tap list follow each other by themselves: with the
