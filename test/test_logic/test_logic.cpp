@@ -366,6 +366,43 @@ void test_kids_window_highest_temperature() {
     TEST_ASSERT_EQUAL(OUTFIT_COOL, o.outfit);
 }
 
+void test_kids_part_temperature() {
+    // This morning: 10 at 07:00, 17 from 11:00. The morning column shows 10 and a sweater, not 16.
+    KidsHour h[5] = { hr(10, 0, 1), hr(12, 0, 1), hr(14, 0, 1), hr(16, 0, 1), hr(17, 0, 1) };
+    KidsPart morning = { KIDS_PART_MORNING, 0, 5, false, true };
+    KidsOutlook o = kidsPartOutlook(h, morning, K);
+    TEST_ASSERT_EQUAL(10, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_COOL, o.outfit);
+
+    // A morning that gets colder: still the lowest
+    KidsHour cold[3] = { hr(14, 0, 1), hr(12, 0, 1), hr(9, 0, 3) };
+    TEST_ASSERT_EQUAL(9, kidsPartOutlook(cold, KidsPart{ KIDS_PART_MORNING, 0, 3, false, false }, K).tempC);
+
+    // The afternoon: the highest, and the outfit goes by it
+    KidsHour pm[3] = { hr(17, 0, 1), hr(21, 0, 1), hr(19, 0, 1) };
+    o = kidsPartOutlook(pm, KidsPart{ KIDS_PART_AFTERNOON, 0, 3, false, false }, K);
+    TEST_ASSERT_EQUAL(21, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_WARM, o.outfit);
+
+    // The evening: its first hour, not the cold of 22:00
+    KidsHour ev[4] = { hr(16, 0, 1), hr(14, 0, 1), hr(12, 0, 1), hr(11, 0, 1) };
+    o = kidsPartOutlook(ev, KidsPart{ KIDS_PART_EVENING, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(16, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+
+    // Rain still makes it a rain coat, whatever the number
+    KidsHour wet[2] = { hr(18, 0, 1), hr(18, 1.0f, 61) };
+    o = kidsPartOutlook(wet, KidsPart{ KIDS_PART_AFTERNOON, 0, 2, false, false }, K);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+
+    // Hours without data are skipped; none at all: not valid
+    KidsHour gaps[3] = { hr(30, 0, 1), hr(8, 0, 1), hr(12, 0, 1) };
+    gaps[0].valid = false;
+    TEST_ASSERT_EQUAL(8, kidsPartOutlook(gaps, KidsPart{ KIDS_PART_MORNING, 0, 3, false, false }, K).tempC);
+    gaps[1].valid = gaps[2].valid = false;
+    TEST_ASSERT_FALSE(kidsPartOutlook(gaps, KidsPart{ KIDS_PART_MORNING, 0, 3, false, false }, K).valid);
+}
+
 void test_part_of_day() {
     TEST_ASSERT_EQUAL(-1, partOfDay(6));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7));
@@ -605,6 +642,7 @@ int main(int, char**) {
     RUN_TEST(test_kids_outfits_follow_changed_limits);
     RUN_TEST(test_kids_window);
     RUN_TEST(test_kids_window_highest_temperature);
+    RUN_TEST(test_kids_part_temperature);
     RUN_TEST(test_part_of_day);
     RUN_TEST(test_day_parts_in_the_morning);
     RUN_TEST(test_day_parts_roll_into_tomorrow);

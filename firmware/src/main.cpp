@@ -422,8 +422,9 @@ void renderKids(bool weather) {
     KidsColumn cols[3];
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
-        KidsOutlook o = kidsWindowOutlook(hours, parts[i].from, parts[i].to, kidsLimits);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.maxTempC) };
+        // One number per part, shown on the weather screen and the one the outfit goes by
+        KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.tempC) };
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
