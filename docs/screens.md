@@ -34,6 +34,9 @@ the home screen and the ride rating one long press away, or only the clock and t
   everything in turn. A touch still works: the screen you pick stays for a full cycle time.
 - The clock and the countdown are skipped while they have nothing to show.
 - Up to 6 screens per list; a screen may appear in both.
+- Every screen redraws after each weather update (every 15-17 minutes by day, hourly at night) and on the
+  quarter hours (:00, :15, :30, :45), so the numbers follow the forecast and the kids screens move on to the
+  next part of the day on the hour.
 
 **Presets** fill in both lists in one go:
 
@@ -69,8 +72,7 @@ writes it itself from the hourly forecast, by fixed rules:
 4. **One thing to watch out for**, the first that applies: frost tonight or during the day (roads may be
    icy), gusts of 60 km/h or more, 10 mm of rain or more, gusts of 45 km/h or more.
 
-An hour counts as wet from 0.2 mm, as on the kids screens. The report redraws every hour and after every
-forecast update. When the sentences do not fit on the screen (7 lines), the least important ones are left
+An hour counts as wet from 0.2 mm, as on the kids screens. The report redraws like every screen (see above). When the sentences do not fit on the screen (7 lines), the least important ones are left
 out first: the change and the fresh morning, then the warning; the day and the night always stay.
 
 **On a windy day** (gusts above the *wind picture* limit under *Clothing (kids)*, 50 km/h by default) the report
