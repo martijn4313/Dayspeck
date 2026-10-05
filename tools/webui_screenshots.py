@@ -28,7 +28,7 @@ def extract(name, source):
 
 
 STATUS = {
-    "firmware": "0.2.0 (3f9c1ab)", "variant": "kids",
+    "firmware": "0.2.0 (3f9c1ab)",
     "kids": {"hotFromC": 25, "shortsFromC": 20, "sweaterBelowC": 15, "coatBelowC": 5, "freezeBelowC": 0,
              "windyGustKmh": 50, "birthdays": [{"date": "2021-11-02", "initial": "E"},
                                                {"date": "2019-12-20", "initial": "S"}],
@@ -38,7 +38,10 @@ STATUS = {
     "thresholds": {"maxRainMm": 2.0, "maxWindKmh": 60, "minTempC": 5, "warnWindKmh": 40, "rainProbPct": 50},
     "display": {"previewHr": 18, "dimAtNight": True, "nightBrightness": 10, "sleepMinutes": 0,
                 "alwaysSleep": False, "language": "en", "quietStart": 23, "quietEnd": 6,
-                "touchEnabled": True, "cycleSeconds": 0},
+                "touchEnabled": True, "cycleSeconds": 0,
+                # a combination: the kids screens on a tap, rider screens on a long press
+                "screens": {"tap": ["weather", "clothes", "countdown"], "hold": ["ride", "week", "clock"],
+                            "returnSeconds": 30}},
     "current": {"tempC": 14.2, "windKmh": 18.0, "precipMm": 0.0},
     "wifi": {"connected": True, "signalStrength": -58, "ssid": "HomeNet", "passwordSet": True},
     "weatherApi": {"url": "http://api.open-meteo.com/v1/forecast", "units": "metric", "debug": False},
@@ -52,7 +55,7 @@ LOGS = {"logs": ["[00:00:03] WiFi connected to HomeNet, 192.168.1.42",
                  "[00:00:06] Time synced (NTP)",
                  "[00:00:09] Weather updated: 14.2 C, wind 18 km/h",
                  "[00:15:00] Weather updated: 14.5 C, wind 17 km/h"]}
-OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "kids", "keySet": True,
+OTA = {"current": "0.2.0", "build": "3f9c1ab", "variant": "dayspeck", "keySet": True,
        "url": "http://dayspeck-ota.example.workers.dev", "autoCheck": True, "checkedMinutesAgo": 42,
        "latest": "0.3.0", "notes": "Adds the web UI manual and the Dayspeck name.", "available": True,
        "size": 412000, "freeSpace": 700000, "error": ""}
@@ -136,8 +139,8 @@ def main():
     html = extract("index_html", source)
 
     # Cards in page order: 0 location, 1 set location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
-    # 5 thresholds, 6 display, 7 clothing, 8 countdowns (both kids build only), 9 weather API, 10 password,
-    # 11 debug, 12 firmware update
+    # 5 thresholds, 6 screens, 7 display, 8 clothing, 9 countdowns (both only while a kids screen is used),
+    # 10 weather API, 11 password, 12 debug, 13 firmware update
     def search_place(p):
         p.route("https://geocoding-api.open-meteo.com/**",
                 lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(GEOCODING)))
@@ -165,8 +168,9 @@ def main():
         browser = pw.chromium.launch(**kwargs)
         shoot(browser, base[0], out, "webui-location.png", 0, 1, search_place)
         shoot(browser, base[1], out, "webui-wifi.png", 2, 4, scan)
-        shoot(browser, base[1], out, "webui-settings.png", 5, 8)
-        shoot(browser, base[1], out, "webui-update.png", 11, 12, logs)
+        shoot(browser, base[1], out, "webui-settings.png", 5, 9)
+        shoot(browser, base[1], out, "webui-screens.png", 6, 6)
+        shoot(browser, base[1], out, "webui-update.png", 12, 13, logs)
         browser.close()
     for s in servers:
         s.shutdown()

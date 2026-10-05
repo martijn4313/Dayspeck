@@ -3,12 +3,12 @@
 <p align="center"><img src="docs/images/hero.png" alt="The rider screen (a big check mark, a village and the weather) next to the kids screen (an autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening)" width="640"></p>
 
 A small weather display for a bedside table or a wall, on an ESP8266 with a 128×64 SSD1306 OLED.
-It comes in two flavours, built from the same code:
+One firmware with two sets of screens, which you can combine as you like in the web UI:
 
-- **Rider** (default): answers one question at a glance, **can I ride today?**
-- **Kids** (`esp01_1m_kids`): for children of 4-5 who are learning to read. It answers **what do I
-  wear today?** with pictures and numbers, for the morning, afternoon and evening, and counts the sleeps
-  to birthdays, Halloween, Sinterklaas and Christmas.
+- **Rider:** answers one question at a glance, **can I ride today?**
+- **Kids:** for children of 4-5 who are learning to read. It answers **what do I wear today?** with
+  pictures and numbers, for the morning, afternoon and evening, and counts the sleeps to birthdays,
+  Halloween, Sinterklaas and Christmas.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key).
 
@@ -19,7 +19,7 @@ Weather data comes from [Open-Meteo](https://open-meteo.com) (free, no account o
 Requires [PlatformIO](https://platformio.org).
 
 ```sh
-pio run -t upload             # flash the rider firmware (or -e esp01_1m_kids for the kids one)
+pio run -t upload             # flash the firmware (pick the screens later in the web UI)
 pio run -t uploadfs           # flash firmware/data (config.json) to the filesystem
 pio test -e native            # host unit tests for the pure logic
 ```

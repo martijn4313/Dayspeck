@@ -32,8 +32,9 @@ extra_css:
 nav:
   - Home: index.md
   - Using it:
-      - Rider variant: rider.md
-      - Kids variant: kids.md
+      - Screens: screens.md
+      - Rider screens: rider.md
+      - Kids screens: kids.md
       - Ride rating: ride-rating.md
   - Setting up:
       - Hardware: hardware.md

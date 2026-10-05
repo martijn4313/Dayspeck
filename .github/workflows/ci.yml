@@ -35,18 +35,13 @@ jobs:
       - name: Build debug firmware
         run: pio run -e esp01_1m_debug
 
-      - name: Build kids firmware
-        run: pio run -e esp01_1m_kids
-
       - name: Build filesystem image
         run: pio run -e esp01_1m -t buildfs
 
       - name: Firmware leaves room for an over-the-air update
         run: |
           ld=$(sed -n 's/^board_build.ldscript *= *//p' platformio.ini)
-          for env in esp01_1m esp01_1m_kids; do
-            python tools/ota_tool.py check-size --in .pio/build/$env/firmware.bin --ldscript "$ld"
-          done
+          python tools/ota_tool.py check-size --in .pio/build/esp01_1m/firmware.bin --ldscript "$ld"
 
       # Installable images to try on a device before tagging a release (web UI: Firmware update ->
       # Manual upload). Only for main and manual runs, so not every branch push gets a signed image.
@@ -56,21 +51,18 @@ jobs:
         env:
           OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
         run: |
-          rider=.pio/build/esp01_1m/firmware.bin
-          kids=.pio/build/esp01_1m_kids/firmware.bin
+          fwbin=.pio/build/esp01_1m/firmware.bin
           mkdir -p ota-test
           if [ -n "$OTA_SIGNING_KEY" ]; then
             key="$RUNNER_TEMP/ota.pem"
             trap 'rm -f "$key"' EXIT
             printf '%s\n' "$OTA_SIGNING_KEY" > "$key"
             python tools/ota_tool.py check-key --key "$key"
-            python tools/ota_tool.py sign --key "$key" --in "$rider" --out ota-test/dayspeck-rider.bin.gz
-            python tools/ota_tool.py sign --key "$key" --in "$kids" --out ota-test/dayspeck-kids.bin.gz
+            python tools/ota_tool.py sign --key "$key" --in "$fwbin" --out ota-test/dayspeck.bin.gz
             signed=signed
           else
             echo "::warning::OTA_SIGNING_KEY is not set: the test images are unsigned and only install on a build without a key"
-            gzip -9 -n -c "$rider" > ota-test/dayspeck-rider.bin.gz
-            gzip -9 -n -c "$kids" > ota-test/dayspeck-kids.bin.gz
+            gzip -9 -n -c "$fwbin" > ota-test/dayspeck.bin.gz
             signed=unsigned
           fi
           fw=$(sed -n 's/^#define FW_VERSION "\(.*\)"/\1/p' firmware/include/version.h)

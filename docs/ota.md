@@ -29,7 +29,7 @@ How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://gith
    under *Update server*, or in `OTA_DEFAULT_URL` in `config.h`.
 3. **Serial flash, once.** Devices built before the 64 KB filesystem layout have too little free
    flash for any over-the-air update: flash them over serial (`pio run -t upload` and
-   `pio run -t uploadfs`, or `dayspeck-rider-serial.bin` and `dayspeck-fs-serial.bin` from a
+   `pio run -t uploadfs`, or `dayspeck-serial.bin` and `dayspeck-fs-serial.bin` from a
    release). The filesystem moves, so the WiFi settings, location and password start from scratch.
 
 ## Publishing a release
@@ -37,7 +37,7 @@ How it fits on an ESP-01 with 1 MB flash (details in the [OTA plan](https://gith
 1. Set `FW_VERSION` in `firmware/include/version.h` to the new version and commit.
 2. Tag it: `git tag -a v0.3.0 -m "One-line release notes shown in the web UI"` and push the tag.
 3. `.github/workflows/release.yml` checks that the tag matches `FW_VERSION` and that the secret
-   matches the committed public key, runs the tests, builds the rider and kids firmware, signs them
+   matches the committed public key, runs the tests, builds the firmware, signs it
    and publishes the release. Devices see it within a day (or at once with *Check now*).
 
 Only tag versions you have tried on a device: the ESP8266 cannot roll back to the old firmware if
@@ -47,7 +47,7 @@ a new one installs fine but then misbehaves (a serial flash fixes it).
 
 To try a version before tagging it, use the test images that CI makes:
 
-- Every push to `main` builds `dayspeck-rider.bin.gz` and `dayspeck-kids.bin.gz`, signed with the same
+- Every push to `main` builds `dayspeck.bin.gz`, signed with the same
   `OTA_SIGNING_KEY` secret as a release. For any other branch, open *Actions → CI → Run workflow* on
   GitHub and pick the branch.
 - Open the finished run and download the **ota-test-images** artifact (a zip, kept for 90 days, needs a
@@ -60,7 +60,7 @@ without a key.
 
 ## Manual upload
 
-The *Manual upload* form in the web UI takes a signed `dayspeck-rider.bin.gz` (or `-kids`) from a
+The *Manual upload* form in the web UI takes a signed `dayspeck.bin.gz` from a
 release. To upload your own build, sign it with your key first:
 `python tools/ota_tool.py sign --key ota_private.pem --in .pio/build/esp01_1m/firmware.bin --out fw.bin.gz`.
 A build without a key accepts unsigned images; upload a compressed one

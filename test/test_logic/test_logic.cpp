@@ -1,5 +1,6 @@
 // Native unit tests for the pure logic: pio test -e native
 #include <unity.h>
+#include <initializer_list>
 #include <math.h>
 #include "motologic.h"
 
@@ -135,25 +136,65 @@ void test_wind_overrides_only_dry_weather() {
     TEST_ASSERT_EQUAL(WEATHER_RAIN, mapWeatherCode(61, 30, 25));
 }
 
-void test_screen_cycle_order_and_skips() {
-    // rider: main, other day, week, hours, clock, back to main
-    TEST_ASSERT_EQUAL(1, cycleNextStep(0, false, true, false));
-    TEST_ASSERT_EQUAL(2, cycleNextStep(1, false, true, false));
-    TEST_ASSERT_EQUAL(3, cycleNextStep(2, false, true, false));
-    TEST_ASSERT_EQUAL(4, cycleNextStep(3, false, true, false));
-    TEST_ASSERT_EQUAL(0, cycleNextStep(4, false, true, false));
-    // no valid time yet: the clock is skipped
-    TEST_ASSERT_EQUAL(0, cycleNextStep(3, false, false, false));
-    TEST_ASSERT_EQUAL(1, cycleNextStep(0, false, false, false));
-    // kids: weather, clothes, and the countdown only while there is one
-    TEST_ASSERT_EQUAL(1, cycleNextStep(0, true, true, false));
-    TEST_ASSERT_EQUAL(0, cycleNextStep(1, true, true, false));
-    TEST_ASSERT_EQUAL(2, cycleNextStep(1, true, true, true));
-    TEST_ASSERT_EQUAL(0, cycleNextStep(2, true, true, true));
-    TEST_ASSERT_EQUAL(0, cycleNextStep(2, true, true, false));    // the countdown ended while it was shown
-    // an out-of-range step recovers instead of getting stuck
-    TEST_ASSERT_EQUAL(1, cycleNextStep(9, true, true, false));
-    TEST_ASSERT_EQUAL(0, cycleNextStep(14, false, true, false));
+static ScreenList list(std::initializer_list<int> ids) {
+    ScreenList l = {};
+    for (int id : ids) l.ids[l.count++] = (uint8_t)id;
+    return l;
+}
+
+void test_screen_names() {
+    TEST_ASSERT_EQUAL_STRING("rideOther", screenName(SCREEN_RIDE_OTHER));
+    TEST_ASSERT_EQUAL_STRING("", screenName(42));
+    for (int i = 0; i < SCREEN_COUNT; i++) TEST_ASSERT_EQUAL(i, screenFromName(screenName(i)));
+    TEST_ASSERT_EQUAL(-1, screenFromName("nope"));
+    TEST_ASSERT_EQUAL(-1, screenFromName(nullptr));
+}
+
+void test_screen_lists_valid() {
+    ScreenList none = {};
+    TEST_ASSERT_TRUE(screenListsValid(list({ SCREEN_RIDE, SCREEN_RIDE_OTHER }), list({ SCREEN_WEEK, SCREEN_CLOCK })));
+    TEST_ASSERT_TRUE(screenListsValid(list({ SCREEN_WEATHER }), none));
+    TEST_ASSERT_FALSE(screenListsValid(none, none));                                    // no home screen
+    TEST_ASSERT_FALSE(screenListsValid(list({ SCREEN_CLOCK, SCREEN_RIDE }), none));      // home may disappear
+    TEST_ASSERT_FALSE(screenListsValid(list({ SCREEN_COUNTDOWN }), none));
+    TEST_ASSERT_FALSE(screenListsValid(list({ SCREEN_RIDE, 99 }), none));
+}
+
+void test_screen_tap_steps_and_skips() {
+    ScreenList tap = list({ SCREEN_WEATHER, SCREEN_CLOTHES, SCREEN_COUNTDOWN });
+    ScreenList hold = {};
+    uint16_t all = 0xFFFF, noCountdown = (uint16_t)~(1u << SCREEN_COUNTDOWN);
+    ScreenNav n = { 0, 0 };
+    n = screenNextTap(n, tap, all);
+    TEST_ASSERT_EQUAL(SCREEN_CLOTHES, screenAt(n, tap, hold));
+    n = screenNextTap(n, tap, all);
+    TEST_ASSERT_EQUAL(SCREEN_COUNTDOWN, screenAt(n, tap, hold));
+    n = screenNextTap(n, tap, all);
+    TEST_ASSERT_EQUAL(SCREEN_WEATHER, screenAt(n, tap, hold));             // wraps around
+    n = screenNextTap(ScreenNav{ 0, 1 }, tap, noCountdown);
+    TEST_ASSERT_EQUAL(SCREEN_WEATHER, screenAt(n, tap, hold));             // the countdown is skipped
+    n = screenNextTap(ScreenNav{ 0, 0 }, list({ SCREEN_RIDE }), all);
+    TEST_ASSERT_EQUAL(0, n.slot);                                          // one screen: stays home
+}
+
+void test_screen_hold_list() {
+    ScreenList tap = list({ SCREEN_RIDE, SCREEN_RIDE_OTHER });
+    ScreenList hold = list({ SCREEN_WEEK, SCREEN_HOURS, SCREEN_CLOCK });
+    uint16_t all = 0xFFFF, noClock = (uint16_t)~(1u << SCREEN_CLOCK);
+    ScreenNav n = { 0, 1 };                                                // the other day
+    n = screenNextHold(n, tap, hold, all);
+    TEST_ASSERT_EQUAL(SCREEN_WEEK, screenAt(n, tap, hold));
+    n = screenNextHold(n, tap, hold, all);
+    TEST_ASSERT_EQUAL(SCREEN_HOURS, screenAt(n, tap, hold));
+    n = screenNextHold(n, tap, hold, noClock);
+    TEST_ASSERT_EQUAL(SCREEN_RIDE, screenAt(n, tap, hold));                // clock skipped, past the end: home
+    TEST_ASSERT_EQUAL(0, n.list);
+    n = screenNextTap(ScreenNav{ 1, 1 }, tap, all);
+    TEST_ASSERT_EQUAL(SCREEN_RIDE, screenAt(n, tap, hold));                // a tap in the hold list goes home
+
+    ScreenList none = {};
+    n = screenNextHold(ScreenNav{ 0, 0 }, tap, none, all);
+    TEST_ASSERT_EQUAL(SCREEN_RIDE_OTHER, screenAt(n, tap, none));          // no hold list: like a tap
 }
 
 void test_autumn_follows_the_hemisphere() {
@@ -578,7 +619,10 @@ int main(int, char**) {
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);
     RUN_TEST(test_wind_overrides_only_dry_weather);
-    RUN_TEST(test_screen_cycle_order_and_skips);
+    RUN_TEST(test_screen_names);
+    RUN_TEST(test_screen_lists_valid);
+    RUN_TEST(test_screen_tap_steps_and_skips);
+    RUN_TEST(test_screen_hold_list);
     RUN_TEST(test_autumn_follows_the_hemisphere);
     RUN_TEST(test_leaves_blow_in_autumn_wind_only);
     RUN_TEST(test_kids_leaves_blow_in_dry_autumn_wind_only);

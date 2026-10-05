@@ -58,30 +58,24 @@ jobs:
       - name: Build
         run: |
           pio run -e esp01_1m
-          pio run -e esp01_1m_kids
           pio run -e esp01_1m -t buildfs
           ld=$(sed -n 's/^board_build.ldscript *= *//p' platformio.ini)
           python tools/ota_tool.py check-size --in .pio/build/esp01_1m/firmware.bin --ldscript "$ld"
-          python tools/ota_tool.py check-size --in .pio/build/esp01_1m_kids/firmware.bin --ldscript "$ld"
 
       - name: Sign and write the manifest
         run: |
           key="$RUNNER_TEMP/ota.pem"
-          rider=.pio/build/esp01_1m/firmware.bin
-          kids=.pio/build/esp01_1m_kids/firmware.bin
+          fwbin=.pio/build/esp01_1m/firmware.bin
           mkdir dist
           # Over the air: gzip-compressed and signed. Serial flashing: the raw images.
-          python tools/ota_tool.py sign --key "$key" --in "$rider" --out dist/dayspeck-rider.bin.gz
-          python tools/ota_tool.py sign --key "$key" --in "$kids" --out dist/dayspeck-kids.bin.gz
-          cp "$rider" dist/dayspeck-rider-serial.bin
-          cp "$kids" dist/dayspeck-kids-serial.bin
+          python tools/ota_tool.py sign --key "$key" --in "$fwbin" --out dist/dayspeck.bin.gz
+          cp "$fwbin" dist/dayspeck-serial.bin
           cp .pio/build/esp01_1m/littlefs.bin dist/dayspeck-fs-serial.bin
           # Release notes on the device: the subject line of the annotated tag, if any
           git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
           notes=$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")
           python tools/ota_tool.py manifest --key "$key" --version "${GITHUB_REF_NAME#v}" --notes "$notes" \
-            --variant rider=dist/dayspeck-rider.bin.gz \
-            --variant kids=dist/dayspeck-kids.bin.gz \
+            --variant dayspeck=dist/dayspeck.bin.gz \
             --out dist/ota-manifest.txt
           rm -f "$key"
 

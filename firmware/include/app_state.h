@@ -6,14 +6,14 @@
 
 #include <Arduino.h>
 #include <vector>
+#include "motologic.h"   // ScreenList, ScreenNav
 
 // System state - single source of truth (defined in main.cpp)
 struct SystemState {
     // Display state
-    bool          showTomorrow;
-    uint8_t       displayMode;        // 0 = primary view, 1 = weekly matrix, 2 = next hours, 3 = clock
+    ScreenNav     screen;             // the slot on display (see screensTap / screensHold)
     bool          displayDirty;
-    unsigned long weeklyEnteredMs;    // when the weekly / hourly view was opened
+    unsigned long screenEnteredMs;    // when the current screen was opened (for the return to the home screen)
     unsigned long lastCycleMs;        // when the automatic screen cycling last stepped on (or a touch restarted it)
     unsigned long lastActivityMs;     // last touch (for the sleep timer)
     bool          displayOff;         // panel switched off (quiet hours / sleep timer)
@@ -81,9 +81,12 @@ extern int  quietEndHr;
 extern int  displayNightBrightness;   // percent (1-100) used at night when displayDimAtNight is set
 extern bool displayAlwaysSleep;   // panel stays off; a touch wakes it for 30 s
 extern bool displayTouchEnabled;  // the touch sensor on GPIO3 is read (config.json display.touchEnabled, default on)
-extern int  displayCycleSeconds;  // step through the screens by itself every this many seconds; 0 = off
+extern int  displayCycleSeconds;  // step through the tap list by itself every this many seconds; 0 = off
+extern ScreenList screensTap;     // config.json display.screens.tap: a tap steps through these; slot 0 is home
+extern ScreenList screensHold;    // display.screens.hold: a long press steps through these (may be empty)
+extern int  screensReturnSeconds; // display.screens.returnSeconds: back to the home screen after; 0 = never
 extern String locationName;       // name of the manually chosen place (web UI search), may be empty
-extern String displayLanguage;    // kids variant words: "en" (default) or "nl"
+extern String displayLanguage;    // "en" (default) or "nl"
 
 // WiFi credentials (config.json / web UI)
 extern String wifiSsid;

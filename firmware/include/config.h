@@ -49,10 +49,8 @@
 #define DEFAULT_PREVIEW_HR    24   // 24 = never switch the default view to tomorrow
 #define DEFAULT_RAIN_PROB_PCT 50   // chance of rain (%) from which a ride is at least "caution"; above 100 disables
 
-// Kids variant (build the esp01_1m_kids environment, -DKIDS_MODE): instead of the ride rating the display
-// shows what to wear and the weather for the next parts of the day. Outfits by temperature (C), from warm
-// to cold. These are the defaults:
-// config.json ("kids") and the web UI ("Clothing") override them.
+// Kids screens (weather and clothes for the next parts of the day). Outfits by temperature (C), from warm
+// to cold. These are the defaults: config.json ("kids") and the web UI ("Clothing") override them.
 #define KIDS_HOT_FROM_C        25   // sun cap, t-shirt and shorts (sunny daytime only)
 #define KIDS_SHORTS_FROM_C     20   // t-shirt and shorts
 #define KIDS_SWEATER_BELOW_C   15   // sweater below this, a t-shirt above
@@ -67,6 +65,10 @@
 // config.json "display.nightBrightness")
 #define DAY_CONTRAST                0xCF   // the Adafruit library's default for SSD1306_SWITCHCAPVCC
 #define DEFAULT_NIGHT_BRIGHTNESS_PCT 10
+
+// Screens: back to the home screen (the first of the tap list) after this many seconds; 0 = never.
+// Which screens there are is set in config.json "display.screens" or the web UI (Screens card).
+#define DEFAULT_SCREENS_RETURN_SEC 30
 
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes

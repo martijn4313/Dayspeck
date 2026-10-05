@@ -3,13 +3,13 @@
 // manifest and of every image, so the worst a broken or hostile relay can do is withhold updates.
 //
 //   GET /ota-manifest.txt                     -> the latest release's ota-manifest.txt
-//   GET /vX.Y.Z/dayspeck-(rider|kids).bin.gz  -> that release's signed image
-//   (releases before the rename used the prefix motoclock-; they are still served)
+//   GET /vX.Y.Z/dayspeck.bin.gz               -> that release's signed image
+//   (older releases had dayspeck-rider / -kids, or the prefix motoclock-; they are still served)
 //
 // Configure the repository in wrangler.toml (REPO = "owner/name").
 
 const MANIFEST = /^\/ota-manifest\.txt$/;
-const IMAGE = /^\/(v\d{1,5}\.\d{1,5}\.\d{1,5})\/((?:dayspeck|motoclock)-(?:rider|kids)\.bin\.gz)$/;
+const IMAGE = /^\/(v\d{1,5}\.\d{1,5}\.\d{1,5})\/((?:dayspeck|motoclock)(?:-rider|-kids)?\.bin\.gz)$/;
 
 export default {
   async fetch(request, env) {

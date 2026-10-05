@@ -9,13 +9,13 @@
         Fails unless KEY is the private half of the public key in firmware/include/ota_pubkey.h
         (devices would reject everything signed with any other key).
 
-    python tools/ota_tool.py sign --key KEY --in firmware.bin --out dayspeck-rider.bin.gz
+    python tools/ota_tool.py sign --key KEY --in firmware.bin --out dayspeck.bin.gz
         Gzip-compresses the image (the 1 MB ESP-01 only has room for a compressed update; the
         bootloader unpacks it) and appends the signature in the ESP8266 core's format:
         gzip image | RSA PKCS#1 v1.5 signature of SHA-256(gzip image) | uint32 LE signature length.
 
     python tools/ota_tool.py manifest --key KEY --version X.Y.Z --out ota-manifest.txt \\
-            --variant rider=dayspeck-rider.bin.gz [--variant kids=...] [--notes TEXT]
+            --variant dayspeck=dayspeck.bin.gz [--notes TEXT]
         Writes the release manifest: line 1 is compact JSON, line 2 the hex signature of line 1.
         Each variant lists the signed file to download, its size and the SHA-256 of its signed
         part, which binds the image to this (signed) version so an older signed image cannot be
@@ -44,7 +44,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBKEY_HEADER = ROOT / "firmware" / "include" / "ota_pubkey.h"
 VERSION_RE = re.compile(r"^\d{1,5}\.\d{1,5}\.\d{1,5}$")
 FILE_RE = re.compile(r"^[A-Za-z0-9._-]{1,48}$")
-VARIANTS = ("rider", "kids")
+VARIANTS = ("dayspeck",)   # one firmware for every screen combination (OTA_VARIANT in firmware/include/ota.h)
 # Flash before the filesystem (_FS_start - 0x40200000) of the 1 MB ESP8266 linker scripts
 SKETCH_AREA = {
     "eagle.flash.1m64.ld": 0xEB000,

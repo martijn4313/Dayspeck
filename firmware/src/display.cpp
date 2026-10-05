@@ -350,10 +350,15 @@ void drawRainAnimation(Adafruit_SSD1306 &display) {
 // Curled gusts and, in autumn, tumbling leaves blow from the left edge of the scene to the right.
 // Mirrors tools/bitmaptool/wind.py; keep the two in step.
 
+const WindArea WIND_AREA_RIDE = { 65, 127, 11, 33, 65, 12, 24, 38, false };
+const WindArea WIND_AREA_KIDS = { 0, 127, 11, 33, -4, 3, 13, 34, true };   // leaves end above y = 42
+static const WindArea *windArea = &WIND_AREA_RIDE;
+
 // Vertical wobble of a tumbling leaf over 16 frames (a rough sine, +-3 px)
 static const int8_t LEAF_WOBBLE[16] = { 0, 1, 2, 3, 3, 3, 2, 1, 0, -1, -2, -3, -3, -3, -2, -1 };
 
-void initWindAnimation() {
+void initWindAnimation(const WindArea &area) {
+    windArea = &area;
     // All slots idle, with staggered start delays so the first frames are not a burst
     for (int i = 0; i < MAX_GUSTS; i++) {
         gusts[i].active = false;
@@ -373,7 +378,7 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
         Gust &g = gusts[i];
         if (g.active) {
             g.x += g.speed;
-            if (g.x > WIND_AREA_X_END) {
+            if (g.x > windArea->xEnd) {
                 g.active = false;
                 g.delay = random(13);
             }
@@ -382,8 +387,8 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
                 g.delay--;
             } else {
                 g.length = 8 + random(9);                              // 8-16
-                g.x = WIND_AREA_X_START - g.length;                    // starts just off the left edge
-                g.y = WIND_AREA_Y_TOP + random(WIND_AREA_Y_SPAN);
+                g.x = windArea->xStart - g.length;                     // starts just off the left edge
+                g.y = windArea->gustYTop + random(windArea->gustYSpan);
                 g.curl = 1 + random(2);
                 g.speed = 2 + windKmh / 25 + random(2);
                 g.active = true;
@@ -398,7 +403,7 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
             f.age++;
             f.x += f.speed;
             if (f.age % 3 == 0) f.yBase++;                             // sinks slowly
-            if (f.x > WIND_AREA_X_END || f.yBase > LEAF_MAX_Y) {
+            if (f.x > windArea->xEnd || f.yBase > windArea->leafMaxY) {
                 f.active = false;
                 f.delay = random(21);
             }
@@ -406,8 +411,8 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
             if (f.delay > 0) {
                 f.delay--;
             } else {
-                f.x = LEAF_SPAWN_X;
-                f.yBase = LEAF_SPAWN_Y + random(LEAF_SPAWN_SPAN);
+                f.x = windArea->leafX0;
+                f.yBase = windArea->leafY0 + random(windArea->leafYSpan);
                 f.age = 0;
                 f.speed = 1 + windKmh / 30 + random(2);
                 f.phase = random(16);
@@ -421,10 +426,10 @@ void drawWindAnimation(Adafruit_SSD1306 &display) {
     for (int i = 0; i < MAX_GUSTS; i++) {
         const Gust &g = gusts[i];
         if (!g.active) continue;
-        int start = max(g.x, WIND_AREA_X_START);
+        int start = max(g.x, (int)windArea->xStart);
         int end = g.x + g.length;
         if (end >= start) display.drawFastHLine(start, g.y, end - start + 1, SSD1306_WHITE);
-        if (end >= WIND_AREA_X_START) display.drawCircleHelper(end, g.y - g.curl, g.curl, 2 | 4, SSD1306_WHITE);
+        if (end >= windArea->xStart) display.drawCircleHelper(end, g.y - g.curl, g.curl, 2 | 4, SSD1306_WHITE);
     }
 
     // The leaf is lying flat, tip up-right, ... as it tumbles
@@ -434,10 +439,11 @@ void drawWindAnimation(Adafruit_SSD1306 &display) {
         if (!f.active) continue;
         int y = f.yBase + LEAF_WOBBLE[(f.age + f.phase) & 15];
         const uint8_t* sprite = sprites[((f.age >> 1) + f.phase) & 3];
-#ifdef KIDS_MODE
-        // Inverted: visible on the dark background and on the filled pictures, and the digits are not erased
-        display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_INVERSE);
-#else
+        if (windArea->inverseLeaves) {
+            // Inverted: visible on the dark background and on the filled pictures, and the digits are not erased
+            display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_INVERSE);
+            continue;
+        }
         // A thin black outline that follows the leaf's shape (no box), so the village's line art stays
         // whole around it; never over the divider
         for (int dx = -1; dx <= 1; dx++) {
@@ -446,7 +452,7 @@ void drawWindAnimation(Adafruit_SSD1306 &display) {
                 for (int r = 0; r < LEAF_1_BMP_H; r++) {
                     uint8_t bits = pgm_read_byte(sprite + r);          // one byte per row, leftmost dot = bit 7
                     for (int c = 0; c < LEAF_1_BMP_W; c++) {
-                        if ((bits & (0x80 >> c)) && f.x + c + dx >= WIND_AREA_X_START) {
+                        if ((bits & (0x80 >> c)) && f.x + c + dx >= windArea->xStart) {
                             display.drawPixel(f.x + c + dx, y + r + dy, SSD1306_BLACK);
                         }
                     }
@@ -454,7 +460,6 @@ void drawWindAnimation(Adafruit_SSD1306 &display) {
             }
         }
         display.drawBitmap(f.x, y, sprite, LEAF_1_BMP_W, LEAF_1_BMP_H, SSD1306_WHITE);
-#endif
     }
 }
 

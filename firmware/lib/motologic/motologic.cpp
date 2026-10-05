@@ -1,6 +1,7 @@
 // Dayspeck — pure logic
 
 #include "motologic.h"
+#include <string.h>
 #include <math.h>
 
 char rateRide(const RideThresholds& t, float precipMm, float gustKmh, float tempC, float rainProbPct) {
@@ -234,15 +235,57 @@ bool kidsLimitsValid(const KidsLimits& l) {
            l.sweaterBelowC <= l.shortsFromC && l.shortsFromC <= l.hotFromC && l.windyGustKmh > 0;
 }
 
-int cycleNextStep(int step, bool kids, bool clockUsable, bool countdownActive) {
-    if (kids) {
-        int next = (step + 1) % CYCLE_STEPS_KIDS;
-        if (next == 2 && !countdownActive) next = 0;
-        return next;
+static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
+    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown"
+};
+
+const char* screenName(int id) {
+    return (id >= 0 && id < SCREEN_COUNT) ? SCREEN_NAMES[id] : "";
+}
+
+int screenFromName(const char* name) {
+    if (!name) return -1;
+    for (int i = 0; i < SCREEN_COUNT; i++) {
+        if (strcmp(name, SCREEN_NAMES[i]) == 0) return i;
     }
-    int next = (step + 1) % CYCLE_STEPS_RIDER;
-    if (next == 4 && !clockUsable) next = 0;
-    return next;
+    return -1;
+}
+
+bool screenAlwaysAvailable(int id) {
+    return id >= 0 && id < SCREEN_COUNT && id != SCREEN_CLOCK && id != SCREEN_COUNTDOWN;
+}
+
+bool screenListsValid(const ScreenList& tap, const ScreenList& hold) {
+    if (tap.count < 1 || tap.count > MAX_SCREEN_SLOTS || hold.count > MAX_SCREEN_SLOTS) return false;
+    if (!screenAlwaysAvailable(tap.ids[0])) return false;
+    for (int i = 0; i < tap.count; i++) if (tap.ids[i] >= SCREEN_COUNT) return false;
+    for (int i = 0; i < hold.count; i++) if (hold.ids[i] >= SCREEN_COUNT) return false;
+    return true;
+}
+
+int screenAt(ScreenNav nav, const ScreenList& tap, const ScreenList& hold) {
+    const ScreenList& l = nav.list ? hold : tap;
+    if (nav.slot < l.count) return l.ids[nav.slot];
+    return tap.count ? tap.ids[0] : SCREEN_RIDE;
+}
+
+ScreenNav screenNextTap(ScreenNav nav, const ScreenList& tap, uint16_t available) {
+    ScreenNav home = { 0, 0 };
+    if (nav.list != 0 || tap.count == 0) return home;      // from the hold list a tap goes home
+    for (int k = 1; k <= tap.count; k++) {
+        int i = (nav.slot + k) % tap.count;
+        if (i == 0 || (available & (1u << tap.ids[i]))) return ScreenNav{ 0, (uint8_t)i };
+    }
+    return home;
+}
+
+ScreenNav screenNextHold(ScreenNav nav, const ScreenList& tap, const ScreenList& hold, uint16_t available) {
+    if (hold.count == 0) return screenNextTap(nav, tap, available);   // no hold list: a long press is a tap
+    int start = nav.list == 0 ? 0 : nav.slot + 1;
+    for (int i = start; i < hold.count; i++) {
+        if (available & (1u << hold.ids[i])) return ScreenNav{ 1, (uint8_t)i };
+    }
+    return ScreenNav{ 0, 0 };                              // past the last one: home
 }
 
 bool isAutumn(int month, bool southern) {
