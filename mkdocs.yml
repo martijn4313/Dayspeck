@@ -1,5 +1,5 @@
 site_name: Dayspeck
-site_description: A small ESP8266 weather display for riders and kids
+site_description: A small ESP8266 weather display you put together from screens like building blocks
 site_url: https://martijn4313.github.io/Dayspeck/
 repo_url: https://github.com/martijn4313/Dayspeck
 edit_uri: edit/main/docs/
@@ -32,10 +32,11 @@ extra_css:
 nav:
   - Home: index.md
   - Using it:
-      - Screens: screens.md
-      - Rider screens: rider.md
-      - Kids screens: kids.md
-      - Ride rating: ride-rating.md
+      - Your own display: screens.md
+      - Ride screens: rider.md
+      - How the ride rating works: ride-rating.md
+      - Picture screens: kids.md
+      - Weather report: report.md
   - Setting up:
       - Hardware: hardware.md
       - Build and flash: build.md

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate the rider and kids pictures of the manual: docs/images/rider-today.png, hero.png,
-rider-wind.gif and kids-wind.gif.
+"""Regenerate pictures of the manual: docs/images/rider-today.png, rider-wind.gif, kids-wind.gif and hero.png
+(four screens, cut from rider-today.png, kids-village.png, kids-weather.png and report.png).
 
 The rider screens are drawn by the host simulator (tools/bitmaptool), which mirrors firmware/src/display.cpp,
 with the artwork of firmware/include/bitmaps.h. The kids screens are not part of the simulator: the kids
@@ -112,10 +112,15 @@ def main():
     row(screens).save(out / "rider-today.png")
     print("wrote", out / "rider-today.png")
 
-    # hero: the rider screen next to the second kids clothes screen (an autumn morning)
-    kids = Image.open(out / "kids-clothes.png").convert("RGBA").crop(
-        (SCREEN_W + GAP, 0, 2 * SCREEN_W + GAP, SCREEN_H))
-    row([screens[0], kids]).save(out / "hero.png")
+    # hero: four different screens, two by two: the ride rating, the village (an autumn morning), the weather
+    # in pictures and the weather report (the first screen of each of their pictures)
+    def first(name: str) -> Image.Image:
+        return Image.open(out / name).convert("RGBA").crop((0, 0, SCREEN_W, SCREEN_H))
+    top, bottom = row([screens[0], first("kids-village.png")]), row([first("kids-weather.png"), first("report.png")])
+    hero = Image.new("RGBA", (top.width, 2 * SCREEN_H + GAP), (0, 0, 0, 0))
+    hero.paste(top, (0, 0))
+    hero.paste(bottom, (0, SCREEN_H + GAP))
+    hero.save(out / "hero.png")
     print("wrote", out / "hero.png")
 
     rider_wind_gif(out / "rider-wind.gif")

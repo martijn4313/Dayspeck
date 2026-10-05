@@ -181,8 +181,8 @@ static const char index_html[] PROGMEM = R"HTML(
     </div>
 
     <div class="card" id="kidsCard" style="display:none">
-        <h3>Clothing (kids)</h3>
-        <p><small>What the kids screens show, by temperature (&deg;C, always metric). Each limit must be equal to or below the one above it.</small></p>
+        <h3>Clothing</h3>
+        <p><small>The outfits of the picture screens, by temperature (&deg;C, always metric). Each limit must be equal to or below the one above it. The wind limit also blows the weather report away.</small></p>
         <form id="kidsForm">
             <span class="label">Sun cap, t-shirt and shorts from:</span> <input name="hot" type="number" step="1" min="-30" max="50"> <small>sunny daytime only</small><br>
             <span class="label">T-shirt and shorts from:</span> <input name="shorts" type="number" step="1" min="-30" max="50"><br>
@@ -195,7 +195,7 @@ static const char index_html[] PROGMEM = R"HTML(
     </div>
 
     <div class="card" id="countdownCard" style="display:none">
-        <h3>Countdowns (kids)</h3>
+        <h3>Countdowns</h3>
         <p><small>The countdown screen counts the sleeps to a birthday or holiday when it is near (put it in a list under Screens). The cake has a candle for every year and the letter on it.</small></p>
         <form id="countdownForm">
             <span class="label">Birthday 1:</span> <input name="birthday1" type="date"> <input name="initial1" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>date of birth, letter</small><br>
@@ -399,10 +399,10 @@ static const char index_html[] PROGMEM = R"HTML(
                     sc.returnSeconds.value = s.display.screens.returnSeconds;
                     sc.cycleSeconds.value = s.display.cycleSeconds;
 
-                    // The kids settings only matter when a kids screen is in use
+                    // The clothing and countdown cards only matter when a screen that uses them is in a list
                     const used = s.display.screens.tap.concat(s.display.screens.hold);
                     document.getElementById('kidsCard').style.display =
-                        used.includes('weather') || used.includes('clothes') || used.includes('village') ? '' : 'none';
+                        ['weather', 'clothes', 'village', 'report'].some(n => used.includes(n)) ? '' : 'none';   // report: its wind limit
                     document.getElementById('countdownCard').style.display = used.includes('countdown') ? '' : 'none';
                     const k = document.forms.kidsForm;
                     k.hot.value = s.kids.hotFromC;
@@ -473,8 +473,8 @@ static const char index_html[] PROGMEM = R"HTML(
         // Screens: two lists of slots, each a drop-down with move and remove buttons
         const SCREENS = [
             ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
-            ['hours', 'Next hours'], ['clock', 'Clock'], ['weather', 'Kids: weather'],
-            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown'], ['report', 'Weather report'], ['village', 'Kids: village']
+            ['hours', 'Next hours'], ['clock', 'Clock'], ['village', 'Village with outfit'],
+            ['weather', 'Weather in pictures'], ['clothes', 'Clothes'], ['countdown', 'Countdown'], ['report', 'Weather report']
         ];
         const PRESETS = {
             rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },

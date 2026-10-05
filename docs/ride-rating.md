@@ -20,9 +20,5 @@ per mm of rain, minus 2 per km/h of gusts above 20 km/h. A day scores as its bet
 Saturday and Sunday so that weekend rides are preferred. Windows rated "don't ride" do not count. The
 highest-scoring day is highlighted in the week grid.
 
-## Screen power
-
-The panel can be dimmed at night (to *Night brightness*, 10 % by default; a touch gives full
-brightness for 30 s), switched off after some idle minutes at night, and switched off
-during fixed quiet hours (for example 23 to 6). A touch wakes it (the first touch only wakes it, and it
-then stays on for 30 s even in quiet hours). All of this needs the clock to be synced.
+The limits are yours to set: *Ride Thresholds* in the [web UI](web-ui.md), and the ride windows in
+[`config.json`](configuration.md) (`wd_am`, `wd_pm`, `we_am`, `we_pm`).

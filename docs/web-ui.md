@@ -1,7 +1,7 @@
 # Web UI
 
-Everything about the device is set in its web page: location, WiFi, the ride thresholds, the display
-options and firmware updates. Open `http://dayspeck.local` (or the device's IP address) in a browser
+Everything about the device is set in its web page: location, WiFi, which screens it shows, the display
+options, the limits behind the ride rating and the outfits, and firmware updates. Open `http://dayspeck.local` (or the device's IP address) in a browser
 on the same network.
 
 The page asks for a login: user **`admin`** and your admin password. Until you set your own, the
@@ -58,11 +58,12 @@ office shows the local forecast at each. Pick a scanned network (press *Scan Net
 latitude and longitude and press *Add Location*. Up to 10 can be stored; *Delete* removes one. A location
 set with *Set Location* takes precedence.
 
-## Ride thresholds, screens, display and the kids settings
+## Ride thresholds, screens, display, clothing and countdowns
 
 ![The ride thresholds, screens, display, clothing and countdown cards](images/webui-settings.png){ .center }
 
-**Ride Thresholds** are the limits behind the [ride rating](ride-rating.md). All values are metric.
+**Ride Thresholds** are the limits behind the [ride rating](ride-rating.md). All values are metric. They
+only matter when a ride screen is in use.
 
 | Field | Meaning |
 |-------|---------|
@@ -72,41 +73,37 @@ set with *Set Location* takes precedence.
 | Warn Wind (km/h) | gusts above this give *caution*; it cannot exceed the maximum wind |
 | Caution rain chance (%) | a chance of rain from this value on gives *caution*; 101 switches it off |
 
-**Screens**: which screens the device shows and in which order, see [Screens](screens.md).
+**Screens**: which screens the device shows and in which order, see [Your own display](screens.md).
 
 | Field | Meaning |
 |-------|---------|
-| Preset | *Rider* or *Kids* fills in both lists below (save afterwards) |
+| Preset | fills in both lists below with a [ready-made combination](screens.md#ready-made-combinations), *Rider* or *Kids* (save afterwards) |
 | Tap | the screens a tap steps through; the first is the home screen. *Add screen*, move with the arrows, remove with the cross; up to 6 |
 | Long press | the screens a long press steps through, then home; empty = a long press works like a tap |
 | Back to home after (s) | other screens go back to the home screen after this many seconds; 0 = never |
-| Cycle screens every (s) | the device steps through the tap list by itself, this many seconds each; 0 = off (see [screens](screens.md)) |
+| Cycle screens every (s) | the device steps through the tap list by itself, this many seconds each; 0 = off (see [without a touch sensor](screens.md#without-a-touch-sensor)) |
 
-**Display** (see also [screen power](ride-rating.md#screen-power)):
+**Display** (see also [screen power](screens.md#screen-power)):
 
 | Field | Meaning |
 |-------|---------|
-| Tomorrow from (hour) | from this local hour the main screen shows tomorrow's ride; 24 = never |
+| Tomorrow from (hour) | from this local hour the `ride` screen shows tomorrow; 24 = never |
 | Dim at night | lower the brightness at night; a touch gives full brightness for 30 s |
 | Night brightness (%) | the brightness when dimmed (1-100). Raise it if the screen looks blank at night |
 | Sleep at night after (min) | switch the panel off after this many idle minutes at night; 0 = never |
 | Always sleep | the screen stays off; a touch wakes it for 30 s (needs the touch sensor) |
 | Touch sensor | the sensor on GPIO3 is read. Switch it off when none is connected; switching it on takes effect at once |
-| Language | `en` or `nl`: the language of the [weather report](screens.md#the-weather-report) |
+| Language | `en` or `nl`: the language of the [weather report](report.md) |
 | Screen off from / until (hour) | quiet hours, for example 23 and 6. Set both, or both to -1 for none |
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
-**Demo.** *Play demo* (in the Display card) shows about a minute of every screen and its animations with
-made-up weather: the ride screen in sun, rain, snow and a stormy autumn night with gusts and leaves; the kids
-village, weather and clothes screens with leaves; a birthday countdown and Christmas day with confetti; the
-weather report blowing away; then the next hours, the week grid and the clock. With *Repeat* it starts over
-until you press *Stop demo* or touch the sensor (any touch stops it). The screen stays on at full brightness
-while it plays, even during quiet hours, and the real forecast is not changed: afterwards the device goes back
-to its home screen. The week grid and the clock show the real data.
+**Demo**: *Play demo* shows about a minute of every screen and animation with made-up weather; with
+*Repeat* it starts over until *Stop demo* or a touch. See [Demo](screens.md#demo).
 
-**Clothing (kids)**: the limits of the outfits on the [kids screens](kids.md), in °C. The card shows while
-the kids weather or clothes screen is in one of the screen lists.
+**Clothing**: the limits of the outfits on the [picture screens](kids.md), in °C, and the wind limit
+for the wind picture and the [weather report](report.md#blown-away). The card shows while the village,
+weather, clothes or report screen is in one of the screen lists.
 
 | Field | Meaning |
 |-------|---------|
@@ -115,9 +112,9 @@ the kids weather or clothes screen is in one of the screen lists.
 | Sweater below | a sweater below this, a t-shirt above (default 15) |
 | Winter coat and hat below | default 5 |
 | Scarf and mittens below | default 0 |
-| Wind picture above (km/h) | gusts above this show the wind picture in dry weather (default 50) |
+| Wind picture above (km/h) | gusts above this show the wind picture in dry weather, and blow the weather report away (default 50) |
 
-**Countdowns (kids)**: the [countdown screen](kids.md) to birthdays and holidays. The card shows while the
+**Countdowns**: the [countdown screen](kids.md) to birthdays and holidays. The card shows while the
 countdown screen is in one of the screen lists.
 
 | Field | Meaning |
