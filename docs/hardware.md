@@ -17,7 +17,7 @@ A kit without a touch pad or button can use any momentary switch to ground on a 
 |------|-------|
 | ESP-01 (ESP8266, 1 MB flash) | the `esp01_1m` board in PlatformIO |
 | SSD1306 128×64 I²C OLED, address `0x3C` | |
-| Touch input (optional) | a TTP223 module or a push button; without one, switch it off in the web UI and let the screens [cycle by themselves](rider.md#without-a-touch-sensor) |
+| Touch input (optional) | a TTP223 module or a push button; without one, switch it off in the web UI and let the screens [cycle by themselves](screens.md#without-a-touch-sensor) |
 | 3.3 V supply, ≥ 300 mA | the ESP8266 draws current spikes when transmitting |
 
 ## Wiring

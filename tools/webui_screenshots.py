@@ -39,8 +39,8 @@ STATUS = {
     "display": {"previewHr": 18, "dimAtNight": True, "nightBrightness": 10, "sleepMinutes": 0,
                 "alwaysSleep": False, "language": "en", "quietStart": 23, "quietEnd": 6,
                 "touchEnabled": True, "cycleSeconds": 0,
-                # a combination: the kids screens on a tap, rider screens on a long press
-                "screens": {"tap": ["weather", "clothes", "countdown"], "hold": ["ride", "week", "clock"],
+                # a combination: the picture screens on a tap, the ride rating and the report on a long press
+                "screens": {"tap": ["village", "weather", "clothes", "countdown"], "hold": ["ride", "week", "report"],
                             "returnSeconds": 30}},
     "current": {"tempC": 14.2, "windKmh": 18.0, "precipMm": 0.0},
     "wifi": {"connected": True, "signalStrength": -58, "ssid": "HomeNet", "passwordSet": True},

@@ -51,17 +51,21 @@ defined in `bitmaps.h` the firmware falls back to simple procedural drops and sp
 
 ## Pictures for the manual
 
-`python tools/docs_screenshots.py` regenerates `docs/images/rider-today.png`, `hero.png` and the two animations
-`rider-wind.gif` and `kids-wind.gif` from the simulator and `bitmaps.h`; `python tools/webui_screenshots.py`
-does the web UI pictures. Run them again after changing the artwork or the drawing code. The kids screens
-(`kids-clothes.png`, `kids-weather.png`, `kids-countdown.png`) are not part of the simulator: they are rendered
-by compiling `firmware/src/display.cpp` on the host against the Adafruit GFX library.
+`python tools/docs_screenshots.py` regenerates the ride screens, `docs/images/rider-today.png` and
+`rider-wind.gif`, from the simulator and `bitmaps.h`. `python tools/screen_pictures.py` does all the other
+screens (the picture screens, the village, the countdown, the weather report, their GIFs and `hero.png`) by
+compiling the firmware's own `display.cpp` and `motologic` for the host, with the stand-ins in
+`screenshots_host/mock`; the scenes are in `screenshots_host/screens.cpp`. `python tools/webui_screenshots.py`
+does the web UI pictures. Run them again after changing the artwork or the drawing code, in that order (the
+hero takes its ride screen from `rider-today.png`).
 
 ## Layout
 
 ```
 tools/png_to_bitmap.py      launcher for the GUI
-tools/docs_screenshots.py   the manual's rider and kids pictures
+tools/docs_screenshots.py   the manual's ride screen pictures (simulator)
+tools/screen_pictures.py    the manual's other screen pictures (host build of display.cpp)
+tools/screenshots_host/     its scenes (screens.cpp) and the Arduino/SSD1306 stand-ins (mock/)
 tools/webui_screenshots.py  the manual's web UI pictures
 tools/bitmaptool/
   convert.py                PNG <-> C array, header read/write, manifest regeneration (no GUI deps)

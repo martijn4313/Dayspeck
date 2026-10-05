@@ -1208,8 +1208,8 @@ void loop() {
     }
 
     int screen = currentScreen();
-    // The report and the kids village change with the hour (from 18:00 the report is about tomorrow; the
-    // outfit follows the part of the day)
+    // Every screen redraws after each weather update. The report and the kids village also change with the
+    // hour (from 18:00 the report is about tomorrow; the outfit follows the part of the day)
     if ((screen == SCREEN_REPORT || screen == SCREEN_VILLAGE) && !state.displayOff && timezoneKnown()) {
         static int lastHour = -1;
         int hour = localHourOf(time(nullptr));

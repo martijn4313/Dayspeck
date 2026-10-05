@@ -1,25 +1,50 @@
-# Kids screens: what do I wear today?
+# Picture screens: what do I wear today?
 
-Screens for children of about 4-5 who are starting to read. Instead of the ride rating they show what to
-wear and what the weather is like, with pictures and numbers and no words, and they count the sleeps to
-birthdays and holidays. With the *Kids* preset (see [Screens](screens.md)) the **village** is the home screen;
-a tap on the touch sensor shows the weather, the next tap the clothes, and another tap (or 30 s) goes back
-home. When a birthday or holiday is near, a tap on the clothes screen first shows the **countdown** (see
-below). The weather and clothes screens show **the day in three parts**: morning, afternoon and evening,
-read from left to right.
+Four screens without words: what to wear and what the weather is like, with pictures and numbers, and the
+sleeps to birthdays and holidays. They are made for children of about 4-5 who are learning to read, and they
+are just as handy on a hallway wall for anyone who wants the day at a glance.
 
-**Village (home screen).** On the left the outfit for now, big; on the right the animated village of the
-ride screen with the temperature, the sun or the moon, rain, snow, gusts and autumn leaves. On the street
-a small picture says which part of the day the outfit is for. In the evening and at night it is tomorrow
-morning's outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit
-as the first one on the clothes screen.
+With the *Kids* preset (see [Your own display](screens.md)) the village is the home screen; a tap shows the
+weather, the next tap the clothes, and another tap (or 30 s) goes back home. When a birthday or holiday is
+near, the countdown comes after the clothes.
 
-![Kids village screens: an autumn morning with a sweater and leaves blowing over the village; a hot afternoon with a sun cap, t-shirt and shorts; a cold evening with the winter coat and hat for tomorrow morning, after the bed](images/kids-village.png){ .center }
+## Village
 
-![Kids clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
+On the left the outfit for now, big; on the right the animated village of the [ride screen](rider.md) with the
+temperature, the sun or the moon, rain, snow, gusts and autumn leaves. On the street a small picture says
+which part of the day the outfit is for. From 22:00 (bedtime) until the morning it is tomorrow morning's
+outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit as the first
+one on the clothes screen.
 
-**Clothes screen.** One outfit per part of the day. The outfits, from warm to cold (the limits are the
-defaults, see *Settings* below):
+![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with, after the bed, the winter coat and hat for tomorrow morning](images/kids-village.png){ .center }
+
+## The day in three parts
+
+The weather and clothes screens show **the next three parts of the day**, read from left to right: morning
+(7-12), afternoon (12-18) and evening (18-22). They start with the current part, so they never show what is
+past:
+
+| Time | Columns |
+|------|---------|
+| 10:00 | the rest of this morning, this afternoon, this evening |
+| 14:00 | the rest of this afternoon, this evening, tomorrow morning |
+| 19:00 | the rest of this evening, tomorrow morning, tomorrow afternoon |
+| at night | tomorrow morning, afternoon and evening |
+
+The current part has **three dots** underneath. Where a night lies between two columns there is a dotted line
+with a **bed** at the top: that part comes after sleeping. The symbol at the top of a column says which part
+it is:
+
+| Symbol | Meaning |
+|--------|---------|
+| half sun on the horizon, arrow up | morning (the sun comes up) |
+| small sun | afternoon (the sun is high) |
+| half sun on the horizon, arrow down | evening (the sun goes down) |
+
+**Clothes screen:** one outfit per part of the day. The outfits, from warm to cold (the limits are the
+defaults, see [Settings](#settings)):
+
+![Clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a t-shirt now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
 | When | Picture |
 |------|---------|
@@ -31,68 +56,43 @@ defaults, see *Settings* below):
 | 0 to under 5 °C | winter coat and hat |
 | below 0 °C, or snow | winter coat, hat, scarf and mittens |
 
+**Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
+rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
+
+![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; an evening moon 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
+
 **One number per part.** Each part of the day has one temperature that the weather screen shows and the
 outfit goes by, so the number and the picture always match:
 
 | Part | Its temperature | Why |
 |------|-----------------|-----|
-| morning (7-12) | the **lowest** | that is the walk to school, usually right at the start |
-| afternoon (12-18) | the **highest** | how people talk about the day: "this afternoon it gets 17" |
-| evening (18-22) | the temperature at **18:00** | when the kids may still play outside; 22:00 is bedtime |
+| morning | the **lowest** | that is the walk to school, usually right at the start |
+| afternoon | the **highest** | how people talk about the day: "this afternoon it gets 17" |
+| evening | the temperature at **18:00** | when the kids may still play outside; 22:00 is bedtime |
 
-For the current part only the hours still to come count (with what is measured right now for this hour).
-A morning of 10° at 7:30 and 17° from 11:00 shows **10 and a sweater**, not the 16 of late morning.
+For the current part only the hours still to come count, and for the current hour the current conditions
+(Open-Meteo's estimate of the weather right now, not a thermometer reading). A morning of 10° at 7:30 and 17°
+from 11:00 shows **10 and a sweater**, not the 16 of late morning; at 19:00 the evening shows the temperature
+of now.
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
 thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).
 
-**The three parts.** The parts of the day are morning (7-12), afternoon (12-18) and evening (18-22). The
-screen always shows the **next three**, starting with the current one, so it never shows what is past:
+**Autumn leaves** blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
+and not while it rains, storms or snows). They stay in the upper part of the screen, above the numbers, and
+show as inverted dots so the pictures stay readable. Autumn is September to November, and March to May in the
+southern hemisphere; it needs the network time, so the leaves appear once the clock is synced.
 
-| Time | Columns |
-|------|---------|
-| 10:00 | the rest of this morning, this afternoon, this evening |
-| 14:00 | the rest of this afternoon, this evening, tomorrow morning |
-| 19:00 | the rest of this evening, tomorrow morning, tomorrow afternoon |
-| at night | tomorrow morning, afternoon and evening |
+![An animation of the weather screen with autumn leaves blowing across it](images/kids-wind.gif){ .center }
 
-The current part has **three dots** underneath. Where a night lies between two columns there is a dotted
-line with a **bed** at the top: that part comes after sleeping. The current part also uses what is
-measured right now, not only the forecast.
+## Countdown
 
-The symbol at the top of a column says which part it is:
+From 14 sleeps before a birthday or holiday (adjustable), the countdown screen shows the picture of the day on
+the left and the number of sleeps (nights) still to go on the right. With ten sleeps or fewer there is also a
+row of beds to count, one for every night, so one goes away each morning. On the day itself the picture stands
+in the middle with confetti falling around it.
 
-| Symbol | Meaning |
-|--------|---------|
-| half sun on the horizon, arrow up | morning (the sun comes up) |
-| small sun | afternoon (the sun is high) |
-| half sun on the horizon, arrow down | evening (the sun goes down) |
-
-![Kids weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; an evening moon 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
-
-**Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
-rain, thunderstorm, snow, wind) and its temperature (see *One number per part* above): a number to read,
-no unit.
-
-**Without a touch sensor.** The touch sensor is optional here too (web UI, *Display*). With *Cycle screens
-every (s)* under [Screens](screens.md) the screens of the tap list follow each other by themselves: with the
-kids preset the village, the weather, the clothes and, while a birthday or holiday is near, the countdown. A tap still
-steps on and the screen stays for a full cycle time.
-
-**Autumn leaves.** In autumn leaves blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
-and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
-numbers, and show as inverted dots so the pictures stay readable. Autumn is September to November, and
-March to May in the southern hemisphere; it needs the network time, so the leaves appear once the clock is
-synced.
-
-![An animation of the kids weather screen with autumn leaves blowing across it](images/kids-wind.gif){ .center }
-
-**Countdown.** From 14 sleeps before a birthday or holiday (adjustable), a third screen comes after the clothes
-screen: the picture of the day on the left, and on the right the number of sleeps (nights) still to go. With ten
-sleeps or fewer there is also a row of beds to count, one for every night, so one goes away each morning. On the day
-itself the picture stands in the middle with confetti falling around it.
-
-![Kids countdown screens: a birthday cake with five candles and the letter E, six sleeps to go; a pumpkin, twelve sleeps to Halloween; Sinterklaas' mitre and staff, three sleeps; Christmas day, a tree with confetti](images/kids-countdown.png){ .center }
+![Countdown screens: a birthday cake with five candles and the letter E, six sleeps to go; a pumpkin, twelve sleeps to Halloween; Sinterklaas' mitre and staff, three sleeps; Christmas day, a tree with confetti](images/kids-countdown.png){ .center }
 
 | Day | Picture |
 |-----|---------|
@@ -102,28 +102,21 @@ itself the picture stands in the middle with confetti falling around it.
 | Christmas, 25 December | a Christmas tree |
 
 When two are in range, the nearest one is shown (a birthday wins a tie). The screen only exists while a
-countdown is running; for the rest of the year a tap goes from the clothes straight back to the weather. It
-needs the network time, like the autumn leaves. A birthday on 29 February counts down to 28 February in
-other years.
+countdown is running; for the rest of the year a tap skips it. It needs the network time, like the autumn
+leaves. A birthday on 29 February counts down to 28 February in other years.
 
-**Settings.** In the web UI under *Display*: *Always sleep*: the screen stays off and a touch wakes it for
-30 s (the first touch only wakes it). It works for every screen. *Language* is the language of the
-[weather report](screens.md#the-weather-report); the kids screens themselves show no words.
+## Settings
 
-Under *Clothing (kids)* you can change the temperature limits of the outfits table above (and the gust speed
-for the wind picture), for a child who feels the cold sooner or later than the defaults. The limits must go
-from warm to cold; an equal pair skips that outfit, for example a sweater limit equal to the shorts limit has
-no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
+Under *Clothing* in the [web UI](web-ui.md) you can change the temperature limits of the outfits (and
+the gust speed for the wind picture), for a child who feels the cold sooner or later than the defaults. The
+limits must go from warm to cold; an equal pair skips that outfit, for example a sweater limit equal to the
+shorts limit has no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
 [configuration reference](configuration.md)) and are always in °C.
 
-Under *Countdowns (kids)* you enter the two birthdays (the date of birth, for the number of candles, and a
+Under *Countdowns* you enter the two birthdays (the date of birth, for the number of candles, and a
 letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps
 before the day the countdown starts.
 
 The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
-`firmware/lib/motologic/motologic.h`). The weather and clothes screens have no rain animation and no `OLD` or `UPD`
-mark (the autumn leaves do blow across them); the village has the animations of the ride screen, and no marks.
-
-**Getting the kids screens.** They are part of the one firmware: in the web UI under [Screens](screens.md)
-choose the *Kids* preset (village, weather, clothes, countdown on a tap; the weather report for the parents
-on a long press) and press *Save Settings*, or mix them with the rider screens.
+`firmware/lib/motologic/motologic.h`). The weather and clothes screens have no rain animation and no `OLD` or
+`UPD` mark; the village has the animations of the ride screen, and no marks.
