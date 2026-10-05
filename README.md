@@ -68,8 +68,8 @@ mkdocs build --strict
 ```
 
 The manual is published to GitHub Pages by `.github/workflows/docs.yml` on every push to `main`. The
-pictures in it are renders of the firmware's drawing code: `tools/docs_screenshots.py` and
-`tools/webui_screenshots.py` regenerate them.
+pictures in it are renders of the firmware's drawing code: `tools/docs_screenshots.py`,
+`tools/screen_pictures.py` and `tools/webui_screenshots.py` regenerate them.
 
 ## Contributing
 

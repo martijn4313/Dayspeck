@@ -24,7 +24,7 @@ jobs:
           restore-keys: pio-${{ runner.os }}-
 
       - name: Install PlatformIO
-        run: pip install platformio cryptography
+        run: pip install platformio cryptography pillow
 
       - name: Unit tests (host)
         run: pio test -e native
@@ -37,6 +37,11 @@ jobs:
 
       - name: Build filesystem image
         run: pio run -e esp01_1m -t buildfs
+
+      # The manual's pictures of the picture screens and the report come from a host build of display.cpp:
+      # make sure it still compiles and runs (the pictures themselves are not checked)
+      - name: Manual pictures build from the drawing code
+        run: python tools/screen_pictures.py --out "$RUNNER_TEMP/pictures"
 
       - name: Firmware leaves room for an over-the-air update
         run: |

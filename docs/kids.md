@@ -12,11 +12,11 @@ near, the countdown comes after the clothes.
 
 On the left the outfit for now, big; on the right the animated village of the [ride screen](rider.md) with the
 temperature, the sun or the moon, rain, snow, gusts and autumn leaves. On the street a small picture says
-which part of the day the outfit is for. In the evening and at night it is tomorrow morning's outfit, with a
-bed in front of it: what to put out before going to sleep. It is the same outfit as the first one on the
-clothes screen.
+which part of the day the outfit is for. From 22:00 (bedtime) until the morning it is tomorrow morning's
+outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit as the first
+one on the clothes screen.
 
-![Village screens: an autumn morning with a sweater and leaves blowing over the village; a hot afternoon with a sun cap, t-shirt and shorts; a cold evening with the winter coat and hat for tomorrow morning, after the bed](images/kids-village.png){ .center }
+![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with, after the bed, the winter coat and hat for tomorrow morning](images/kids-village.png){ .center }
 
 ## The day in three parts
 
@@ -44,7 +44,7 @@ it is:
 **Clothes screen:** one outfit per part of the day. The outfits, from warm to cold (the limits are the
 defaults, see [Settings](#settings)):
 
-![Clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a sweater now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
+![Clothes screens. A summer afternoon: sun cap, t-shirt and shorts now, a rain coat for the evening, sun cap again tomorrow morning. An autumn morning: a sweater now, a t-shirt this afternoon, a rain coat this evening. An autumn evening: a t-shirt now, a rain coat tomorrow morning, a t-shirt tomorrow afternoon](images/kids-clothes.png){ .center }
 
 | When | Picture |
 |------|---------|

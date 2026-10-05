@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-"""Regenerate pictures of the manual: docs/images/rider-today.png, rider-wind.gif, kids-wind.gif and hero.png
-(four screens, cut from rider-today.png, kids-village.png, kids-weather.png and report.png).
+"""Regenerate the ride screens' pictures of the manual: docs/images/rider-today.png and rider-wind.gif.
 
-The rider screens are drawn by the host simulator (tools/bitmaptool), which mirrors firmware/src/display.cpp,
-with the artwork of firmware/include/bitmaps.h. The kids screens are not part of the simulator: the kids
-animation takes the dots of the existing screenshot in docs/images/kids-weather.png and lets the leaves blow
-over it with the same animation code as the firmware.
+They are drawn by the host simulator (tools/bitmaptool), which mirrors firmware/src/display.cpp, with the
+artwork of firmware/include/bitmaps.h. The other screens and the hero picture come from
+tools/screen_pictures.py, a host build of the firmware's own drawing code; run it after this one.
 
     python tools/docs_screenshots.py [--out docs/images]
 """
 import argparse
-import random
 from pathlib import Path
 
 from PIL import Image
@@ -20,7 +17,6 @@ from bitmaptool.canvas import OLEDCanvas
 from bitmaptool.cli import load_scene_assets
 from bitmaptool.constants import RAIN_FRAME_INTERVAL_MS
 from bitmaptool.scene import SceneComposer, SceneState
-from bitmaptool.wind import KIDS_AREA, WindAnimation
 
 ROOT = Path(__file__).resolve().parent.parent
 SCREEN_W, SCREEN_H, GAP = 540, 284, 16     # one module at scale 4, and the space between two in a picture
@@ -57,12 +53,6 @@ def row(images: list) -> Image.Image:
     return out
 
 
-def grid_of(image: Image.Image, x0: int, y0: int) -> list:
-    """The 128x64 dots of a module in a screenshot (a dot is 3x3 px on a 4 px pitch, 14 px bezel)."""
-    px = image.convert("RGB").load()
-    return [[px[x0 + 14 + 4 * x + 2, y0 + 14 + 4 * y + 2][1] > 150 for x in range(128)] for y in range(64)]
-
-
 def save_gif(frames: list, path: Path):
     quantized = [f.convert("RGBA").convert("RGB").quantize(colors=64, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
                  for f in frames]
@@ -83,25 +73,6 @@ def rider_wind_gif(path: Path, warmup: int = 20, count: int = 60):
     save_gif(frames, path)
 
 
-def kids_wind_gif(path: Path, source: Path, warmup: int = 20, count: int = 60):
-    """The kids weather screen (an evening, rain tomorrow morning, a windy afternoon) with autumn leaves
-    blowing over it: the fourth screen of kids-weather.png."""
-    base = grid_of(Image.open(source), SCREEN_W + GAP, SCREEN_H + 16)
-    state = rider_state()
-    gusts, leaves = WindAnimation.init()
-    rng = random.Random(11)
-    frames = []
-    for i in range(warmup + count):
-        WindAnimation.update(gusts, leaves, rng, 30, False, True, KIDS_AREA)
-        if i < warmup:
-            continue
-        canvas = OLEDCanvas()
-        canvas.pixels = [row_[:] for row_ in base]
-        WindAnimation.draw(canvas, gusts, leaves, state.leaf_bmps, KIDS_AREA)
-        frames.append(device_image(canvas.pixels, scale=3))
-    save_gif(frames, path)
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default=str(ROOT / "docs" / "images"))
@@ -112,21 +83,8 @@ def main():
     row(screens).save(out / "rider-today.png")
     print("wrote", out / "rider-today.png")
 
-    # hero: four different screens, two by two: the ride rating, the village (an autumn morning), the weather
-    # in pictures and the weather report (the first screen of each of their pictures)
-    def first(name: str) -> Image.Image:
-        return Image.open(out / name).convert("RGBA").crop((0, 0, SCREEN_W, SCREEN_H))
-    top, bottom = row([screens[0], first("kids-village.png")]), row([first("kids-weather.png"), first("report.png")])
-    hero = Image.new("RGBA", (top.width, 2 * SCREEN_H + GAP), (0, 0, 0, 0))
-    hero.paste(top, (0, 0))
-    hero.paste(bottom, (0, SCREEN_H + GAP))
-    hero.save(out / "hero.png")
-    print("wrote", out / "hero.png")
-
     rider_wind_gif(out / "rider-wind.gif")
     print("wrote", out / "rider-wind.gif")
-    kids_wind_gif(out / "kids-wind.gif", out / "kids-weather.png")
-    print("wrote", out / "kids-wind.gif")
 
 
 if __name__ == "__main__":
