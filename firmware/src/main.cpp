@@ -542,8 +542,8 @@ void renderHourly() {
 
 
 /**
- * The weather report: a few sentences in the display language, word wrapped. Sentences at the end are left out
- * when they do not fit.
+ * The weather report: a few sentences in the display language, word wrapped. The least important ones are left
+ * out when they do not fit.
  */
 #define REPORT_MAX_LINES 7
 void renderReport() {
@@ -567,16 +567,15 @@ void renderReport() {
     }
 
     bool nl = displayLanguage == "nl";
-    static WeatherReport report;   // static: 260 bytes off the stack
+    static WeatherReport report;   // static: about 400 bytes off the stack
     weatherReport(hours, count, nl ? REPORT_LANG_NL : REPORT_LANG_EN, report);
     if (report.count == 0) {
         report.count = 1;
         strcpy(report.sentences[0], nl ? "Nog geen verwachting." : "No forecast yet.");
+        report.priority[0] = 4;
     }
     char lines[REPORT_MAX_LINES][REPORT_COLS + 1];
-    size_t sentences = report.count, used;
-    while ((used = wrapReport(report, sentences, lines, REPORT_MAX_LINES)) > REPORT_MAX_LINES && sentences > 1) sentences--;
-    renderReportView(display, lines, used < REPORT_MAX_LINES ? used : REPORT_MAX_LINES);
+    renderReportView(display, lines, fitReport(report, lines, REPORT_MAX_LINES));
 }
 
 

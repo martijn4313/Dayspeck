@@ -361,7 +361,7 @@ void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherRepor
     const char deg = REPORT_DEGREE;
 
     // The stretch the report is about: from now (or the next 07:00) until 22:00. From 18:00 that is tomorrow.
-    // The night hours before it only count for frost.
+    // The evening and night hours before it get a sentence of their own.
     int now = hours[0].hour;
     bool tomorrow = now >= KIDS_EVENING_FROM_HR;
     size_t dayFrom = 0;
@@ -374,7 +374,36 @@ void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherRepor
     }
     ReportSummary s = summarizeReport(hours, dayFrom, dayTo);
     if (s.n == 0) return;
-    ReportSummary night = summarizeReport(hours, 0, dayFrom);
+    ReportSummary night = summarizeReport(hours, 0, dayFrom);   // the evening and the night together
+    size_t eveningTo = 0;
+    while (eveningTo < dayFrom && hours[eveningTo].hour >= KIDS_EVENING_FROM_HR && hours[eveningTo].hour < KIDS_EVENING_UNTIL_HR) {
+        eveningTo++;
+    }
+    ReportSummary evening = summarizeReport(hours, 0, eveningTo);
+    ReportSummary late = summarizeReport(hours, eveningTo, dayFrom);   // 22:00 to 07:00
+    char (*line)[REPORT_SENTENCE_LEN] = out.sentences;
+    auto add = [&](int priority) { out.priority[out.count++] = (uint8_t)priority; };
+
+    // 0. This evening and tonight: the rain, and the lowest temperature
+    if (night.n) {
+        int lowest = roundTemp(night.tmin);
+        const char* ev = evening.n ? w[precipWord(evening)] : nullptr;
+        const char* ng = late.n ? w[precipWord(late)] : nullptr;
+        char* t = line[out.count];
+        if (ev && ng && strcmp(ev, ng) == 0) {
+            if (nl) snprintf(t, REPORT_SENTENCE_LEN, "Vanavond en vannacht %s, minimaal %d%c.", ev, lowest, deg);
+            else snprintf(t, REPORT_SENTENCE_LEN, "%s this evening and tonight, low %d%c.", ev, lowest, deg);
+        } else if (ev && ng) {
+            if (nl) snprintf(t, REPORT_SENTENCE_LEN, "Vanavond %s, vannacht %s, minimaal %d%c.", ev, ng, lowest, deg);
+            else snprintf(t, REPORT_SENTENCE_LEN, "%s this evening, %s tonight, low %d%c.", ev, ng, lowest, deg);
+        } else {
+            const char* what = ev ? ev : ng;
+            if (nl) snprintf(t, REPORT_SENTENCE_LEN, "%s %s, minimaal %d%c.", ev ? "Vanavond" : "Vannacht", what, lowest, deg);
+            else snprintf(t, REPORT_SENTENCE_LEN, "%s %s, low %d%c.", what, ev ? "this evening" : "tonight", lowest, deg);
+        }
+        if (t[0] >= 'a' && t[0] <= 'z') t[0] -= 'a' - 'A';
+        add(3);
+    }
 
     // A change during the day (rain that starts later, or stops): then the first sentence names only the sky
     char change[REPORT_SENTENCE_LEN] = "";
@@ -412,37 +441,43 @@ void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherRepor
     else snprintf(weather, sizeof(weather), "%s, %s", w[sky], w[pre]);
     const char* when = w[tomorrow ? W_TOMORROW : W_TODAY];
     int lo = roundTemp(s.tmin), hi = roundTemp(s.tmax);
-    char (*line)[REPORT_SENTENCE_LEN] = out.sentences;
     bool freshMorning = s.morningMin < 999 && s.afternoonMax > -999 && s.afternoonMax - s.morningMin >= 5;
     if (freshMorning) {
         int am = roundTemp(s.morningMin), pm = roundTemp(s.afternoonMax);
         const char* morning = w[am <= 0 ? W_COLD : am < 12 ? W_CHILLY : W_COOL];
-        snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s %s.", when, weather);
-        if (nl) snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s ochtend (%d%c), 's middags %d%c.", morning, am, deg, pm, deg);
-        else snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s morning (%d%c), %d%c in the afternoon.", morning, am, deg, pm, deg);
+        snprintf(line[out.count], REPORT_SENTENCE_LEN, "%s %s.", when, weather);
+        add(4);
+        if (nl) snprintf(line[out.count], REPORT_SENTENCE_LEN, "%s ochtend (%d%c), 's middags %d%c.", morning, am, deg, pm, deg);
+        else snprintf(line[out.count], REPORT_SENTENCE_LEN, "%s morning (%d%c), %d%c in the afternoon.", morning, am, deg, pm, deg);
+        add(1);
     } else if (hi - lo <= 2) {
-        snprintf(line[out.count++], REPORT_SENTENCE_LEN, nl ? "%s %s, rond %d%c." : "%s %s, around %d%c.", when, weather, hi, deg);
+        snprintf(line[out.count], REPORT_SENTENCE_LEN, nl ? "%s %s, rond %d%c." : "%s %s, around %d%c.", when, weather, hi, deg);
+        add(4);
     } else {
-        snprintf(line[out.count++], REPORT_SENTENCE_LEN, nl ? "%s %s, %d tot %d%c." : "%s %s, %d to %d%c.", when, weather, lo, hi, deg);
+        snprintf(line[out.count], REPORT_SENTENCE_LEN, nl ? "%s %s, %d tot %d%c." : "%s %s, %d to %d%c.", when, weather, lo, hi, deg);
+        add(4);
     }
 
     // 2. The change
-    if (change[0]) snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s", change);
+    if (change[0]) {
+        snprintf(line[out.count], REPORT_SENTENCE_LEN, "%s", change);
+        add(1);
+    }
 
     // 3. One thing to watch out for
     char* watch = line[out.count];
-    if (night.n && night.tmin <= 0) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Vannacht vorst, kans op gladheid." : "Frost tonight, roads may be icy.");
-    else if (s.tmin <= 0) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Kans op gladheid." : "Roads may be icy.");
+    // (frost tonight: the first sentence already gives the temperature below zero)
+    if (s.tmin <= 0 || (night.n && night.tmin <= 0)) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Kans op gladheid." : "Roads may be icy.");
     else if (s.gustMax >= 60) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Harde windvlagen tot %d km/u." : "Strong gusts up to %d km/h.", roundTemp(s.gustMax));
     else if (s.rainSum >= 10 && pre == W_HEAVY_RAIN && !change[0])   // the first sentence already says it
         snprintf(watch, REPORT_SENTENCE_LEN, nl ? "In totaal %d mm." : "%d mm in total.", roundTemp(s.rainSum));
     else if (s.rainSum >= 10) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Veel regen: %d mm." : "Lots of rain: %d mm.", roundTemp(s.rainSum));
     else if (s.gustMax >= 45) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Stevige wind." : "Quite windy.");
     else watch = nullptr;
-    if (watch) out.count++;
+    if (watch) add(2);
 }
 
-size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT_COLS + 1], size_t maxLines) {
+size_t wrapReport(const WeatherReport& r, unsigned keep, char (*lines)[REPORT_COLS + 1], size_t maxLines) {
     size_t n = 0, len = 0;
     char line[REPORT_COLS + 1];
     auto flush = [&]() {
@@ -451,7 +486,8 @@ size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT
         n++;
         len = 0;
     };
-    for (size_t k = 0; k < sentences && k < r.count; k++) {
+    for (size_t k = 0; k < r.count; k++) {
+        if (!(keep & (1u << k))) continue;
         const char* p = r.sentences[k];
         while (*p) {
             while (*p == ' ') p++;
@@ -472,6 +508,20 @@ size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT
         if (len > 0) flush();   // every sentence starts on a new line
     }
     return n;
+}
+
+size_t fitReport(const WeatherReport& r, char (*lines)[REPORT_COLS + 1], size_t maxLines) {
+    unsigned keep = (1u << r.count) - 1;
+    size_t used;
+    while ((used = wrapReport(r, keep, lines, maxLines)) > maxLines) {
+        int drop = -1;
+        for (size_t k = 0; k < r.count; k++) {
+            if ((keep & (1u << k)) && (drop < 0 || r.priority[k] <= r.priority[drop])) drop = (int)k;
+        }
+        if (drop < 0 || (keep & (keep - 1)) == 0) break;   // one sentence left: show what fits
+        keep &= ~(1u << drop);
+    }
+    return used < maxLines ? used : maxLines;
 }
 
 static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
