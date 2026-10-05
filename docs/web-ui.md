@@ -58,9 +58,9 @@ office shows the local forecast at each. Pick a scanned network (press *Scan Net
 latitude and longitude and press *Add Location*. Up to 10 can be stored; *Delete* removes one. A location
 set with *Set Location* takes precedence.
 
-## Ride thresholds, display and weather
+## Ride thresholds, screens, display and the kids settings
 
-![The ride thresholds, display options and weather API cards](images/webui-settings.png){ .center }
+![The ride thresholds, screens, display, clothing and countdown cards](images/webui-settings.png){ .center }
 
 **Ride Thresholds** are the limits behind the [ride rating](ride-rating.md). All values are metric.
 
@@ -72,6 +72,16 @@ set with *Set Location* takes precedence.
 | Warn Wind (km/h) | gusts above this give *caution*; it cannot exceed the maximum wind |
 | Caution rain chance (%) | a chance of rain from this value on gives *caution*; 101 switches it off |
 
+**Screens**: which screens the device shows and in which order, see [Screens](screens.md).
+
+| Field | Meaning |
+|-------|---------|
+| Preset | *Rider* or *Kids* fills in both lists below (save afterwards) |
+| Tap | the screens a tap steps through; the first is the home screen. *Add screen*, move with the arrows, remove with the cross; up to 6 |
+| Long press | the screens a long press steps through, then home; empty = a long press works like a tap |
+| Back to home after (s) | other screens go back to the home screen after this many seconds; 0 = never |
+| Cycle screens every (s) | the device steps through the tap list by itself, this many seconds each; 0 = off (see [screens](screens.md)) |
+
 **Display** (see also [screen power](ride-rating.md#screen-power)):
 
 | Field | Meaning |
@@ -82,14 +92,13 @@ set with *Set Location* takes precedence.
 | Sleep at night after (min) | switch the panel off after this many idle minutes at night; 0 = never |
 | Always sleep | the screen stays off; a touch wakes it for 30 s (needs the touch sensor) |
 | Touch sensor | the sensor on GPIO3 is read. Switch it off when none is connected; switching it on takes effect at once |
-| Cycle screens every (s) | the device steps through its screens by itself, this many seconds each; 0 = off (see [screens](rider.md#without-a-touch-sensor)) |
-| Language (kids build) | `en` or `nl`; the kids screens show no words, so this has no visible effect |
+| Language | `en` or `nl`; no screen shows words yet, so this has no visible effect |
 | Screen off from / until (hour) | quiet hours, for example 23 and 6. Set both, or both to -1 for none |
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
-**Clothing (kids build only)**: the limits of the outfits on the [kids screens](kids.md), in °C. The card is
-hidden in the rider build.
+**Clothing (kids)**: the limits of the outfits on the [kids screens](kids.md), in °C. The card shows while
+the kids weather or clothes screen is in one of the screen lists.
 
 | Field | Meaning |
 |-------|---------|
@@ -100,8 +109,8 @@ hidden in the rider build.
 | Scarf and mittens below | default 0 |
 | Wind picture above (km/h) | gusts above this show the wind picture in dry weather (default 50) |
 
-**Countdowns (kids build only)**: the [countdown screen](kids.md) to birthdays and holidays. Hidden in the rider
-build.
+**Countdowns (kids)**: the [countdown screen](kids.md) to birthdays and holidays. The card shows while the
+countdown screen is in one of the screen lists.
 
 | Field | Meaning |
 |-------|---------|

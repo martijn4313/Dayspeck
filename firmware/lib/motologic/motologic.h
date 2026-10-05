@@ -210,13 +210,42 @@ int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 // Temperature trend 'u' (rising), 'd' (falling) or 'f' (flat) from now to a few hours later; NAN = flat
 char temperatureTrend(float now, float later);
 
-// Automatic cycling through the screens. The steps in order: rider 0 main view, 1 the other day (today /
-// tomorrow), 2 week grid, 3 next hours, 4 clock; kids 0 weather, 1 clothes, 2 countdown (only while a birthday
-// or holiday is near). Returns the step after `step`: the clock is skipped while the time is not known and
-// the countdown while there is none.
-#define CYCLE_STEPS_RIDER 5
-#define CYCLE_STEPS_KIDS  3
-int cycleNextStep(int step, bool kids, bool clockUsable, bool countdownActive);
+// Screens. Every screen has a fixed name (config.json, web UI); which ones are used, and in which order, is
+// set by two slot lists: the tap list (a tap steps through it; slot 0 is the home screen) and the hold list
+// (a long press steps through it, after its last slot back home).
+#define SCREEN_RIDE        0   // ride rating of the default day (today; tomorrow after previewHr)
+#define SCREEN_RIDE_OTHER  1   // ride rating of the other day
+#define SCREEN_WEEK        2   // 7-day AM/PM grid
+#define SCREEN_HOURS       3   // next hours
+#define SCREEN_CLOCK       4   // clock (needs the time)
+#define SCREEN_WEATHER     5   // kids: the weather in three parts of the day
+#define SCREEN_CLOTHES     6   // kids: what to wear in three parts of the day
+#define SCREEN_COUNTDOWN   7   // kids: sleeps to a birthday or holiday (only while one is near)
+#define SCREEN_COUNT       8
+#define MAX_SCREEN_SLOTS   6
+
+const char* screenName(int id);            // "ride", "rideOther", "week", ...; "" for an unknown id
+int  screenFromName(const char* name);     // the id, or -1 for an unknown name
+bool screenAlwaysAvailable(int id);        // false for the clock and the countdown: they can be skipped
+
+struct ScreenList {
+    uint8_t ids[MAX_SCREEN_SLOTS];
+    uint8_t count;
+};
+
+// The tap list needs at least one screen and must start with one that is always available (the home
+// screen); the hold list may be empty. All ids must be known.
+bool screenListsValid(const ScreenList& tap, const ScreenList& hold);
+
+// Where the display is: a slot in the tap list (list 0) or in the hold list (list 1)
+struct ScreenNav {
+    uint8_t list;
+    uint8_t slot;
+};
+// available: bit (1 << id) set for every screen that can be shown right now
+int       screenAt(ScreenNav nav, const ScreenList& tap, const ScreenList& hold);
+ScreenNav screenNextTap(ScreenNav nav, const ScreenList& tap, uint16_t available);    // also the auto cycle
+ScreenNav screenNextHold(ScreenNav nav, const ScreenList& tap, const ScreenList& hold, uint16_t available);
 
 // Autumn in the hemisphere of the location: September-November in the north, March-May in the south.
 // month is 1-12.

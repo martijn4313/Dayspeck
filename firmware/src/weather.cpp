@@ -222,10 +222,7 @@ unsigned long fetchWeather(float lat, float lon) {
     url += "&longitude=";
     url += String(lon, 6);
     url += "&current=temperature_2m,precipitation,wind_speed_10m,wind_gusts_10m,weather_code";
-    url += "&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m";
-#ifdef KIDS_MODE
-    url += ",weather_code";   // the kids "later" pictures; the rider build saves the RAM
-#endif
+    url += "&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m,weather_code";
     url += "&daily=sunrise,sunset";
     url += "&forecast_days=7&timezone=auto&timeformat=unixtime";
     // Data is always requested in metric units (thresholds are metric); the display converts
@@ -271,9 +268,7 @@ unsigned long fetchWeather(float lat, float lon) {
         filter["hourly"]["precipitation"][0] = true;
         filter["hourly"]["wind_gusts_10m"][0] = true;
         filter["hourly"]["precipitation_probability"][0] = true;
-#ifdef KIDS_MODE
-        filter["hourly"]["weather_code"][0] = true;
-#endif
+        filter["hourly"]["weather_code"][0] = true;   // the kids screens' pictures
 
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, http.getStream(), DeserializationOption::Filter(filter));

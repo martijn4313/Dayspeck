@@ -56,22 +56,17 @@ def test_signed_part_rejects_unsigned_files():
 
 
 def test_manifest_is_signed_and_binds_the_image(key):
-    rider = ota_tool.signed_image(key, b"\xe9rider")
-    kids = ota_tool.signed_image(key, b"\xe9kids")
-    text = ota_tool.build_manifest(key, "1.2.3", {
-        "rider": ("dayspeck-rider.bin.gz", rider),
-        "kids": ("dayspeck-kids.bin.gz", kids),
-    }, notes="Fixes")
+    image = ota_tool.signed_image(key, b"\xe9firmware")
+    text = ota_tool.build_manifest(key, "1.2.3", {"dayspeck": ("dayspeck.bin.gz", image)}, notes="Fixes")
     line, sig_hex, rest = text.split(b"\n")
     assert rest == b""
     verify(key, bytes.fromhex(sig_hex.decode()), line)
     payload = json.loads(line)
     assert payload["version"] == "1.2.3"
     assert payload["notes"] == "Fixes"
-    assert payload["variants"]["rider"] == {
-        "file": "dayspeck-rider.bin.gz", "size": len(rider),
-        "sha256": hashlib.sha256(ota_tool.signed_part(rider)).hexdigest()}
-    assert payload["variants"]["kids"]["sha256"] == hashlib.sha256(ota_tool.signed_part(kids)).hexdigest()
+    assert payload["variants"]["dayspeck"] == {
+        "file": "dayspeck.bin.gz", "size": len(image),
+        "sha256": hashlib.sha256(ota_tool.signed_part(image)).hexdigest()}
 
 
 def test_manifest_rejects_bad_input(key):
@@ -81,9 +76,9 @@ def test_manifest_rejects_bad_input(key):
         ota_tool.build_manifest(key, "1.2.3-rc1", {})
     signed = ota_tool.signed_image(key, b"\xe9")
     with pytest.raises(ValueError):
-        ota_tool.build_manifest(key, "1.2.3", {"debug": ("x.bin.gz", signed)})
+        ota_tool.build_manifest(key, "1.2.3", {"rider": ("x.bin.gz", signed)})   # the old per-build variants
     with pytest.raises(ValueError):
-        ota_tool.build_manifest(key, "1.2.3", {"rider": ("../x.bin", signed)})
+        ota_tool.build_manifest(key, "1.2.3", {"dayspeck": ("../x.bin", signed)})
 
 
 def test_manifest_truncates_long_notes(key):
@@ -122,14 +117,14 @@ def test_cli_round_trip(tmp_path):
 
     image = tmp_path / "fw.bin"
     image.write_bytes(b"\xe9" + b"\x00" * 100)
-    signed = tmp_path / "dayspeck-rider.bin.gz"
+    signed = tmp_path / "dayspeck.bin.gz"
     ota_tool.main(["sign", "--key", str(private), "--in", str(image), "--out", str(signed)])
     manifest = tmp_path / "ota-manifest.txt"
     ota_tool.main(["manifest", "--key", str(private), "--version", "0.3.0", "--out", str(manifest),
-                   "--variant", f"rider={signed}"])
+                   "--variant", f"dayspeck={signed}"])
     payload = json.loads(manifest.read_bytes().split(b"\n")[0])
-    assert payload["variants"]["rider"]["file"] == "dayspeck-rider.bin.gz"
-    assert payload["variants"]["rider"]["size"] == signed.stat().st_size
+    assert payload["variants"]["dayspeck"]["file"] == "dayspeck.bin.gz"
+    assert payload["variants"]["dayspeck"]["size"] == signed.stat().st_size
 
 
 def test_free_update_space_matches_the_device():

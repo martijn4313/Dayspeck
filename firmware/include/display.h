@@ -50,26 +50,19 @@
 // Wind animation constants (gusts and, in autumn, tumbling leaves; mirrored in tools/bitmaptool/constants.py)
 #define MAX_GUSTS            3
 #define MAX_LEAVES           4
-#ifdef KIDS_MODE
-// The kids screens have no gusts, only leaves, and they blow across the whole screen
-#define WIND_AREA_X_START    0
-#define WIND_AREA_X_END      127
-#define WIND_AREA_Y_TOP      11
-#define WIND_AREA_Y_SPAN     33
-#define LEAF_SPAWN_X         (-4)    // enters a little off the left edge
-#define LEAF_SPAWN_Y         3       // a new leaf starts at y = 3 .. 15, above the temperature digits (y >= 46)
-#define LEAF_SPAWN_SPAN      13
-#define LEAF_MAX_Y           34      // a leaf that sinks past this base line has landed (ends above y = 42)
-#else
-#define WIND_AREA_X_START    65      // right of the divider at x=64: the ride badge is never touched
-#define WIND_AREA_X_END      127
-#define WIND_AREA_Y_TOP      11      // between the temperature row and the street band
-#define WIND_AREA_Y_SPAN     33      // gust lanes: y = 11 .. 43
-#define LEAF_SPAWN_X         WIND_AREA_X_START
-#define LEAF_SPAWN_Y         12      // a new leaf starts at y = 12 .. 35
-#define LEAF_SPAWN_SPAN      24
-#define LEAF_MAX_Y           38      // a leaf that sinks past this base line has landed
-#endif
+// Where gusts and leaves blow (mirrored in tools/bitmaptool/constants.py and wind.py)
+struct WindArea {
+    int16_t xStart, xEnd;          // gusts and leaves stay between these columns
+    int16_t gustYTop, gustYSpan;   // gust lanes
+    int16_t leafX0;                // a new leaf enters here
+    int16_t leafY0, leafYSpan;     // ... at y = leafY0 .. leafY0 + leafYSpan - 1
+    int16_t leafMaxY;              // a leaf that sinks past this base line has landed
+    bool    inverseLeaves;         // drawn inverted (over filled pictures) instead of with a black outline
+};
+// The ride screen: the right half, right of the divider at x=64 (the ride badge is never touched)
+extern const WindArea WIND_AREA_RIDE;
+// The kids screens: no gusts, leaves across the whole screen above the temperature digits (y >= 45)
+extern const WindArea WIND_AREA_KIDS;
 
 // Rain drop and splash structures
 
@@ -122,7 +115,7 @@ struct Leaf {
 
 // Wind animation: gusts when it is windy, leaves when leavesOn (see leavesBlowing() in motologic).
 // Same 15 FPS tick as the rain. initWindAnimation() also stops it.
-void initWindAnimation();
+void initWindAnimation(const WindArea &area = WIND_AREA_RIDE);   // also picks where it blows
 void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn);
 void drawWindAnimation(Adafruit_SSD1306 &display);
 

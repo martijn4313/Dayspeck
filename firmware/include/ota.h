@@ -12,11 +12,8 @@
 
 #include <Arduino.h>
 
-#ifdef KIDS_MODE
-#define OTA_VARIANT "kids"
-#else
-#define OTA_VARIANT "rider"
-#endif
+// One firmware for every screen combination: the release manifest has a single image under this name
+#define OTA_VARIANT "dayspeck"
 
 // Settings (config.json "ota"; loaded by main.cpp, changed by the web UI)
 extern String otaServerUrl;   // http://... base URL of the relay, "" = not configured

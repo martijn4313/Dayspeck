@@ -40,8 +40,7 @@ Any plain HTTP server works if it serves the same layout:
 
 ```
 <base>/ota-manifest.txt                      (from the latest release)
-<base>/vX.Y.Z/dayspeck-rider.bin.gz
-<base>/vX.Y.Z/dayspeck-kids.bin.gz
+<base>/vX.Y.Z/dayspeck.bin.gz
 ```
 
 For example, on a Raspberry Pi: download the release assets into `vX.Y.Z/`, copy

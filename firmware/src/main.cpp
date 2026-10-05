@@ -51,6 +51,10 @@ int  quietEndHr = -1;
 bool displayAlwaysSleep = false;
 bool displayTouchEnabled = true;
 int  displayCycleSeconds = 0;
+// Screens: the rider set by default (the web UI has a kids preset)
+ScreenList screensTap  = { { SCREEN_RIDE, SCREEN_RIDE_OTHER }, 2 };
+ScreenList screensHold = { { SCREEN_WEEK, SCREEN_HOURS, SCREEN_CLOCK }, 3 };
+int  screensReturnSeconds = DEFAULT_SCREENS_RETURN_SEC;
 String displayLanguage = "en";
 String locationName;
 
@@ -65,7 +69,6 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 
 #define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
-#define WEEKLY_VIEW_TIMEOUT_MS    30000UL
 #define AP_SSID                   "Dayspeck"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
 
@@ -210,6 +213,33 @@ void loadConfig() {
         int secs = (int)doc["display"]["cycleSeconds"];
         displayCycleSeconds = (secs >= 2) ? constrain(secs, 2, 3600) : 0;   // 0 = off; 1 s would be a flicker
     }
+    // Screens: both lists are replaced together, and only when they make sense
+    JsonObject screens = doc["display"]["screens"];
+    if (!screens.isNull()) {
+        auto readList = [](JsonVariant v, ScreenList &out) {
+            out.count = 0;
+            if (v.isNull()) return true;                  // no hold list: a long press acts as a tap
+            if (!v.is<JsonArray>()) return false;
+            for (JsonVariant e : v.as<JsonArray>()) {
+                int id = screenFromName(e | "");
+                if (id < 0 || out.count >= MAX_SCREEN_SLOTS) return false;
+                out.ids[out.count++] = (uint8_t)id;
+            }
+            return true;
+        };
+        ScreenList tap = {}, hold = {};
+        if (readList(screens["tap"], tap) && readList(screens["hold"], hold) && screenListsValid(tap, hold)) {
+            screensTap = tap;
+            screensHold = hold;
+        } else {
+            logMessage("config.json: display.screens is not valid, using the default screens");
+        }
+        if (screens["returnSeconds"].is<int>()) screensReturnSeconds = constrain((int)screens["returnSeconds"], 0, 3600);
+    } else if (doc["kids"].is<JsonObject>()) {
+        // A config from the former kids firmware (only it wrote "kids"): keep showing the kids screens
+        screensTap = ScreenList{ { SCREEN_WEATHER, SCREEN_CLOTHES, SCREEN_COUNTDOWN }, 3 };
+        screensHold = ScreenList{ {}, 0 };
+    }
     if (!displayTouchEnabled && displayAlwaysSleep) {
         displayAlwaysSleep = false;   // nothing could wake the screen again
         logMessage("config.json: display.alwaysSleep needs the touch sensor, ignored");
@@ -299,7 +329,6 @@ void updateDayNight() {
     bool preview = state.timeSynced && previewHr < 24 && localHour() >= previewHr;
     if (preview != state.previewActive) {
         state.previewActive = preview;
-        state.showTomorrow = false;
         state.displayDirty = true;
     }
 }
@@ -308,10 +337,19 @@ void updateDayNight() {
 /**
  * Main render function - draws the primary view into the buffer
  */
+static int currentScreen() {
+    return screenAt(state.screen, screensTap, screensHold);
+}
+
+// The ride screens: the default day is today, or tomorrow after previewHr; "rideOther" is the other one
+static bool rideShowsTomorrow() {
+    return (currentScreen() == SCREEN_RIDE_OTHER) != state.previewActive;
+}
+
 void renderDisplay() {
     WeatherData weather = getCurrentWeather();
 
-    char rating = (state.showTomorrow != state.previewActive) ? getTomorrowRating() : getTodayRating();
+    char rating = rideShowsTomorrow() ? getTomorrowRating() : getTodayRating();
     char badgeType = 0;   // unknown rating: ring only
     if (rating == RIDE_GOOD) badgeType = BADGE_CHECK;
     else if (rating == RIDE_CAUTION) badgeType = BADGE_WARN;
@@ -331,7 +369,6 @@ void renderDisplay() {
                      (int)weather.windKmh, tempStr, weather.trend, weather.precipMm);
 }
 
-#ifdef KIDS_MODE
 // Temperature as shown on the kids screens (the API is always metric)
 static int kidsShownTemp(float tempC) {
     if (isnan(tempC)) return 0;
@@ -360,7 +397,7 @@ static KidsCountdown kidsCountdownNow() {
 /**
  * Kids variant: the next three parts of the day (morning, afternoon, evening), as outfits or as weather
  */
-void renderKids() {
+void renderKids(bool weather) {
     // Forecast hours from the current one on; the current hour uses what is measured now
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
@@ -390,10 +427,8 @@ void renderKids() {
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
-    // The weather is the main screen; a tap shows the clothes (and they go back by themselves after 30 s)
-    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, state.displayMode == 0);
+    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather);
 }
-#endif
 
 /**
  * Get initialization status text for loading screen
@@ -479,88 +514,87 @@ void renderHourly() {
 
 
 /**
+ * Screens that can be shown right now (bit 1 << id): the clock needs the time, the countdown a birthday or
+ * holiday within range
+ */
+static uint16_t availableScreens() {
+    uint16_t available = 0xFFFF;
+    if (!state.timeSynced || !timezoneKnown()) available &= ~(1u << SCREEN_CLOCK);
+    if (!kidsCountdownNow().active) available &= ~(1u << SCREEN_COUNTDOWN);
+    return available;
+}
+
+static void stopWindAnimation();
+
+static void showScreen(ScreenNav nav) {
+    // Gusts and leaves blow in a different area on another screen: they start afresh on the next frame
+    if (state.windAnimationActive) stopWindAnimation();
+    state.screen = nav;
+    state.screenEnteredMs = millis();
+    state.displayDirty = true;
+}
+
+
+/**
  * Flush the right view to the display
  */
 void render() {
+    int screen = currentScreen();
+    KidsCountdown countdown = {};
+    if (screen == SCREEN_COUNTDOWN) {
+        countdown = kidsCountdownNow();
+        if (!countdown.active) {               // the countdown ended (midnight) while it was shown
+            state.screen = ScreenNav{ 0, 0 };
+            screen = currentScreen();
+        }
+    }
+
     if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
-    } else if (state.displayMode == 3) {
+    } else if (screen == SCREEN_CLOCK) {
         renderClock();
     } else if (!state.weatherValid) {
         const char* line1;
         const char* line2;
         getInitStatus(line1, line2);
         renderLoadingView(display, line1, line2, millis());
-#ifdef KIDS_MODE
-    } else if (state.weatherValid) {
-        KidsCountdown countdown = {};
-        if (state.displayMode == 2) countdown = kidsCountdownNow();
-        if (countdown.active) {
-            renderKidsCountdown(display, countdown, millis());
-        } else {
-            if (state.displayMode == 2) state.displayMode = 0;   // the countdown ended (midnight) while it was shown
-            renderKids();
-        }
-#endif
-    } else if (state.displayMode == 1) {
-        renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay);
-    } else if (state.displayMode == 2) {
-        renderHourly();
     } else {
-#ifndef KIDS_MODE
-        renderDisplay();
-        renderStatusMarks(display, state.showTomorrow != state.previewActive, wifiBars());
-#endif
+        switch (screen) {
+        case SCREEN_WEATHER:   renderKids(true); break;
+        case SCREEN_CLOTHES:   renderKids(false); break;
+        case SCREEN_COUNTDOWN: renderKidsCountdown(display, countdown, millis()); break;
+        case SCREEN_WEEK:      renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay); break;
+        case SCREEN_HOURS:     renderHourly(); break;
+        default:
+            renderDisplay();
+            renderStatusMarks(display, rideShowsTomorrow(), wifiBars());
+        }
     }
-#ifndef KIDS_MODE
-    if (state.weatherValid && state.weatherStale && state.displayMode != 3) {
-        // Data is old (offline or the API keeps failing): mark it in the free top-left corner
+
+    // Status marks in the free top-left corner of the rider screens (the kids screens have no room for them)
+    bool riderScreen = screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_WEEK || screen == SCREEN_HOURS;
+    if (riderScreen && state.weatherValid && state.weatherStale) {
+        // Data is old (offline or the API keeps failing)
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
         display.print("OLD");
-    } else if (state.weatherValid && otaStatus.available && state.displayMode == 0) {
+    } else if (state.weatherValid && otaStatus.available && (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER)) {
         // A firmware update is waiting in the web UI (the OLD mark wins the corner)
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
         display.print("UPD");
     }
-#endif
     display.display();
     state.displayDirty = false;
 }
 
 
 /**
- * Automatic screen cycling (display.cycleSeconds): the steps are those of cycleNextStep() in motologic. The
- * step is derived from what is on screen, so a touch that picked another screen continues from there.
+ * Automatic screen cycling (display.cycleSeconds): steps through the tap list like a tap, skipping the screens
+ * that cannot be shown right now
  */
-static int currentCycleStep() {
-#ifdef KIDS_MODE
-    return state.displayMode < CYCLE_STEPS_KIDS ? state.displayMode : 0;
-#else
-    switch (state.displayMode) {
-        case 0:  return state.showTomorrow ? 1 : 0;
-        case 1:  return 2;
-        case 2:  return 3;
-        default: return 4;
-    }
-#endif
-}
-
-static void applyCycleStep(int step) {
-#ifdef KIDS_MODE
-    state.displayMode = (uint8_t)step;              // 0 weather, 1 clothes, 2 countdown
-#else
-    static const uint8_t modes[CYCLE_STEPS_RIDER] = { 0, 0, 1, 2, 3 };
-    state.displayMode = modes[step];
-    state.showTomorrow = (step == 1);               // step 1 shows the other day than the default one
-#endif
-    state.weeklyEnteredMs = millis();
-    state.displayDirty = true;
-}
-
 static void cycleScreens() {
     // Nothing to cycle while it is off, the panel is off or there is no forecast yet: hold the timer
     if (displayCycleSeconds <= 0 || state.displayOff || !state.weatherValid) {
@@ -569,21 +603,13 @@ static void cycleScreens() {
     }
     if (!intervalPassed(state.lastCycleMs, (unsigned long)displayCycleSeconds * 1000UL)) return;
     state.lastCycleMs = millis();
-#ifdef KIDS_MODE
-    bool kids = true;
-    bool countdownActive = kidsCountdownNow().active;
-#else
-    bool kids = false;
-    bool countdownActive = false;
-#endif
-    bool clockUsable = state.timeSynced && timezoneKnown();
-    applyCycleStep(cycleNextStep(currentCycleStep(), kids, clockUsable, countdownActive));
+    showScreen(screenNextTap(state.screen, screensTap, availableScreens()));
 }
 
 
 /**
- * Touch: short tap = today/tomorrow (or leave a detail view), long press = next view
- * (primary -> week -> next hours -> clock -> primary).
+ * Touch: a tap steps through the tap list (from the hold list it goes home), a long press through the hold
+ * list (after its last screen home; without a hold list it is a tap).
  * touch_get_event() consumes the event, so it must be read exactly once per iteration.
  */
 void handleTouch() {
@@ -601,40 +627,18 @@ void handleTouch() {
         }
     }
 
-#ifdef KIDS_MODE
-    // Kids variant: a tap (or long press) goes from the weather (main screen) to the clothes, then to the
-    // countdown while a birthday or holiday is near, and back to the weather
-    if (event != TOUCH_NONE) {
-        if (state.displayMode == 0) state.displayMode = 1;
-        else if (state.displayMode == 1 && kidsCountdownNow().active) state.displayMode = 2;
-        else state.displayMode = 0;
-        state.weeklyEnteredMs = millis();
-        state.displayDirty = true;
-    }
-    event = TOUCH_NONE;
-#endif
-
     if (event == TOUCH_SHORT) {
-        if (state.displayMode != 0) {
-            state.displayMode = 0;
-        } else {
-            state.showTomorrow = !state.showTomorrow;
-        }
-        state.displayDirty = true;
+        showScreen(screenNextTap(state.screen, screensTap, availableScreens()));
     } else if (event == TOUCH_LONG) {
-        state.displayMode = (state.displayMode + 1) % 4;
-        if (state.displayMode != 0) {
-            state.weeklyEnteredMs = millis();
-        }
-        state.displayDirty = true;
+        showScreen(screenNextHold(state.screen, screensTap, screensHold, availableScreens()));
     }
 
-    // The week and hours views close themselves; the clock stays until a tap. While the screens cycle by
-    // themselves, every screen stays for the cycle time instead.
-    if (displayCycleSeconds == 0 && state.displayMode != 0 && state.displayMode != 3 &&
-        intervalPassed(state.weeklyEnteredMs, WEEKLY_VIEW_TIMEOUT_MS)) {
-        state.displayMode = 0;
-        state.displayDirty = true;
+    // Back to the home screen after screensReturnSeconds. While the screens cycle by themselves, every screen
+    // stays for the cycle time instead.
+    bool home = state.screen.list == 0 && state.screen.slot == 0;
+    if (!home && displayCycleSeconds == 0 && screensReturnSeconds > 0 &&
+        intervalPassed(state.screenEnteredMs, (unsigned long)screensReturnSeconds * 1000UL)) {
+        showScreen(ScreenNav{ 0, 0 });
     }
 }
 
@@ -866,6 +870,27 @@ void setup() {
 
 
 /**
+ * The wind animation runs in one area at a time (the ride screen's right half, or the whole kids screen):
+ * coming from a screen with the other area starts it afresh
+ */
+static const WindArea *windAnimationArea = nullptr;
+
+static void startWindAnimation(const WindArea &area) {
+    if (!state.windAnimationActive || windAnimationArea != &area) {
+        initWindAnimation(area);
+        windAnimationArea = &area;
+        state.windAnimationActive = true;
+    }
+}
+
+static void stopWindAnimation() {
+    initWindAnimation(windAnimationArea ? *windAnimationArea : WIND_AREA_RIDE);
+    state.windAnimationActive = false;
+    state.displayDirty = true;
+}
+
+
+/**
  * Main loop - non-blocking apart from the periodic weather fetch
  */
 void loop() {
@@ -895,7 +920,8 @@ void loop() {
     }
 
     // The clock redraws every second (blinking colon)
-    if (state.displayMode == 3 && !state.displayOff) {
+    int screen = currentScreen();
+    if (screen == SCREEN_CLOCK && !state.displayOff) {
         static time_t lastSecond = 0;
         time_t nowSecond = time(nullptr);
         if (nowSecond != lastSecond) {
@@ -908,8 +934,7 @@ void loop() {
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
         if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
-#ifndef KIDS_MODE
-        } else if (state.displayMode == 0) {
+        } else if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER) {
             WeatherData weather = getCurrentWeather();
             bool rain = weather.condition == WEATHER_RAIN;
             bool gustsOn = weather.condition == WEATHER_WIND;
@@ -926,35 +951,27 @@ void loop() {
                 state.displayDirty = true;
             }
             if (!rain && (gustsOn || leavesOn)) {
-                if (!state.windAnimationActive) initWindAnimation();
+                startWindAnimation(WIND_AREA_RIDE);
                 updateWindAnimation((int)weather.windKmh, gustsOn, leavesOn);
-                state.windAnimationActive = true;
                 state.displayDirty = true;
             } else if (state.windAnimationActive) {
                 // The wind dropped, or it started to rain: stop the gusts and leaves
-                initWindAnimation();
-                state.windAnimationActive = false;
-                state.displayDirty = true;
+                stopWindAnimation();
             }
-#else
-        } else if (state.displayMode == 0 || state.displayMode == 1) {
-            // Kids variant: autumn leaves blow across the clothes and the weather screen
+        } else if (screen == SCREEN_WEATHER || screen == SCREEN_CLOTHES) {
+            // Autumn leaves blow across the kids screens
             WeatherData w = getCurrentWeather();
             int weatherNow = kidsWeatherFor(w.code, w.gustKmh, kidsLimits.windyGustKmh);
             if (kidsLeavesBlowing(autumnNow(), weatherNow, w.gustKmh)) {
-                if (!state.windAnimationActive) initWindAnimation();
+                startWindAnimation(WIND_AREA_KIDS);
                 updateWindAnimation((int)w.gustKmh, false, true);
-                state.windAnimationActive = true;
                 state.displayDirty = true;
             } else if (state.windAnimationActive) {
-                initWindAnimation();
-                state.windAnimationActive = false;
-                state.displayDirty = true;
+                stopWindAnimation();
             }
-        } else if (state.displayMode == 2) {
+        } else if (screen == SCREEN_COUNTDOWN) {
             KidsCountdown countdown = kidsCountdownNow();
             if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself
-#endif
         }
         state.lastFrameMs = millis();
     }

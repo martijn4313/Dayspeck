@@ -1,4 +1,4 @@
-# Kids variant: what do I wear today?
+# Kids screens: what do I wear today?
 
 A second firmware build for children of about 4-5 who are starting to read. Instead of the ride
 rating it shows what to wear and what the weather is like, with pictures and numbers and no words, and it
@@ -55,8 +55,9 @@ rain, thunderstorm, snow, wind) and its **highest temperature**, like the foreca
 read, no unit.
 
 **Without a touch sensor.** The touch sensor is optional here too (web UI, *Display*). With *Cycle screens
-every (s)* the kids screens follow each other by themselves: the weather, the clothes and, while a birthday
-or holiday is near, the countdown. A tap still steps on and the screen stays for a full cycle time.
+every (s)* under [Screens](screens.md) the screens of the tap list follow each other by themselves: with the
+kids preset the weather, the clothes and, while a birthday or holiday is near, the countdown. A tap still
+steps on and the screen stays for a full cycle time.
 
 **Autumn leaves.** In autumn leaves blow across both screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the temperature
@@ -86,8 +87,8 @@ needs the network time, like the autumn leaves. A birthday on 29 February counts
 other years.
 
 **Settings.** In the web UI under *Display*: *Always sleep*: the screen stays off and a touch wakes it for
-30 s (the first touch only wakes it). It also works in the normal build. *Language* has no visible effect
-since the screens no longer show words.
+30 s (the first touch only wakes it). It works for every screen. *Language* has no visible effect yet, since
+the screens show no words.
 
 Under *Clothing (kids)* you can change the temperature limits of the outfits table above (and the gust speed
 for the wind picture), for a child who feels the cold sooner or later than the defaults. The limits must go
@@ -100,9 +101,9 @@ letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and
 before the day the countdown starts.
 
 The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
-`firmware/lib/motologic/motologic.h`). The rain animation and the `OLD` tag are left out in this build (the autumn
-leaves are not); WiFi, location, the web UI and OTA work as before.
+`firmware/lib/motologic/motologic.h`). The kids screens have no rain animation and no `OLD` or `UPD` mark
+(the autumn leaves do blow across them).
 
-```sh
-pio run -e esp01_1m_kids -t upload
-```
+**Getting the kids screens.** They are part of the one firmware: in the web UI under [Screens](screens.md)
+choose the *Kids* preset (weather, clothes, countdown on a tap) and press *Save Settings*, or mix them with
+the rider screens.

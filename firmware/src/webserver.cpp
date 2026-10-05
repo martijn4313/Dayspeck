@@ -56,6 +56,9 @@ static const char index_html[] PROGMEM = R"HTML(
         input[type=text], input[type=password], input[type=url] { width: 200px; }
         input[type=date] { width: 140px; }
         input.letter { width: 30px; }
+        .slots { margin: 0.3rem 0 0 1rem; }
+        .slots div { margin: 0.2rem 0; }
+        .slots button { margin: 0 0 0 0.3rem; padding: 0.1rem 0.5rem; }
         button { padding: 0.5rem 1rem; margin-top: 1rem; }
         #toast { display: none; position: sticky; top: 0; padding: 0.6rem 1rem; border-radius: 6px; color: #fff; z-index: 5; }
         #toast.ok { background: #2a7a3b; }
@@ -143,6 +146,21 @@ static const char index_html[] PROGMEM = R"HTML(
     </div>
 
     <div class="card">
+        <h3>Screens</h3>
+        <p><small>A tap steps through the first list; its first screen is the home screen. A long press steps through
+        the second list and then goes home (no screens there: a long press is a tap). The clock and the countdown
+        are skipped while they have nothing to show.</small></p>
+        <form id="screensForm">
+            <span class="label">Preset:</span> <select id="screenPreset"><option value="">choose...</option><option value="rider">Rider</option><option value="kids">Kids</option></select> <small>fills in the lists below</small><br>
+            <span class="label">Tap:</span><div id="tapSlots" class="slots"></div><button type="button" id="addTap">Add screen</button><br>
+            <span class="label">Long press:</span><div id="holdSlots" class="slots"></div><button type="button" id="addHold">Add screen</button><br>
+            <span class="label">Back to home after (s):</span> <input name="returnSeconds" type="number" min="0" max="3600"> <small>0 = never</small><br>
+            <span class="label">Cycle screens every (s):</span> <input name="cycleSeconds" type="number" min="0" max="3600"> <small>0 = off; steps through the tap list, also without a touch sensor</small><br>
+            <button type="submit">Save Settings</button>
+        </form>
+    </div>
+
+    <div class="card">
         <h3>Display</h3>
         <form id="displayForm">
             <span class="label">Tomorrow from (hour):</span> <input name="previewHr" type="number" min="0" max="24" title="24 = never"> <small>24 = never</small><br>
@@ -151,8 +169,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Sleep at night after (min):</span> <input name="sleepMinutes" type="number" min="0" max="600"> <small>0 = never; a touch wakes it</small><br>
             <span class="label">Always sleep:</span> <input name="alwaysSleep" type="checkbox"> <small>screen off; a touch wakes it for 30 s</small><br>
             <span class="label">Touch sensor:</span> <input name="touchEnabled" type="checkbox"> <small>GPIO3; off if none is connected</small><br>
-            <span class="label">Cycle screens every (s):</span> <input name="cycleSeconds" type="number" min="0" max="3600"> <small>0 = off; a tap also steps on</small><br>
-            <span class="label">Language (kids build):</span> <select name="language"><option value="en">English</option><option value="nl">Nederlands</option></select><br>
+            <span class="label">Language:</span> <select name="language"><option value="en">English</option><option value="nl">Nederlands</option></select><br>
             <span class="label">Screen off from (hour):</span> <input name="quietStart" type="number" min="-1" max="23"> <small>-1 = off</small><br>
             <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
             <button type="submit">Save Settings</button>
@@ -175,7 +192,7 @@ static const char index_html[] PROGMEM = R"HTML(
 
     <div class="card" id="countdownCard" style="display:none">
         <h3>Countdowns (kids)</h3>
-        <p><small>A third screen, after the clothes, counts the sleeps to a birthday or holiday when it is near. The cake has a candle for every year and the letter on it.</small></p>
+        <p><small>The countdown screen counts the sleeps to a birthday or holiday when it is near (put it in a list under Screens). The cake has a candle for every year and the letter on it.</small></p>
         <form id="countdownForm">
             <span class="label">Birthday 1:</span> <input name="birthday1" type="date"> <input name="initial1" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>date of birth, letter</small><br>
             <span class="label">Birthday 2:</span> <input name="birthday2" type="date"> <input name="initial2" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>no date = none</small><br>
@@ -239,7 +256,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <button type="submit">Save Settings</button>
         </form>
         <h4>Manual upload</h4>
-        <p><small>A signed <code>dayspeck-rider.bin.gz</code> or <code>dayspeck-kids.bin.gz</code> from a release.</small></p>
+        <p><small>A signed <code>dayspeck.bin.gz</code> from a release.</small></p>
         <form id="otaForm">
             <input type="file" name="update" accept=".gz,.bin" required><br>
             <button type="submit">Upload and Update</button>
@@ -368,33 +385,39 @@ static const char index_html[] PROGMEM = R"HTML(
                     d.sleepMinutes.value = s.display.sleepMinutes;
                     d.alwaysSleep.checked = s.display.alwaysSleep;
                     d.touchEnabled.checked = s.display.touchEnabled;
-                    d.cycleSeconds.value = s.display.cycleSeconds;
                     d.language.value = s.display.language;
                     d.quietStart.value = s.display.quietStart;
                     d.quietEnd.value = s.display.quietEnd;
 
-                    if (s.variant === 'kids') {
-                        document.getElementById('kidsCard').style.display = '';
-                        const k = document.forms.kidsForm;
-                        k.hot.value = s.kids.hotFromC;
-                        k.shorts.value = s.kids.shortsFromC;
-                        k.sweater.value = s.kids.sweaterBelowC;
-                        k.coat.value = s.kids.coatBelowC;
-                        k.freeze.value = s.kids.freezeBelowC;
-                        k.gust.value = s.kids.windyGustKmh;
+                    const sc = document.forms.screensForm;
+                    setSlots('tapSlots', s.display.screens.tap);
+                    setSlots('holdSlots', s.display.screens.hold);
+                    sc.returnSeconds.value = s.display.screens.returnSeconds;
+                    sc.cycleSeconds.value = s.display.cycleSeconds;
 
-                        document.getElementById('countdownCard').style.display = '';
-                        const c = document.forms.countdownForm;
-                        [1, 2].forEach(i => {
-                            const b = s.kids.birthdays[i - 1] || {};
-                            c['birthday' + i].value = b.date || '';
-                            c['initial' + i].value = b.initial || '';
-                        });
-                        c.halloween.checked = s.kids.halloween;
-                        c.sinterklaas.checked = s.kids.sinterklaas;
-                        c.christmas.checked = s.kids.christmas;
-                        c.countdownDays.value = s.kids.countdownDays;
-                    }
+                    // The kids settings only matter when a kids screen is in use
+                    const used = s.display.screens.tap.concat(s.display.screens.hold);
+                    document.getElementById('kidsCard').style.display =
+                        used.includes('weather') || used.includes('clothes') ? '' : 'none';
+                    document.getElementById('countdownCard').style.display = used.includes('countdown') ? '' : 'none';
+                    const k = document.forms.kidsForm;
+                    k.hot.value = s.kids.hotFromC;
+                    k.shorts.value = s.kids.shortsFromC;
+                    k.sweater.value = s.kids.sweaterBelowC;
+                    k.coat.value = s.kids.coatBelowC;
+                    k.freeze.value = s.kids.freezeBelowC;
+                    k.gust.value = s.kids.windyGustKmh;
+
+                    const c = document.forms.countdownForm;
+                    [1, 2].forEach(i => {
+                        const b = s.kids.birthdays[i - 1] || {};
+                        c['birthday' + i].value = b.date || '';
+                        c['initial' + i].value = b.initial || '';
+                    });
+                    c.halloween.checked = s.kids.halloween;
+                    c.sinterklaas.checked = s.kids.sinterklaas;
+                    c.christmas.checked = s.kids.christmas;
+                    c.countdownDays.value = s.kids.countdownDays;
 
                     const w = document.forms.weatherApiForm;
                     w.apiUrl.value = s.weatherApi.url;
@@ -443,6 +466,62 @@ static const char index_html[] PROGMEM = R"HTML(
         loadStatus(true);
 
         submitForm('thresholdsForm', '/api/thresholds', 'Thresholds saved');
+        // Screens: two lists of slots, each a drop-down with move and remove buttons
+        const SCREENS = [
+            ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
+            ['hours', 'Next hours'], ['clock', 'Clock'], ['weather', 'Kids: weather'],
+            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown']
+        ];
+        const PRESETS = {
+            rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },
+            kids: { tap: ['weather', 'clothes', 'countdown'], hold: [] }
+        };
+        const MAX_SLOTS = 6;
+        function addSlot(boxId, value) {
+            const box = document.getElementById(boxId);
+            if (box.children.length >= MAX_SLOTS) { toast('At most ' + MAX_SLOTS + ' screens per list', false); return; }
+            const row = document.createElement('div');
+            const sel = document.createElement('select');
+            SCREENS.forEach(([v, t]) => sel.appendChild(option(v, t)));
+            sel.value = value || SCREENS[0][0];
+            const button = (text, title, fn) => {
+                const b = document.createElement('button');
+                b.type = 'button'; b.textContent = text; b.title = title;
+                b.addEventListener('click', fn);
+                return b;
+            };
+            row.append(sel,
+                button('\u2191', 'Move up', () => { if (row.previousElementSibling) box.insertBefore(row, row.previousElementSibling); }),
+                button('\u2193', 'Move down', () => { if (row.nextElementSibling) box.insertBefore(row.nextElementSibling, row); }),
+                button('\u2715', 'Remove', () => row.remove()));
+            box.appendChild(row);
+        }
+        function setSlots(boxId, names) {
+            document.getElementById(boxId).replaceChildren();
+            (names || []).forEach(n => addSlot(boxId, n));
+        }
+        const slotNames = boxId => Array.from(document.querySelectorAll('#' + boxId + ' select')).map(s => s.value);
+        document.getElementById('addTap').addEventListener('click', () => addSlot('tapSlots'));
+        document.getElementById('addHold').addEventListener('click', () => addSlot('holdSlots'));
+        document.getElementById('screenPreset').addEventListener('change', function() {
+            const p = PRESETS[this.value];
+            if (p) { setSlots('tapSlots', p.tap); setSlots('holdSlots', p.hold); }
+            this.value = '';
+        });
+        document.getElementById('screensForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const f = document.forms.screensForm;
+            post('/api/screens', new URLSearchParams({
+                tap: slotNames('tapSlots').join(','), hold: slotNames('holdSlots').join(','),
+                returnSeconds: f.returnSeconds.value, cycleSeconds: f.cycleSeconds.value
+            }))
+                .then(res => {
+                    toast(res.message || (res.ok ? 'Screens saved' : 'Error ' + res.status), res.ok);
+                    if (res.ok) loadStatus(true);
+                })
+                .catch(() => toast('Request failed', false));
+        });
+
         submitForm('displayForm', '/api/display', 'Display settings saved');
         submitForm('kidsForm', '/api/kids', 'Clothing limits saved');
         submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
@@ -520,7 +599,7 @@ static const char index_html[] PROGMEM = R"HTML(
                 .then(r => r.json())
                 .then(o => {
                     otaInfo = o;
-                    document.getElementById('otaCurrent').textContent = o.current + ' (' + o.build + ', ' + o.variant + ' build)';
+                    document.getElementById('otaCurrent').textContent = o.current + ' (' + o.build + ')';
                     document.getElementById('otaLatest').textContent = !o.latest ? 'unknown' :
                         o.latest + (o.available ? ' (new)' : ' (you are up to date)');
                     document.getElementById('otaChecked').textContent = o.checkedMinutesAgo < 0 ? 'not yet' :
@@ -767,7 +846,6 @@ static void handleApiStatus() {
     thresholds["warnWindKmh"] = warnWindKmh;
     thresholds["rainProbPct"] = rainProbPct;
 
-    doc["variant"] = OTA_VARIANT;   // the web UI shows the clothing limits in the kids build only
     JsonObject kids = doc["kids"].to<JsonObject>();
     kids["hotFromC"] = kidsLimits.hotFromC;
     kids["shortsFromC"] = kidsLimits.shortsFromC;
@@ -797,6 +875,12 @@ static void handleApiStatus() {
     display["alwaysSleep"] = displayAlwaysSleep;
     display["touchEnabled"] = displayTouchEnabled;
     display["cycleSeconds"] = displayCycleSeconds;
+    JsonObject screens = display["screens"].to<JsonObject>();
+    JsonArray tapNames = screens["tap"].to<JsonArray>();
+    for (int i = 0; i < screensTap.count; i++) tapNames.add(screenName(screensTap.ids[i]));
+    JsonArray holdNames = screens["hold"].to<JsonArray>();
+    for (int i = 0; i < screensHold.count; i++) holdNames.add(screenName(screensHold.ids[i]));
+    screens["returnSeconds"] = screensReturnSeconds;
     display["language"] = displayLanguage;
     display["quietStart"] = quietStartHr;
     display["quietEnd"] = quietEndHr;
@@ -953,15 +1037,11 @@ static void handleApiCountdown() {
 }
 
 static void handleApiDisplay() {
-    int preview, sleepMin, qStart, qEnd, nightPct, cycleSecs;
+    int preview, sleepMin, qStart, qEnd, nightPct;
     if (!argInt("previewHr", 0, 24, preview) || !argInt("sleepMinutes", 0, 600, sleepMin) ||
         !argInt("quietStart", -1, 23, qStart) || !argInt("quietEnd", -1, 23, qEnd) ||
-        !argInt("nightBrightness", 1, 100, nightPct) || !argInt("cycleSeconds", 0, 3600, cycleSecs)) {
-        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes, night brightness 1-100 %, cycle 0-3600 seconds");
-        return;
-    }
-    if (cycleSecs == 1) {
-        sendMessage(400, "Cycle the screens every 2 seconds or more, or 0 to switch it off");
+        !argInt("nightBrightness", 1, 100, nightPct)) {
+        sendMessage(400, "Invalid value: hours 0-24 (quiet hours -1 to 23), sleep 0-600 minutes, night brightness 1-100 %");
         return;
     }
     if ((qStart < 0) != (qEnd < 0)) {
@@ -985,7 +1065,6 @@ static void handleApiDisplay() {
         doc["display"]["sleepMinutes"] = sleepMin;
         doc["display"]["alwaysSleep"] = alwaysSleep;
         doc["display"]["touchEnabled"] = touchOn;
-        doc["display"]["cycleSeconds"] = cycleSecs;
         doc["display"]["language"] = language;
         doc["display"]["quietStart"] = qStart;
         doc["display"]["quietEnd"] = qEnd;
@@ -1001,13 +1080,68 @@ static void handleApiDisplay() {
     displayAlwaysSleep = alwaysSleep;
     if (touchOn && !displayTouchEnabled) touch_init();   // switched on while running: set the pin up now
     displayTouchEnabled = touchOn;
-    displayCycleSeconds = cycleSecs;
-    state.lastCycleMs = millis();
     displayLanguage = language;
     quietStartHr = qStart;
     quietEndHr = qEnd;
     state.displayDirty = true;
     sendMessage(200, "Display settings saved");
+}
+
+// A comma-separated list of screen names ("" = empty), at most MAX_SCREEN_SLOTS
+static bool parseScreenList(const String& text, ScreenList& out) {
+    out.count = 0;
+    int start = 0;
+    while (start < (int)text.length()) {
+        int comma = text.indexOf(',', start);
+        if (comma < 0) comma = text.length();
+        String name = text.substring(start, comma);
+        name.trim();
+        int id = screenFromName(name.c_str());
+        if (id < 0 || out.count >= MAX_SCREEN_SLOTS) return false;
+        out.ids[out.count++] = (uint8_t)id;
+        start = comma + 1;
+    }
+    return true;
+}
+
+static void handleApiScreens() {
+    ScreenList tap = {}, hold = {};
+    int returnSecs, cycleSecs;
+    if (!parseScreenList(server.arg("tap"), tap) || !parseScreenList(server.arg("hold"), hold)) {
+        sendMessage(400, "Unknown screen, or more than 6 in a list");
+        return;
+    }
+    if (!screenListsValid(tap, hold)) {
+        sendMessage(400, "The tap list needs at least one screen, and its first one (the home screen) cannot be the clock or the countdown");
+        return;
+    }
+    if (!argInt("returnSeconds", 0, 3600, returnSecs) || !argInt("cycleSeconds", 0, 3600, cycleSecs) || cycleSecs == 1) {
+        sendMessage(400, "Back to home: 0-3600 seconds; cycle: 0 (off) or 2-3600 seconds");
+        return;
+    }
+
+    bool saved = updateConfig([&](JsonDocument& doc) {
+        JsonObject screens = doc["display"]["screens"].to<JsonObject>();
+        JsonArray t = screens["tap"].to<JsonArray>();
+        for (int i = 0; i < tap.count; i++) t.add(screenName(tap.ids[i]));
+        JsonArray h = screens["hold"].to<JsonArray>();
+        for (int i = 0; i < hold.count; i++) h.add(screenName(hold.ids[i]));
+        screens["returnSeconds"] = returnSecs;
+        doc["display"]["cycleSeconds"] = cycleSecs;
+    });
+    if (!saved) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    screensTap = tap;
+    screensHold = hold;
+    screensReturnSeconds = returnSecs;
+    displayCycleSeconds = cycleSecs;
+    state.screen = ScreenNav{ 0, 0 };   // start at the (new) home screen
+    state.screenEnteredMs = millis();
+    state.lastCycleMs = millis();
+    state.displayDirty = true;
+    sendMessage(200, "Screens saved");
 }
 
 static void handleApiLocation() {
@@ -1337,6 +1471,7 @@ void initWebServer() {
 
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
     server.on("/api/display", guardedPost(handleApiDisplay));
+    server.on("/api/screens", guardedPost(handleApiScreens));
     server.on("/api/kids", guardedPost(handleApiKids));
     server.on("/api/countdown", guardedPost(handleApiCountdown));
     server.on("/api/location", guardedPost(handleApiLocation));

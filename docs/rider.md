@@ -1,4 +1,4 @@
-# Rider variant
+# Rider screens
 
 ![Three rider screens: good (check mark, sun), caution (exclamation mark, rain, tomorrow) and don't ride (cross, night, wind and autumn leaves)](images/rider-today.png){ .center }
 
@@ -7,10 +7,10 @@
   street lamp is lit at night. The weather is shown in the scene itself: rain falls and splashes on the
   pavement, snow drifts, and wind blows (see below). Wind speed and precipitation are written on the street
   at the bottom.
-- **Touch:** a short tap switches *today / tomorrow*. A long press steps through the other screens:
-  the *7-day AM/PM grid*, the *next hours*, the *clock*, then back to the main screen. The week and
-  hours views close by themselves after 30 s; the clock stays until you tap. A tap always returns to the
-  main screen.
+- **Touch** (with the rider [screens preset](screens.md)): a short tap switches *today / tomorrow*. A long
+  press steps through the other screens: the *7-day AM/PM grid*, the *next hours*, the *clock*, then back to
+  the main screen. Every other screen goes back to the main screen after 30 s. A tap always returns to the
+  main screen. Which screens there are, and in which order, is up to you under [Screens](screens.md).
 - **Status marks:** a signal-bars icon (bottom of the left half; a cross when offline), a `TMR` tag
   while tomorrow is shown, and an `OLD` tag when the data is stale (older than twice its refresh
   interval).
@@ -28,11 +28,11 @@
 ## Without a touch sensor
 
 The touch sensor is optional. In the web UI under *Display* (or with `display.touchEnabled` in
-`config.json`) it can be switched off, and with *Cycle screens every (s)* (`display.cycleSeconds`) the device
-shows its screens in turn by itself, each for that many seconds: the main view, the other day (today or
-tomorrow), the week grid, the next hours and the clock (once the time is known). A touch sensor keeps working
-while it cycles: a tap picks a screen and it stays for a full cycle time. While the screens cycle, the week and
-hours views do not close after 30 s, because every screen already stays for the cycle time.
+`config.json`) it can be switched off, and with *Cycle screens every (s)* under [Screens](screens.md)
+(`display.cycleSeconds`) the device shows the screens of its tap list in turn by itself, each for that many
+seconds; the clock once the time is known. Put the screens you want to see in the tap list. A touch sensor
+keeps working while it cycles: a tap picks a screen and it stays for a full cycle time. While the screens
+cycle, nothing goes back to the home screen by itself, because every screen already stays for the cycle time.
 
 *Always sleep* needs the touch sensor, because it is the only way to wake a switched-off screen; the quiet
 hours and the night sleep timer work without one.
