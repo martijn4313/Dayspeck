@@ -79,9 +79,9 @@ clock to be synced, which happens after the first weather update.
 
 ## When the screens change
 
-Every screen redraws after each weather update (every 15-17 minutes by day, hourly at night) and on the
-quarter hours (:00, :15, :30, :45), so the numbers follow the forecast and the picture screens move on to
-the next part of the day on the hour. The animations run at 15 frames per second while there is something
+Every screen redraws after each weather update: every 15-17 minutes by day, and about once an hour at night,
+when the device fetches less often. The weather report and the village also redraw on the hour, so the
+report turns to tomorrow at 18:00 and the outfit follows the part of the day. The animations run at 15 frames per second while there is something
 to animate.
 
 ## The clock

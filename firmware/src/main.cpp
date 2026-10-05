@@ -1208,14 +1208,13 @@ void loop() {
     }
 
     int screen = currentScreen();
-    // Every screen redraws on the quarter hours (:00, :15, :30, :45) as well as after each weather update (every
-    // 15-17 min by day, hourly at night): the current hour moves on in the forecast, the kids screens go to
-    // the next part of the day on the hour, and from 18:00 the report is about tomorrow
-    if (state.timeSynced && !state.displayOff) {
-        static long lastQuarter = -1;
-        long quarter = (long)(time(nullptr) / 900);
-        if (quarter != lastQuarter) {
-            lastQuarter = quarter;
+    // Every screen redraws after each weather update. The report and the kids village also change with the
+    // hour (from 18:00 the report is about tomorrow; the outfit follows the part of the day)
+    if ((screen == SCREEN_REPORT || screen == SCREEN_VILLAGE) && !state.displayOff && timezoneKnown()) {
+        static int lastHour = -1;
+        int hour = localHourOf(time(nullptr));
+        if (hour != lastHour) {
+            lastHour = hour;
             state.displayDirty = true;
         }
     }
