@@ -2,6 +2,7 @@
 
 #include "motologic.h"
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 
 char rateRide(const RideThresholds& t, float precipMm, float gustKmh, float tempC, float rainProbPct) {
@@ -257,8 +258,224 @@ bool kidsLimitsValid(const KidsLimits& l) {
            l.sweaterBelowC <= l.shortsFromC && l.shortsFromC <= l.hotFromC && l.windyGustKmh > 0;
 }
 
+// ---- Weather report ----
+
+static bool reportStorm(int code) { return code >= 95; }
+static bool reportSnow(int code) { return (code >= 71 && code <= 77) || code == 85 || code == 86; }
+static bool reportDrizzle(int code) { return code >= 51 && code <= 57; }
+
+// Precipitation that counts, as on the kids screens: at least 0.2 mm of rain or snow, or a storm
+static bool reportWet(const ReportHour& h) {
+    return reportStorm(h.code) || (h.rainMm >= 0.2f && (h.code < 0 || h.code >= 51));
+}
+
+enum { SKY_CLEAR, SKY_PARTLY, SKY_CLOUDY, SKY_FOG };
+static int reportSky(int code) {
+    if (code <= 1) return SKY_CLEAR;   // unknown counts as clear, as on the kids screens
+    if (code == 2) return SKY_PARTLY;
+    if (code == 45 || code == 48) return SKY_FOG;
+    return SKY_CLOUDY;
+}
+
+struct ReportSummary {
+    int   n, wet, storm, snow, drizzle, probMax, firstWet, lastWet, lastHour;
+    int   sky[4];
+    float tmin, tmax, rainSum, gustMax, morningMin, afternoonMax;
+};
+
+// Summary of the valid hours [from, to)
+static ReportSummary summarizeReport(const ReportHour* hours, size_t from, size_t to) {
+    ReportSummary s = { 0, 0, 0, 0, 0, 0, -1, -1, -1, { 0, 0, 0, 0 }, 1000, -1000, 0, 0, 1000, -1000 };
+    for (size_t i = from; i < to; i++) {
+        const ReportHour& h = hours[i];
+        if (!h.valid || isnan(h.tempC)) continue;
+        s.n++;
+        s.lastHour = h.hour;
+        if (h.tempC < s.tmin) s.tmin = h.tempC;
+        if (h.tempC > s.tmax) s.tmax = h.tempC;
+        if (h.hour >= KIDS_MORNING_FROM_HR && h.hour < KIDS_AFTERNOON_FROM_HR && h.tempC < s.morningMin) s.morningMin = h.tempC;
+        if (h.hour >= KIDS_AFTERNOON_FROM_HR && h.hour < KIDS_EVENING_FROM_HR && h.tempC > s.afternoonMax) s.afternoonMax = h.tempC;
+        if (!isnan(h.rainMm)) s.rainSum += h.rainMm;
+        if (!isnan(h.gustKmh) && h.gustKmh > s.gustMax) s.gustMax = h.gustKmh;
+        if (h.prob > s.probMax) s.probMax = h.prob;
+        if (reportWet(h)) {
+            s.wet++;
+            if (s.firstWet < 0) s.firstWet = h.hour;
+            s.lastWet = h.hour;
+            if (reportStorm(h.code)) s.storm++;
+            if (reportSnow(h.code)) s.snow++;
+            if (reportDrizzle(h.code)) s.drizzle++;
+        } else {
+            s.sky[reportSky(h.code)]++;
+        }
+    }
+    return s;
+}
+
+// The words, English and Dutch
+enum { W_TODAY, W_TOMORROW, W_SUNNY, W_SUN_CLOUDS, W_CLOUDY, W_FOGGY,
+       W_DRY, W_MOSTLY_DRY, W_STORM, W_STORM_CHANCE, W_SNOW, W_SNOW_SOME, W_DRIZZLE_SOME, W_SHOWER_SOME,
+       W_SHOWERS, W_DRIZZLE, W_RAIN, W_HEAVY_RAIN, W_COLD, W_CHILLY, W_COOL, W_COUNT };
+static const char* const REPORT_WORDS[2][W_COUNT] = {
+    { "Today", "Tomorrow", "sunny", "sun and clouds", "cloudy", "foggy",
+      "dry", "mostly dry", "thunderstorms", "chance of thunder", "snow", "snow at times", "drizzle at times",
+      "a shower at times", "showers", "drizzle", "rain", "heavy rain", "Cold", "Chilly", "Cool" },
+    { "Vandaag", "Morgen", "zonnig", "zon en wolken", "bewolkt", "mistig",
+      "droog", "overwegend droog", "onweer", "kans op onweer", "sneeuw", "soms sneeuw", "soms motregen",
+      "soms een bui", "buien", "motregen", "regen", "veel regen", "Koude", "Frisse", "Koele" },
+};
+
+static int skyWord(const ReportSummary& s) {
+    int best = SKY_CLEAR;
+    for (int k = 1; k < 4; k++) if (s.sky[k] > s.sky[best]) best = k;
+    if (s.sky[best] == 0) return W_CLOUDY;   // wet all day
+    // Sun and clouds when the clear hours do not outnumber the cloudy ones
+    if (best == SKY_CLEAR && s.sky[SKY_CLOUDY] + s.sky[SKY_PARTLY] > s.sky[SKY_CLEAR]) return W_SUN_CLOUDS;
+    static const int words[4] = { W_SUNNY, W_SUN_CLOUDS, W_CLOUDY, W_FOGGY };
+    return words[best];
+}
+
+static int precipWord(const ReportSummary& s) {
+    if (s.wet == 0) return s.probMax >= 30 ? W_MOSTLY_DRY : W_DRY;
+    bool most = s.wet * 2 >= s.n;
+    if (s.storm) return most ? W_STORM : W_STORM_CHANCE;
+    if (s.snow) return most ? W_SNOW : W_SNOW_SOME;
+    if (s.wet <= 2) return s.drizzle == s.wet ? W_DRIZZLE_SOME : W_SHOWER_SOME;
+    if (!most) return W_SHOWERS;
+    if (s.drizzle * 2 >= s.wet) return W_DRIZZLE;
+    return s.rainSum >= 5 ? W_HEAVY_RAIN : W_RAIN;
+}
+
+// Precipitation words that describe the whole day on their own (no sky word in front)
+static bool precipAlone(int word) {
+    return word == W_STORM || word == W_SNOW || word == W_DRIZZLE || word == W_RAIN || word == W_HEAVY_RAIN;
+}
+
+static int roundTemp(float t) { return (int)lroundf(t); }
+
+void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherReport& out) {
+    out.count = 0;
+    if (count == 0) return;
+    bool nl = lang == REPORT_LANG_NL;
+    const char* const* w = REPORT_WORDS[nl ? 1 : 0];
+    const char deg = REPORT_DEGREE;
+
+    // The stretch the report is about: from now (or the next 07:00) until 22:00. From 18:00 that is tomorrow.
+    // The night hours before it only count for frost.
+    int now = hours[0].hour;
+    bool tomorrow = now >= KIDS_EVENING_FROM_HR;
+    size_t dayFrom = 0;
+    if (tomorrow || now < KIDS_MORNING_FROM_HR) {
+        while (dayFrom < count && hours[dayFrom].hour != KIDS_MORNING_FROM_HR) dayFrom++;
+    }
+    size_t dayTo = dayFrom;
+    while (dayTo < count && hours[dayTo].hour >= KIDS_MORNING_FROM_HR && hours[dayTo].hour < KIDS_EVENING_UNTIL_HR) {
+        dayTo++;
+    }
+    ReportSummary s = summarizeReport(hours, dayFrom, dayTo);
+    if (s.n == 0) return;
+    ReportSummary night = summarizeReport(hours, 0, dayFrom);
+
+    // A change during the day (rain that starts later, or stops): then the first sentence names only the sky
+    char change[REPORT_SENTENCE_LEN] = "";
+    if (s.wet > 0 && s.wet < s.n) {
+        const ReportHour* first = nullptr;
+        for (size_t i = dayFrom; i < dayTo && !first; i++) if (hours[i].valid && !isnan(hours[i].tempC)) first = &hours[i];
+        bool wetNow = first && reportWet(*first);
+        bool mostlyDrizzle = s.drizzle * 2 >= s.wet;
+        if (!wetNow && s.wet <= 2) {
+            if (nl) {
+                const char* what = s.storm ? "kans op onweer" : s.snow ? "wat sneeuw" : mostlyDrizzle ? "wat motregen" : "een bui";
+                snprintf(change, sizeof(change), "Rond %d uur %s.", s.firstWet, what);
+            } else {
+                const char* what = s.storm ? "Chance of thunder" : s.snow ? "Some snow" : mostlyDrizzle ? "Some drizzle" : "A shower";
+                snprintf(change, sizeof(change), "%s around %d:00.", what, s.firstWet);
+            }
+        } else {
+            const char* what = nl ? (s.storm ? "onweer" : s.snow ? "sneeuw" : mostlyDrizzle ? "motregen" : "regen")
+                                  : (s.storm ? "Thunderstorms" : s.snow ? "Snow" : mostlyDrizzle ? "Drizzle" : "Rain");
+            if (!wetNow) {
+                if (nl) snprintf(change, sizeof(change), "Vanaf %d uur %s.", s.firstWet, what);
+                else snprintf(change, sizeof(change), "%s from %d:00.", what, s.firstWet);
+            } else if (s.lastWet + 1 < s.lastHour) {   // at least two dry hours at the end
+                if (nl) snprintf(change, sizeof(change), "Tot %d uur %s, daarna droog.", s.lastWet + 1, what);
+                else snprintf(change, sizeof(change), "%s until %d:00, then dry.", what, s.lastWet + 1);
+            }
+        }
+    }
+
+    // 1. The day: the weather and the temperature
+    char weather[40];
+    int sky = skyWord(s), pre = precipWord(s);
+    if (change[0]) snprintf(weather, sizeof(weather), "%s", w[sky]);
+    else if (precipAlone(pre)) snprintf(weather, sizeof(weather), "%s", w[pre]);
+    else snprintf(weather, sizeof(weather), "%s, %s", w[sky], w[pre]);
+    const char* when = w[tomorrow ? W_TOMORROW : W_TODAY];
+    int lo = roundTemp(s.tmin), hi = roundTemp(s.tmax);
+    char (*line)[REPORT_SENTENCE_LEN] = out.sentences;
+    bool freshMorning = s.morningMin < 999 && s.afternoonMax > -999 && s.afternoonMax - s.morningMin >= 5;
+    if (freshMorning) {
+        int am = roundTemp(s.morningMin), pm = roundTemp(s.afternoonMax);
+        const char* morning = w[am <= 0 ? W_COLD : am < 12 ? W_CHILLY : W_COOL];
+        snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s %s.", when, weather);
+        if (nl) snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s ochtend (%d%c), 's middags %d%c.", morning, am, deg, pm, deg);
+        else snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s morning (%d%c), %d%c in the afternoon.", morning, am, deg, pm, deg);
+    } else if (hi - lo <= 2) {
+        snprintf(line[out.count++], REPORT_SENTENCE_LEN, nl ? "%s %s, rond %d%c." : "%s %s, around %d%c.", when, weather, hi, deg);
+    } else {
+        snprintf(line[out.count++], REPORT_SENTENCE_LEN, nl ? "%s %s, %d tot %d%c." : "%s %s, %d to %d%c.", when, weather, lo, hi, deg);
+    }
+
+    // 2. The change
+    if (change[0]) snprintf(line[out.count++], REPORT_SENTENCE_LEN, "%s", change);
+
+    // 3. One thing to watch out for
+    char* watch = line[out.count];
+    if (night.n && night.tmin <= 0) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Vannacht vorst, kans op gladheid." : "Frost tonight, roads may be icy.");
+    else if (s.tmin <= 0) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Kans op gladheid." : "Roads may be icy.");
+    else if (s.gustMax >= 60) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Harde windvlagen tot %d km/u." : "Strong gusts up to %d km/h.", roundTemp(s.gustMax));
+    else if (s.rainSum >= 10 && pre == W_HEAVY_RAIN && !change[0])   // the first sentence already says it
+        snprintf(watch, REPORT_SENTENCE_LEN, nl ? "In totaal %d mm." : "%d mm in total.", roundTemp(s.rainSum));
+    else if (s.rainSum >= 10) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Veel regen: %d mm." : "Lots of rain: %d mm.", roundTemp(s.rainSum));
+    else if (s.gustMax >= 45) snprintf(watch, REPORT_SENTENCE_LEN, nl ? "Stevige wind." : "Quite windy.");
+    else watch = nullptr;
+    if (watch) out.count++;
+}
+
+size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT_COLS + 1], size_t maxLines) {
+    size_t n = 0, len = 0;
+    char line[REPORT_COLS + 1];
+    auto flush = [&]() {
+        line[len] = '\0';
+        if (n < maxLines) memcpy(lines[n], line, len + 1);
+        n++;
+        len = 0;
+    };
+    for (size_t k = 0; k < sentences && k < r.count; k++) {
+        const char* p = r.sentences[k];
+        while (*p) {
+            while (*p == ' ') p++;
+            size_t wl = 0;
+            while (p[wl] && p[wl] != ' ') wl++;
+            if (wl == 0) break;
+            while (wl > 0) {
+                if (len > 0 && len + 1 + wl > REPORT_COLS) flush();
+                if (len > 0) line[len++] = ' ';
+                size_t take = wl > REPORT_COLS - len ? REPORT_COLS - len : wl;   // a word longer than a line is split
+                memcpy(line + len, p, take);
+                len += take;
+                p += take;
+                wl -= take;
+                if (wl > 0) flush();
+            }
+        }
+        if (len > 0) flush();   // every sentence starts on a new line
+    }
+    return n;
+}
+
 static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
-    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown"
+    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report"
 };
 
 const char* screenName(int id) {

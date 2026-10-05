@@ -18,6 +18,7 @@ the home screen and the ride rating one long press away, or only the clock and t
 | `weather` | [Kids](kids.md): the weather for the next three parts of the day |
 | `clothes` | Kids: what to wear for the next three parts of the day |
 | `countdown` | Kids: the sleeps to a birthday or holiday (skipped while none is near) |
+| `report` | [The weather report](#the-weather-report): the day in a few short sentences |
 
 ## Tap, long press, back home
 
@@ -38,12 +39,34 @@ the home screen and the ride rating one long press away, or only the clock and t
 | Preset | Tap | Long press |
 |--------|-----|------------|
 | Rider (the default) | ride rating, the other day | week grid, next hours, clock |
-| Kids | kids weather, clothes, countdown | (none: a long press is a tap) |
+| Kids | kids weather, clothes, countdown | weather report |
 
 After choosing a preset you can still change the lists, then press *Save Settings*.
 
 The kids settings cards (*Clothing* and *Countdowns*) only show in the web UI while a kids screen is in one
 of the lists.
+
+## The weather report
+
+The `report` screen sums up the day in a few short sentences, for the grown-ups: with the kids preset it is
+one long press away, and any other list can have it too. It is in English or Dutch, by *Language* under
+*Display* in the web UI.
+
+![Four weather reports: a sunny day with a fresh morning and rain from 19:00; tomorrow with a shower around 14:00 and strong gusts; in English, cloudy with rain until 15:00; a frosty sunny day, roads may be icy](images/report.png){ .center }
+
+It is about the rest of today until 22:00; from 18:00 on it is about tomorrow, 07:00 to 22:00. The device
+writes it itself from the hourly forecast, by fixed rules:
+
+1. **The day:** the sky (sunny, sun and clouds, cloudy, foggy), the rain (dry, mostly dry, a shower at times,
+   showers, rain, heavy rain, drizzle, snow, thunderstorms) and the temperature, from lowest to highest, or
+   *around* one number when it hardly changes. A morning at least 5 degrees colder than the afternoon gets
+   its own sentence, with the coldest morning hour and the warmest afternoon hour.
+2. **A change:** a shower around an hour, rain from an hour on, or rain until an hour and then dry.
+3. **One thing to watch out for**, the first that applies: frost tonight or during the day (roads may be
+   icy), gusts of 60 km/h or more, 10 mm of rain or more, gusts of 45 km/h or more.
+
+An hour counts as wet from 0.2 mm, as on the kids screens. The report redraws every hour and after every
+forecast update. When the sentences do not fit on the screen, the last ones are left out.
 
 ## In config.json
 

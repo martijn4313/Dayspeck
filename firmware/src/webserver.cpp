@@ -470,11 +470,11 @@ static const char index_html[] PROGMEM = R"HTML(
         const SCREENS = [
             ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
             ['hours', 'Next hours'], ['clock', 'Clock'], ['weather', 'Kids: weather'],
-            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown']
+            ['clothes', 'Kids: clothes'], ['countdown', 'Kids: countdown'], ['report', 'Weather report']
         ];
         const PRESETS = {
             rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },
-            kids: { tap: ['weather', 'clothes', 'countdown'], hold: [] }
+            kids: { tap: ['weather', 'clothes', 'countdown'], hold: ['report'] }
         };
         const MAX_SLOTS = 6;
         function addSlot(boxId, value) {
