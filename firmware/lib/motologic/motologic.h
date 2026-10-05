@@ -216,6 +216,40 @@ int mapWeatherCode(int code, float windKmh, float warnWindKmh);
 // Temperature trend 'u' (rising), 'd' (falling) or 'f' (flat) from now to a few hours later; NAN = flat
 char temperatureTrend(float now, float later);
 
+// Weather report: the day in 1-4 short sentences, by fixed rules (no network service). It is about the rest
+// of today until 22:00, or from 18:00 on about tomorrow 07-22. Sentences: the sky, rain and temperature
+// (a fresh morning gets its own sentence), a change during the day (a shower around an hour, rain from or
+// until an hour), and one thing to watch out for (frost, strong gusts, a lot of rain, wind).
+#define REPORT_LANG_EN        0
+#define REPORT_LANG_NL        1
+#define REPORT_MAX_SENTENCES  4
+#define REPORT_SENTENCE_LEN   64
+#define REPORT_DEGREE         '\xF8'   // the degree sign in the display font (code page 437)
+
+// One forecast hour for the report
+struct ReportHour {
+    int   hour;       // local hour 0-23
+    float tempC;
+    float rainMm;
+    float gustKmh;
+    int   prob;       // chance of precipitation %, -1 = unknown
+    int   code;       // WMO weather code, -1 = unknown
+    bool  valid;
+};
+
+struct WeatherReport {
+    uint8_t count;    // 0: not enough forecast hours
+    char    sentences[REPORT_MAX_SENTENCES][REPORT_SENTENCE_LEN];
+};
+
+// hours[0] is the current hour, the next ones follow it hour by hour
+void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherReport& out);
+
+// Word wrap the first `sentences` sentences of a report to lines of REPORT_COLS characters, every sentence
+// on a new line. Fills at most maxLines lines; returns how many the text needs (which may be more).
+#define REPORT_COLS 21
+size_t wrapReport(const WeatherReport& r, size_t sentences, char (*lines)[REPORT_COLS + 1], size_t maxLines);
+
 // Screens. Every screen has a fixed name (config.json, web UI); which ones are used, and in which order, is
 // set by two slot lists: the tap list (a tap steps through it; slot 0 is the home screen) and the hold list
 // (a long press steps through it, after its last slot back home).
@@ -227,7 +261,8 @@ char temperatureTrend(float now, float later);
 #define SCREEN_WEATHER     5   // kids: the weather in three parts of the day
 #define SCREEN_CLOTHES     6   // kids: what to wear in three parts of the day
 #define SCREEN_COUNTDOWN   7   // kids: sleeps to a birthday or holiday (only while one is near)
-#define SCREEN_COUNT       8
+#define SCREEN_REPORT      8   // a short weather report in words, for the parents
+#define SCREEN_COUNT       9
 #define MAX_SCREEN_SLOTS   6
 
 const char* screenName(int id);            // "ride", "rideOther", "week", ...; "" for an unknown id

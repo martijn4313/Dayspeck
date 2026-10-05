@@ -35,7 +35,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `display.screens.hold` | the screens a long press steps through, 0-6 (empty: a long press is a tap) |
 | `display.screens.returnSeconds` | back to the home screen after this many seconds, 0-3600; 0 = never (default 30) |
 | `display.cycleSeconds` | step through the tap list by itself every this many seconds, 2-3600; 0 = off (default) |
-| `display.language` | `en` (default) or `nl`; currently without visible effect (the kids screens show no words) |
+| `display.language` | `en` (default) or `nl`: the language of the weather report screen |
 | `display.sleepMinutes` | switch the panel off after this many idle minutes at night; 0 = never |
 | `display.quietStart`, `display.quietEnd` | quiet hours: panel off from start (inclusive) to end (exclusive), local hours 0-23; -1 = off |
 | `ota.url` | update server (the relay), `http://` only; default `OTA_DEFAULT_URL` in `config.h` |

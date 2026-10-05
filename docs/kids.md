@@ -99,8 +99,8 @@ needs the network time, like the autumn leaves. A birthday on 29 February counts
 other years.
 
 **Settings.** In the web UI under *Display*: *Always sleep*: the screen stays off and a touch wakes it for
-30 s (the first touch only wakes it). It works for every screen. *Language* has no visible effect yet, since
-the screens show no words.
+30 s (the first touch only wakes it). It works for every screen. *Language* is the language of the
+[weather report](screens.md#the-weather-report); the kids screens themselves show no words.
 
 Under *Clothing (kids)* you can change the temperature limits of the outfits table above (and the gust speed
 for the wind picture), for a child who feels the cold sooner or later than the defaults. The limits must go
@@ -117,5 +117,5 @@ The hours of the parts of the day are compile-time settings (`KIDS_*_HR` in
 (the autumn leaves do blow across them).
 
 **Getting the kids screens.** They are part of the one firmware: in the web UI under [Screens](screens.md)
-choose the *Kids* preset (weather, clothes, countdown on a tap) and press *Save Settings*, or mix them with
-the rider screens.
+choose the *Kids* preset (weather, clothes, countdown on a tap; the weather report for the parents on a long
+press) and press *Save Settings*, or mix them with the rider screens.

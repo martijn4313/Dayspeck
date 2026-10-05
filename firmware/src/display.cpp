@@ -1269,3 +1269,19 @@ void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int mi
     display.print(buf);
 }
 
+
+void renderReportView(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS + 1], size_t count) {
+    d.clearDisplay();
+    d.setTextSize(1);
+    d.setTextColor(SSD1306_WHITE);
+    d.cp437(true);   // REPORT_DEGREE is the code page 437 degree sign
+    const int lineHeight = 9;
+    int y = (64 - (int)count * lineHeight + 1) / 2;
+    if (y < 0) y = 0;
+    for (size_t i = 0; i < count; i++) {
+        d.setCursor(1, y);
+        d.print(lines[i]);
+        y += lineHeight;
+    }
+    d.cp437(false);
+}

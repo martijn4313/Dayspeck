@@ -238,7 +238,7 @@ void loadConfig() {
     } else if (doc["kids"].is<JsonObject>()) {
         // A config from the former kids firmware (only it wrote "kids"): keep showing the kids screens
         screensTap = ScreenList{ { SCREEN_WEATHER, SCREEN_CLOTHES, SCREEN_COUNTDOWN }, 3 };
-        screensHold = ScreenList{ {}, 0 };
+        screensHold = ScreenList{ { SCREEN_REPORT }, 1 };
     }
     if (!displayTouchEnabled && displayAlwaysSleep) {
         displayAlwaysSleep = false;   // nothing could wake the screen again
@@ -515,6 +515,45 @@ void renderHourly() {
 
 
 /**
+ * The weather report: a few sentences in the display language, word wrapped. Sentences at the end are left out
+ * when they do not fit.
+ */
+#define REPORT_MAX_LINES 7
+void renderReport() {
+    const HourSlice* slices = nullptr;
+    time_t firstEpoch = 0;
+    size_t n = getUpcomingHours(slices, firstEpoch);
+    ReportHour hours[36];
+    size_t count = 0;
+    for (; count < n && count < 36; count++) {
+        const HourSlice& s = slices[count];
+        hours[count] = ReportHour{ localHourOf(firstEpoch + (time_t)count * 3600), (float)s.tempC, s.rainTenthMm / 10.0f,
+                                   (float)s.gustKmh, s.rainProb == 255 ? -1 : (int)s.rainProb,
+                                   s.code == 255 ? -1 : (int)s.code, s.valid };
+    }
+    if (count > 0) {   // the current hour as measured now
+        WeatherData w = getCurrentWeather();
+        hours[0].tempC = w.tempC;
+        hours[0].rainMm = w.precipMm;
+        hours[0].code = w.code;
+        hours[0].valid = true;
+    }
+
+    bool nl = displayLanguage == "nl";
+    static WeatherReport report;   // static: 260 bytes off the stack
+    weatherReport(hours, count, nl ? REPORT_LANG_NL : REPORT_LANG_EN, report);
+    if (report.count == 0) {
+        report.count = 1;
+        strcpy(report.sentences[0], nl ? "Nog geen verwachting." : "No forecast yet.");
+    }
+    char lines[REPORT_MAX_LINES][REPORT_COLS + 1];
+    size_t sentences = report.count, used;
+    while ((used = wrapReport(report, sentences, lines, REPORT_MAX_LINES)) > REPORT_MAX_LINES && sentences > 1) sentences--;
+    renderReportView(display, lines, used < REPORT_MAX_LINES ? used : REPORT_MAX_LINES);
+}
+
+
+/**
  * Screens that can be shown right now (bit 1 << id): the clock needs the time, the countdown a birthday or
  * holiday within range
  */
@@ -577,6 +616,7 @@ void render() {
         case SCREEN_COUNTDOWN: renderKidsCountdown(display, countdown, millis()); break;
         case SCREEN_WEEK:      renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay); break;
         case SCREEN_HOURS:     renderHourly(); break;
+        case SCREEN_REPORT:    renderReport(); break;
         default:
             renderDisplay();
             renderStatusMarks(display, rideShowsTomorrow(), wifiBars());
@@ -931,6 +971,15 @@ void loop() {
 
     // The clock redraws every second (blinking colon)
     int screen = currentScreen();
+    // The report changes with the hour (from 18:00 it is about tomorrow)
+    if (screen == SCREEN_REPORT && !state.displayOff && timezoneKnown()) {
+        static int lastHour = -1;
+        int hour = localHourOf(time(nullptr));
+        if (hour != lastHour) {
+            lastHour = hour;
+            state.displayDirty = true;
+        }
+    }
     if (screen == SCREEN_CLOCK && !state.displayOff) {
         static time_t lastSecond = 0;
         time_t nowSecond = time(nullptr);

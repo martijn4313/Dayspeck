@@ -622,6 +622,127 @@ void test_contrast_for_percent() {
     TEST_ASSERT_EQUAL_UINT8(255, contrastForPercent(150));
 }
 
+// Weather report: hours from `start` on, made by f(hour)
+static size_t reportDay(ReportHour* out, int start, int count, ReportHour (*f)(int)) {
+    for (int i = 0; i < count; i++) out[i] = f((start + i) % 24);
+    return (size_t)count;
+}
+static ReportHour rh(int hour, float t, float rain, float gust, int prob, int code) {
+    return ReportHour{ hour, t, rain, gust, prob, code, true };
+}
+static void assertReport(const WeatherReport& r, std::initializer_list<const char*> expected) {
+    TEST_ASSERT_EQUAL(expected.size(), r.count);
+    size_t i = 0;
+    for (const char* e : expected) TEST_ASSERT_EQUAL_STRING(e, r.sentences[i++]);
+}
+
+void test_weather_report() {
+    ReportHour h[36];
+    WeatherReport r;
+    // A: 07:00, a fresh morning, sun, rain from 19:00
+    size_t n = reportDay(h, 7, 24, [](int hr) {
+        float t = hr < 7 || hr >= 22 ? 9.0f : hr < 11 ? 10 + (hr - 7) * 1.8f : hr < 17 ? 17.0f : 17 - (hr - 16) * 0.8f;
+        if (hr >= 19 && hr < 22) return rh(hr, t, 1.2f, 20, 80, 61);
+        return rh(hr, t, 0, 20, 10, hr < 12 ? 0 : 1);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zonnig.", "Frisse ochtend (10\xF8), 's middags 17\xF8.", "Vanaf 19 uur regen." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Today sunny.", "Chilly morning (10\xF8), 17\xF8 in the afternoon.", "Rain from 19:00." });
+
+    // B: 09:00, rain until 15:00
+    n = reportDay(h, 9, 24, [](int hr) {
+        float t = 12 + (hr >= 12 && hr < 18 ? 2.0f : 0);
+        if (hr >= 7 && hr < 15) return rh(hr, t, 1.5f, 30, 90, 63);
+        return rh(hr, t, 0, 30, 40, 3);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag bewolkt, rond 14\xF8.", "Tot 15 uur regen, daarna droog." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Today cloudy, around 14\xF8.", "Rain until 15:00, then dry." });
+
+    // C: 07:00, frost and sun
+    n = reportDay(h, 7, 24, [](int hr) {
+        return rh(hr, hr < 9 ? -3.0f : hr < 15 ? -3 + (hr - 9) * 1.2f : 4 - (hr - 15) * 0.8f, 0, 15, 5, 0);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zonnig, droog.", "Koude ochtend (-3\xF8), 's middags 4\xF8.", "Kans op gladheid." });
+
+    // D: 20:00, about tomorrow: a shower around 14:00 and strong gusts
+    n = reportDay(h, 20, 30, [](int hr) {
+        float t = hr >= 20 || hr < 7 ? 9.0f : hr < 14 ? 8 + (hr - 7) * 1.1f : 16 - (hr - 14) * 0.5f;
+        float gust = hr >= 12 && hr < 18 ? 65.0f : 30.0f;
+        if (hr == 14 || hr == 15) return rh(hr, t, 2.0f, gust, 70, 81);
+        return rh(hr, t, 0, gust, 20, 2);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Morgen zon en wolken.", "Frisse ochtend (8\xF8), 's middags 16\xF8.", "Rond 14 uur een bui.",
+                      "Harde windvlagen tot 65 km/u." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Tomorrow sun and clouds.", "Chilly morning (8\xF8), 16\xF8 in the afternoon.", "A shower around 14:00.",
+                      "Strong gusts up to 65 km/h." });
+
+    // E: 13:00, hot, thunder around 17:00
+    n = reportDay(h, 13, 24, [](int hr) {
+        float t = hr < 18 ? 27.0f : 22.0f;
+        if (hr == 17) return rh(hr, t, 4, 25, 60, 95);
+        return rh(hr, t, 0, 25, 20, 1);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zonnig, 22 tot 27\xF8.", "Rond 17 uur kans op onweer." });
+
+    // F: 10:00, grey with a chance of rain
+    n = reportDay(h, 10, 24, [](int hr) { return rh(hr, 11.0f + (hr >= 12 && hr < 16 ? 1.0f : 0), 0, 25, 40, 3); });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag bewolkt, overwegend droog, rond 12\xF8." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Today cloudy, mostly dry, around 12\xF8." });
+
+    // Frost tonight before a mild tomorrow; rain all day
+    n = reportDay(h, 21, 30, [](int hr) {
+        if (hr >= 22 || hr < 7) return rh(hr, -2, 0, 10, 0, 0);
+        return rh(hr, 6, 1.0f, 20, 90, 61);
+    });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Morgen veel regen, rond 6\xF8.", "Vannacht vorst, kans op gladheid." });
+    // The same day without the frost: the amount, without saying "heavy rain" twice
+    for (size_t i = 0; i < n; i++) if (h[i].tempC < 0) h[i].tempC = 3;
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Morgen veel regen, rond 6\xF8.", "In totaal 15 mm." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Tomorrow heavy rain, around 6\xF8.", "15 mm in total." });
+}
+
+void test_weather_report_needs_the_day() {
+    ReportHour h[36];
+    WeatherReport r;
+    weatherReport(h, 0, REPORT_LANG_EN, r);
+    TEST_ASSERT_EQUAL(0, r.count);
+    // At 20:00 with forecast hours only until 02:00: nothing about tomorrow yet
+    size_t n = reportDay(h, 20, 6, [](int hr) { return rh(hr, 10, 0, 10, 0, 0); });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    TEST_ASSERT_EQUAL(0, r.count);
+    // Invalid hours do not count
+    n = reportDay(h, 10, 6, [](int hr) { ReportHour x = rh(hr, 10, 0, 10, 0, 0); x.valid = hr != 10; return x; });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Today sunny, dry, around 10\xF8." });
+}
+
+void test_wrap_report() {
+    WeatherReport r = { 3, { "Vandaag zonnig, 22 tot 27\xF8.", "Rond 17 uur kans op onweer.", "Abcdefghijklmnopqrstuvwxyz ok" } };
+    char lines[8][REPORT_COLS + 1];
+    TEST_ASSERT_EQUAL(6, wrapReport(r, 3, lines, 8));
+    TEST_ASSERT_EQUAL_STRING("Vandaag zonnig, 22", lines[0]);
+    TEST_ASSERT_EQUAL_STRING("tot 27\xF8.", lines[1]);
+    TEST_ASSERT_EQUAL_STRING("Rond 17 uur kans op", lines[2]);   // every sentence starts on a new line
+    TEST_ASSERT_EQUAL_STRING("onweer.", lines[3]);
+    TEST_ASSERT_EQUAL_STRING("Abcdefghijklmnopqrstu", lines[4]);   // a word longer than a line is split
+    TEST_ASSERT_EQUAL_STRING("vwxyz ok", lines[5]);
+    TEST_ASSERT_EQUAL(4, wrapReport(r, 2, lines, 8));
+    TEST_ASSERT_EQUAL(6, wrapReport(r, 3, lines, 2));               // counts the lines it could not store
+    TEST_ASSERT_EQUAL_STRING("tot 27\xF8.", lines[1]);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_rate_ride_good);
@@ -672,5 +793,8 @@ int main(int, char**) {
     RUN_TEST(test_parse_version);
     RUN_TEST(test_newer_version);
     RUN_TEST(test_hex_to_bytes);
+    RUN_TEST(test_weather_report);
+    RUN_TEST(test_weather_report_needs_the_day);
+    RUN_TEST(test_wrap_report);
     return UNITY_END();
 }

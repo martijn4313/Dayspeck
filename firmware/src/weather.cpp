@@ -23,8 +23,9 @@ uint8_t weekStartDow = 0;
 int16_t weekScore[7] = { -1, -1, -1, -1, -1, -1, -1 };
 int8_t  weekBestDay = -1;
 
-// Compact copy of the next hours (from the hour of the last fetch), for the hourly view and leave advice
-#define HOURLY_KEEP 24
+// Compact copy of the next hours (from the hour of the last fetch), for the hourly view, the leave advice, the
+// kids screens and the weather report (from 18:00 about tomorrow until 22:00: 28 hours, plus some slack)
+#define HOURLY_KEEP 36
 static HourSlice hourSlices[HOURLY_KEEP];
 static size_t hourlyCount = 0;
 static time_t hourlyStartEpoch = 0;     // start of hourly[0]
@@ -166,7 +167,7 @@ static bool parseForecast(JsonDocument& doc) {
         weekBestDay = bestDay(scores, FORECAST_DAYS);
         weekStartDow = dow0;
 
-        // Keep the next 24 hours in compact form for the hourly view and the leave advice
+        // Keep the next hours in compact form (HOURLY_KEEP)
         long startIdx = nowIdx < 0 ? 0 : nowIdx;
         size_t keep = 0;
         for (; keep < HOURLY_KEEP && (size_t)(startIdx + keep) < temps.size(); keep++) {
