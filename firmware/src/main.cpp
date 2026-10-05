@@ -287,6 +287,56 @@ bool initDisplay() {
 
 
 /**
+ * Demo mode (web UI, Display card): about a minute of the screens and their animations with made-up weather,
+ * so you can see the rain, snow, gusts, leaves, confetti and the report blowing away without waiting for the
+ * weather. The real forecast is left alone; a touch stops it.
+ */
+struct DemoScene {
+    uint8_t screen;
+    uint8_t seconds;
+    char    rating;      // RIDE_*
+    int8_t  tempC;
+    uint8_t windKmh, gustKmh;
+    uint8_t rainTenthMm;
+    uint8_t condition;   // WEATHER_*
+    uint8_t code;        // WMO weather code
+    bool    night;
+    uint8_t countdown;   // 0 = none, 1 = a birthday in 6 sleeps, 2 = Christmas is today
+    bool    blowAway;    // the scene ends with the report blowing away
+};
+static const DemoScene DEMO_SCENES[] = {
+    { SCREEN_RIDE,       5, RIDE_GOOD,    18, 12, 18,  0, WEATHER_CLEAR,  1, false, 0, false },   // a good day
+    { SCREEN_RIDE,       6, RIDE_CAUTION,  9, 20, 30, 12, WEATHER_RAIN,  63, false, 0, false },   // rain
+    { SCREEN_RIDE,       5, RIDE_DONT,    -2, 15, 25,  6, WEATHER_SNOW,  73, false, 0, false },   // snow
+    { SCREEN_RIDE,       7, RIDE_DONT,     8, 45, 70,  0, WEATHER_WIND,   3, true,  0, false },   // a stormy autumn night
+    { SCREEN_VILLAGE,    7, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },   // kids home, leaves
+    { SCREEN_WEATHER,    6, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },
+    { SCREEN_CLOTHES,    5, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },
+    { SCREEN_COUNTDOWN,  4, RIDE_GOOD,    11, 10, 15,  0, WEATHER_CLEAR,  1, false, 1, false },
+    { SCREEN_COUNTDOWN,  5, RIDE_GOOD,    11, 10, 15,  0, WEATHER_CLEAR,  1, false, 2, false },   // confetti
+    { SCREEN_REPORT,     5, RIDE_GOOD,    11, 30, 65,  0, WEATHER_WIND,   2, false, 0, true  },   // blows away
+    { SCREEN_HOURS,      4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
+    { SCREEN_WEEK,       4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
+    { SCREEN_CLOCK,      4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
+};
+#define DEMO_SCENE_COUNT (sizeof(DEMO_SCENES) / sizeof(DEMO_SCENES[0]))
+#define DEMO_HOURS 36
+
+static struct {
+    bool          active;
+    bool          repeat;
+    bool          blown;          // the report of this scene has blown away
+    uint8_t       scene;
+    unsigned long sceneStartMs;
+} demo = {};
+static HourSlice demoHours[DEMO_HOURS];
+static WeatherDemo demoWeather = {};
+
+static const DemoScene& demoScene() {
+    return DEMO_SCENES[demo.scene];
+}
+
+/**
  * Update day/night state from NTP time and the forecast's sunrise/sunset.
  * Without synced time it assumes day rather than guessing from a bogus clock.
  */
@@ -308,6 +358,7 @@ void updateDayNight() {
         }
     }
 
+    if (demo.active) night = demoScene().night;
     if (night != state.isNight) {
         state.isNight = night;
         state.displayDirty = true;
@@ -338,6 +389,7 @@ void updateDayNight() {
  * Main render function - draws the primary view into the buffer
  */
 static int currentScreen() {
+    if (demo.active) return demoScene().screen;
     return screenAt(state.screen, screensTap, screensHold);
 }
 
@@ -386,6 +438,11 @@ static bool nightAt(time_t t) {
  */
 static KidsCountdown kidsCountdownNow() {
     KidsCountdown none = {};
+    if (demo.active) {
+        if (demoScene().countdown == 1) return KidsCountdown{ true, KIDS_EVENT_BIRTHDAY, 6, 5, 'E' };
+        if (demoScene().countdown == 2) return KidsCountdown{ true, KIDS_EVENT_CHRISTMAS, 0, 0, 0 };
+        return none;
+    }
     if (!state.timeSynced || !timezoneKnown()) return none;
     struct tm t = {};
     time_t local = time(nullptr) + utcOffsetSeconds;
@@ -495,6 +552,7 @@ int wifiBars() {
  * the southern hemisphere has its autumn in March-May.
  */
 static bool autumnNow() {
+    if (demo.active) return true;   // the leaves are part of the show
     if (!state.timeSynced || !timezoneKnown()) return false;
     struct tm t = {};
     time_t local = time(nullptr) + utcOffsetSeconds;
@@ -546,6 +604,9 @@ void renderHourly() {
  * out when they do not fit.
  */
 #define REPORT_MAX_LINES 7
+static char reportLines[REPORT_MAX_LINES][REPORT_COLS + 1];   // as last shown: what blows away
+static size_t reportLineCount = 0;
+
 void renderReport() {
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
@@ -574,9 +635,19 @@ void renderReport() {
         strcpy(report.sentences[0], nl ? "Nog geen verwachting." : "No forecast yet.");
         report.priority[0] = 4;
     }
-    char lines[REPORT_MAX_LINES][REPORT_COLS + 1];
-    renderReportView(display, lines, fitReport(report, lines, REPORT_MAX_LINES));
+    reportLineCount = fitReport(report, reportLines, REPORT_MAX_LINES);
+    renderReportView(display, reportLines, reportLineCount);
 }
+
+// Leaving the report while it is windy: the text blows away first, then the next screen shows
+static struct {
+    bool      active;
+    int       frame;
+    float     strength;
+    ScreenNav next;
+} reportBlow = {};
+
+#define REPORT_BLOW_MAX_FRAMES 60   // 4 s at most, whatever happens
 
 
 /**
@@ -600,7 +671,7 @@ static const WindArea *windAreaFor(int screen) {
     return nullptr;
 }
 
-static void showScreen(ScreenNav nav) {
+static void switchScreen(ScreenNav nav) {
     // Between screens with the same area the leaves fly on where they were (a seamless switch); on a screen
     // without them they pause. Only a screen with the other area starts them afresh, so leaves from one
     // area are never drawn in the other.
@@ -609,6 +680,130 @@ static void showScreen(ScreenNav nav) {
     state.screen = nav;
     state.screenEnteredMs = millis();
     state.displayDirty = true;
+}
+
+static void showScreen(ScreenNav nav) {
+    if (reportBlow.active) {
+        if (nav.list == reportBlow.next.list && nav.slot == reportBlow.next.slot) return;   // it is on its way there
+        reportBlow.active = false;   // another touch: skip the rest of the animation
+        switchScreen(nav);
+        return;
+    }
+    // From the report on a windy day (gusts that show the wind picture), the text blows away first
+    WeatherData w = getCurrentWeather();
+    bool toOther = nav.list != state.screen.list || nav.slot != state.screen.slot;
+    if (currentScreen() == SCREEN_REPORT && toOther && state.weatherValid && !state.displayOff &&
+        reportLineCount > 0 && w.gustKmh > kidsLimits.windyGustKmh) {
+        reportBlow.active = true;
+        reportBlow.frame = 0;
+        reportBlow.strength = constrain(w.gustKmh / 65.0f, 0.7f, 1.6f);
+        reportBlow.next = nav;
+        state.screenEnteredMs = millis();   // no return-home timeout in the middle of it
+        state.displayDirty = true;
+        return;
+    }
+    switchScreen(nav);
+}
+
+// The demo's made-up forecast: an autumn day of 5-15 degrees, sun in the morning, a shower around 13:00, windy
+// in the daytime and rain in the evening. Hour 0 is the current hour.
+static void buildDemoHours() {
+    time_t now = state.timeSynced ? time(nullptr) : 0;
+    time_t first = now - now % 3600;
+    for (size_t i = 0; i < DEMO_HOURS; i++) {
+        int h = localHourOf(first + (time_t)i * 3600);
+        HourSlice& s = demoHours[i];
+        s.valid = true;
+        s.tempC = (int8_t)lroundf(10 + 5 * cosf((h - 15) * 2 * PI / 24));
+        s.gustKmh = h >= 8 && h < 20 ? 55 : 30;
+        s.rainTenthMm = 0;
+        s.rainProb = 20;
+        s.code = h >= 7 && h < 12 ? 1 : h >= 12 && h < 18 ? 2 : 3;
+        if (h == 13) { s.rainTenthMm = 8; s.rainProb = 60; s.code = 80; }
+        if (h >= 19 && h < 22) { s.rainTenthMm = 15; s.rainProb = 80; s.code = 63; }
+    }
+    demoWeather.hours = demoHours;
+    demoWeather.count = DEMO_HOURS;
+    demoWeather.firstEpoch = first;
+}
+
+static void stopDemoNow();
+
+static void demoEnterScene(size_t i) {
+    if (i >= DEMO_SCENE_COUNT) {
+        if (!demo.repeat) { stopDemoNow(); return; }
+        i = 0;
+    }
+    demo.scene = (uint8_t)i;
+    demo.sceneStartMs = millis();
+    demo.blown = false;
+    const DemoScene& s = demoScene();
+    demoWeather.current = WeatherData{ (float)s.tempC, (float)s.windKmh, (float)s.gustKmh, s.rainTenthMm / 10.0f,
+                                       s.condition, 'u', s.code };
+    demoWeather.rating = s.rating;
+    state.isNight = s.night;
+    const WindArea *area = windAreaFor(s.screen);   // the leaves fly on within an area, as between screens
+    if (state.windAnimationActive && area && area != windAnimationArea) stopWindAnimation();
+    state.displayDirty = true;
+}
+
+void startDemo(bool repeat) {
+    reportBlow.active = false;
+    demo.active = true;
+    demo.repeat = repeat;
+    buildDemoHours();
+    setWeatherDemo(&demoWeather);
+    state.lastActivityMs = millis();
+    if (state.displayOff) {   // wake the panel, as a touch does
+        state.displayOff = false;
+        display.ssd1306_command(SSD1306_DISPLAYON);
+    }
+    demoEnterScene(0);
+    logMessage(repeat ? "Demo started (repeating)" : "Demo started");
+}
+
+static void stopDemoNow() {
+    if (!demo.active) return;
+    demo.active = false;
+    reportBlow.active = false;
+    setWeatherDemo(nullptr);
+    if (state.windAnimationActive) stopWindAnimation();
+    if (state.rainAnimationActive) {
+        initRainAnimation();
+        state.rainAnimationActive = false;
+    }
+    state.isNight = timezoneKnown() && state.timeSynced && sunriseTime > 0 && sunsetTime > 0 &&
+                    isNightAt((long)time(nullptr), (long)sunriseTime, (long)sunsetTime);
+    switchScreen(ScreenNav{ 0, 0 });
+    logMessage("Demo stopped");
+}
+
+void stopDemo() {
+    stopDemoNow();
+}
+
+bool demoActive() {
+    return demo.active;
+}
+
+// Next scene when this one's time is up; a report scene first blows away
+static void demoLoop() {
+    if (!demo.active) return;
+    state.lastActivityMs = millis();   // keeps the panel on and at full brightness
+    state.lastCycleMs = millis();
+    if (reportBlow.active) return;      // the scene ends when the text has blown away
+    const DemoScene& s = demoScene();
+    if (!intervalPassed(demo.sceneStartMs, (unsigned long)s.seconds * 1000UL)) return;
+    if (s.blowAway && !demo.blown && reportLineCount > 0) {
+        demo.blown = true;
+        reportBlow.active = true;
+        reportBlow.frame = 0;
+        reportBlow.strength = 1.0f;
+        reportBlow.next = state.screen;
+        state.displayDirty = true;
+        return;
+    }
+    demoEnterScene(demo.scene + 1);
 }
 
 
@@ -626,11 +821,22 @@ void render() {
         }
     }
 
-    if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
+    if (reportBlow.active) {
+        if (!renderReportBlowFrame(display, reportLines, reportLineCount, reportBlow.frame, reportBlow.strength) ||
+            reportBlow.frame >= REPORT_BLOW_MAX_FRAMES) {
+            reportBlow.active = false;   // blown away: on to the next screen (drawn on the next pass)
+            if (demo.active) demoEnterScene(demo.scene + 1);
+            else switchScreen(reportBlow.next);
+        } else {
+            state.displayDirty = false;   // the next frame comes with the frame tick
+        }
+        display.display();
+        return;
+    } else if (!demo.active && !state.wifiConnected && state.apModeStarted && !state.weatherValid) {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
     } else if (screen == SCREEN_CLOCK) {
         renderClock();
-    } else if (!state.weatherValid) {
+    } else if (!state.weatherValid && !demo.active) {
         const char* line1;
         const char* line2;
         getInitStatus(line1, line2);
@@ -652,13 +858,13 @@ void render() {
 
     // Status marks in the free top-left corner of the rider screens (the kids screens have no room for them)
     bool riderScreen = screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_WEEK || screen == SCREEN_HOURS;
-    if (riderScreen && state.weatherValid && state.weatherStale) {
+    if (riderScreen && state.weatherValid && state.weatherStale && !demo.active) {
         // Data is old (offline or the API keeps failing)
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
         display.print("OLD");
-    } else if (state.weatherValid && otaStatus.available && (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER)) {
+    } else if (state.weatherValid && !demo.active && otaStatus.available && (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER)) {
         // A firmware update is waiting in the web UI (the OLD mark wins the corner)
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
@@ -676,7 +882,7 @@ void render() {
  */
 static void cycleScreens() {
     // Nothing to cycle while it is off, the panel is off or there is no forecast yet: hold the timer
-    if (displayCycleSeconds <= 0 || state.displayOff || !state.weatherValid) {
+    if (displayCycleSeconds <= 0 || state.displayOff || !state.weatherValid || demo.active) {
         state.lastCycleMs = millis();
         return;
     }
@@ -694,6 +900,10 @@ static void cycleScreens() {
 void handleTouch() {
     int event = touch_get_event();
 
+    if (event != TOUCH_NONE && demo.active) {
+        stopDemoNow();   // a touch ends the demo
+        return;
+    }
     if (event != TOUCH_NONE) {
         state.lastActivityMs = millis();
         state.lastCycleMs = millis();   // the screen you just chose stays for a full cycle time
@@ -715,7 +925,7 @@ void handleTouch() {
     // Back to the home screen after screensReturnSeconds. While the screens cycle by themselves, every screen
     // stays for the cycle time instead.
     bool home = state.screen.list == 0 && state.screen.slot == 0;
-    if (!home && displayCycleSeconds == 0 && screensReturnSeconds > 0 &&
+    if (!home && !demo.active && displayCycleSeconds == 0 && screensReturnSeconds > 0 &&
         intervalPassed(state.screenEnteredMs, (unsigned long)screensReturnSeconds * 1000UL)) {
         showScreen(ScreenNav{ 0, 0 });
     }
@@ -974,6 +1184,7 @@ void loop() {
     if (displayTouchEnabled) touch_update();
     handleTouch();
     cycleScreens();
+    demoLoop();
 
     manageWifi();
     handleWebServer();
@@ -1019,7 +1230,10 @@ void loop() {
 
     // Animation frame tick (15 FPS); nothing to draw while the panel is off
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
-        if (!state.weatherValid) {
+        if (reportBlow.active) {
+            reportBlow.frame++;
+            state.displayDirty = true;
+        } else if (!state.weatherValid && !demo.active) {
             state.displayDirty = true;   // loading animation
         } else if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_VILLAGE) {
             WeatherData weather = getCurrentWeather();

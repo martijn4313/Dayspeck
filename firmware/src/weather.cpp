@@ -321,7 +321,18 @@ static time_t nowEstimate() {
     return apiEpochAtFetch + (time_t)((millis() - fetchMillis) / 1000UL);
 }
 
+static const WeatherDemo* weatherDemo = nullptr;
+
+void setWeatherDemo(const WeatherDemo* demo) {
+    weatherDemo = demo;
+}
+
 size_t getUpcomingHours(const HourSlice*& first, time_t& firstEpoch) {
+    if (weatherDemo) {
+        first = weatherDemo->hours;
+        firstEpoch = weatherDemo->firstEpoch;
+        return weatherDemo->count;
+    }
     long offset = 0;
     if (hourlyCount > 0) {
         time_t now = nowEstimate();
@@ -356,11 +367,13 @@ bool getBestLeave(int& hourLocal, bool& startNow) {
 
 // Get current weather accessor
 WeatherData getCurrentWeather() {
+    if (weatherDemo) return weatherDemo->current;
     return currentWeather;
 }
 
 // Rating of the next ride window today: morning until it is over, then evening
 char getTodayRating() {
+    if (weatherDemo) return weatherDemo->rating;
     if (state.timeSynced) {
         RideWindow am = isWeekend(weekStartDow) ? weekendAM : weekdayAM;
         if (localHour() >= am.startHour + am.hours) {
@@ -372,6 +385,7 @@ char getTodayRating() {
 
 // Tomorrow's morning ride
 char getTomorrowRating() {
+    if (weatherDemo) return weatherDemo->rating;
     return weekAM[1];
 }
 

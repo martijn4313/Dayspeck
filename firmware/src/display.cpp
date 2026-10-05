@@ -1301,3 +1301,42 @@ void renderKidsVillageView(Adafruit_SSD1306 &d, const KidsColumn &now, bool hasO
         drawPartSymbol(d, 104, now.part, 56);
     }
 }
+
+bool renderReportBlowFrame(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS + 1], size_t count, int frame,
+                           float strength) {
+    d.clearDisplay();
+    d.setTextSize(1);
+    d.setTextColor(SSD1306_WHITE);
+    d.cp437(true);
+    const int lineHeight = 9;
+    int top = (64 - (int)count * lineHeight + 1) / 2;
+    if (top < 0) top = 0;
+    bool visible = false;
+    for (size_t l = 0; l < count; l++) {
+        for (int c = 0; lines[l][c]; c++) {
+            if (lines[l][c] == ' ') continue;
+            // The same small random numbers for a letter in every frame: when it lets go, and its wobble
+            uint32_t h = (uint32_t)(l * 31 + c + 1) * 2654435761u;
+            int delay = (int)((REPORT_COLS - 1 - c) * 0.55f / strength) + (int)l / 2 + (int)((h >> 24) & 3);
+            int t = frame - delay;
+            float x = 1 + c * 6, y = top + (int)l * lineHeight;
+            if (t > 0) {
+                x += strength * (1.2f * t + 0.45f * t * t);                              // speeds up to the right
+                y += -0.35f * t + LEAF_WOBBLE[(t * 2 + (int)((h >> 16) & 15)) & 15] * 0.7f;   // lifts and wobbles
+            }
+            if (x >= 128) continue;
+            visible = true;
+            d.drawChar((int16_t)lroundf(x), (int16_t)lroundf(y), (unsigned char)lines[l][c], SSD1306_WHITE,
+                       SSD1306_WHITE, 1);   // bg = colour: transparent, so letters can fly over each other
+        }
+    }
+    // A few dashed gust streaks blowing through
+    for (int g = 0; g < 3; g++) {
+        int gx = -30 + (int)((frame - g * 6) * 14 * strength), gy = 12 + g * 17;
+        for (int i = 0; i < 18; i++) {
+            if (i % 5 != 4 && gx + i >= 0 && gx + i < 128) d.drawPixel(gx + i, gy, SSD1306_WHITE);
+        }
+    }
+    d.cp437(false);
+    return visible;
+}

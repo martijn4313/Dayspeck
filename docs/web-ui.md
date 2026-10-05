@@ -97,6 +97,14 @@ set with *Set Location* takes precedence.
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
+**Demo.** *Play demo* (in the Display card) shows about a minute of every screen and its animations with
+made-up weather: the ride screen in sun, rain, snow and a stormy autumn night with gusts and leaves; the kids
+village, weather and clothes screens with leaves; a birthday countdown and Christmas day with confetti; the
+weather report blowing away; then the next hours, the week grid and the clock. With *Repeat* it starts over
+until you press *Stop demo* or touch the sensor (any touch stops it). The screen stays on at full brightness
+while it plays, even during quiet hours, and the real forecast is not changed: afterwards the device goes back
+to its home screen. The week grid and the clock show the real data.
+
 **Clothing (kids)**: the limits of the outfits on the [kids screens](kids.md), in °C. The card shows while
 the kids weather or clothes screen is in one of the screen lists.
 

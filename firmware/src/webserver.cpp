@@ -174,6 +174,10 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
             <button type="submit">Save Settings</button>
         </form>
+        <p><small>Demo: about a minute of every screen and animation (rain, snow, gusts, leaves, confetti, the
+        report blowing away) with made-up weather. A touch on the sensor stops it.</small></p>
+        <span class="label">Repeat:</span> <input id="demoRepeat" type="checkbox"> <small>until stopped</small><br>
+        <button type="button" id="demoStart">Play demo</button> <button type="button" id="demoStop">Stop demo</button>
     </div>
 
     <div class="card" id="kidsCard" style="display:none">
@@ -523,6 +527,12 @@ static const char index_html[] PROGMEM = R"HTML(
         });
 
         submitForm('displayForm', '/api/display', 'Display settings saved');
+        const demo = action => post('/api/demo', new URLSearchParams({
+                action: action, repeat: document.getElementById('demoRepeat').checked ? '1' : '0' }))
+            .then(res => toast(res.message || (res.ok ? 'OK' : 'Error ' + res.status), res.ok))
+            .catch(() => toast('Request failed', false));
+        document.getElementById('demoStart').addEventListener('click', () => demo('start'));
+        document.getElementById('demoStop').addEventListener('click', () => demo('stop'));
         submitForm('kidsForm', '/api/kids', 'Clothing limits saved');
         submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
@@ -1104,6 +1114,19 @@ static bool parseScreenList(const String& text, ScreenList& out) {
     return true;
 }
 
+static void handleApiDemo() {
+    String action = server.arg("action");
+    if (action == "start") {
+        startDemo(server.arg("repeat") == "1");
+        sendMessage(200, "Demo started");
+    } else if (action == "stop") {
+        stopDemo();
+        sendMessage(200, "Demo stopped");
+    } else {
+        sendMessage(400, "action must be start or stop");
+    }
+}
+
 static void handleApiScreens() {
     ScreenList tap = {}, hold = {};
     int returnSecs, cycleSecs;
@@ -1472,6 +1495,7 @@ void initWebServer() {
     server.on("/api/thresholds", guardedPost(handleApiThresholds));
     server.on("/api/display", guardedPost(handleApiDisplay));
     server.on("/api/screens", guardedPost(handleApiScreens));
+    server.on("/api/demo", guardedPost(handleApiDemo));
     server.on("/api/kids", guardedPost(handleApiKids));
     server.on("/api/countdown", guardedPost(handleApiCountdown));
     server.on("/api/location", guardedPost(handleApiLocation));

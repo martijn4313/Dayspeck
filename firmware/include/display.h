@@ -165,6 +165,11 @@ void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_
 // a pumpkin, Sinterklaas' mitre and staff, a Christmas tree), the number of sleeps and, up to ten, as many
 // beds to count. On the day itself the picture with falling confetti (timeMs moves it).
 void renderKidsCountdown(Adafruit_SSD1306 &display, const KidsCountdown &c, unsigned long timeMs);
+// The weather report blowing away in the wind, frame `frame` (15 per second) from the moment it lets go:
+// the letters peel off from the right, speed up, lift and wobble, with a few gust streaks. strength 1 is
+// about 65 km/h gusts (faster above). Returns false once everything has left the screen.
+bool renderReportBlowFrame(Adafruit_SSD1306 &display, const char (*lines)[REPORT_COLS + 1], size_t count, int frame,
+                           float strength);
 // Kids home screen: the outfit of `now` (the first part of the day on the clothes screen) on the left, the
 // village of the ride screen on the right, and on its street the part of the day (after a bed: tomorrow)
 void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, bool hasOutfit, bool afterSleep,
