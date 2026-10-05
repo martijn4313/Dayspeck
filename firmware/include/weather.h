@@ -79,6 +79,17 @@ bool timezoneKnown();   // local hour (0-23) of a unix time
 // True when the forecast was fetched on a previous local day (week arrays are shifted)
 bool forecastIsFromPastDay();
 
+// Demo mode: while set, the accessors below and getUpcomingHours() give these made-up values instead of the
+// real weather (which keeps being fetched as usual). nullptr = the real weather again.
+struct WeatherDemo {
+    WeatherData      current;
+    char             rating;        // the ride rating, today and tomorrow
+    const HourSlice* hours;         // from the current hour on
+    size_t           count;
+    time_t           firstEpoch;    // start of hours[0]
+};
+void setWeatherDemo(const WeatherDemo* demo);
+
 // Accessors
 WeatherData getCurrentWeather();
 char getTodayRating();     // next upcoming ride window today

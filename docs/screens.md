@@ -73,7 +73,7 @@ An hour counts as wet from 0.2 mm, as on the kids screens. The report redraws ev
 forecast update. When the sentences do not fit on the screen (7 lines), the least important ones are left
 out first: the change and the fresh morning, then the warning; the day and the night always stay.
 
-**On a windy day** (gusts from the *wind picture* limit under *Clothing (kids)*, 50 km/h by default) the report
+**On a windy day** (gusts above the *wind picture* limit under *Clothing (kids)*, 50 km/h by default) the report
 does not just make way for the next screen: its letters blow away first, from the right, faster in stronger
 gusts. A touch during the animation goes straight on.
 
