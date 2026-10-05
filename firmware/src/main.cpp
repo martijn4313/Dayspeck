@@ -546,6 +546,9 @@ void renderHourly() {
  * out when they do not fit.
  */
 #define REPORT_MAX_LINES 7
+static char reportLines[REPORT_MAX_LINES][REPORT_COLS + 1];   // as last shown: what blows away
+static size_t reportLineCount = 0;
+
 void renderReport() {
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
@@ -574,9 +577,19 @@ void renderReport() {
         strcpy(report.sentences[0], nl ? "Nog geen verwachting." : "No forecast yet.");
         report.priority[0] = 4;
     }
-    char lines[REPORT_MAX_LINES][REPORT_COLS + 1];
-    renderReportView(display, lines, fitReport(report, lines, REPORT_MAX_LINES));
+    reportLineCount = fitReport(report, reportLines, REPORT_MAX_LINES);
+    renderReportView(display, reportLines, reportLineCount);
 }
+
+// Leaving the report while it is windy: the text blows away first, then the next screen shows
+static struct {
+    bool      active;
+    int       frame;
+    float     strength;
+    ScreenNav next;
+} reportBlow = {};
+
+#define REPORT_BLOW_MAX_FRAMES 60   // 4 s at most, whatever happens
 
 
 /**
@@ -600,7 +613,7 @@ static const WindArea *windAreaFor(int screen) {
     return nullptr;
 }
 
-static void showScreen(ScreenNav nav) {
+static void switchScreen(ScreenNav nav) {
     // Between screens with the same area the leaves fly on where they were (a seamless switch); on a screen
     // without them they pause. Only a screen with the other area starts them afresh, so leaves from one
     // area are never drawn in the other.
@@ -609,6 +622,29 @@ static void showScreen(ScreenNav nav) {
     state.screen = nav;
     state.screenEnteredMs = millis();
     state.displayDirty = true;
+}
+
+static void showScreen(ScreenNav nav) {
+    if (reportBlow.active) {
+        if (nav.list == reportBlow.next.list && nav.slot == reportBlow.next.slot) return;   // it is on its way there
+        reportBlow.active = false;   // another touch: skip the rest of the animation
+        switchScreen(nav);
+        return;
+    }
+    // From the report on a windy day (gusts that show the wind picture), the text blows away first
+    WeatherData w = getCurrentWeather();
+    bool toOther = nav.list != state.screen.list || nav.slot != state.screen.slot;
+    if (currentScreen() == SCREEN_REPORT && toOther && state.weatherValid && !state.displayOff &&
+        reportLineCount > 0 && w.gustKmh >= kidsLimits.windyGustKmh) {
+        reportBlow.active = true;
+        reportBlow.frame = 0;
+        reportBlow.strength = constrain(w.gustKmh / 65.0f, 0.7f, 1.6f);
+        reportBlow.next = nav;
+        state.screenEnteredMs = millis();   // no return-home timeout in the middle of it
+        state.displayDirty = true;
+        return;
+    }
+    switchScreen(nav);
 }
 
 
@@ -626,7 +662,17 @@ void render() {
         }
     }
 
-    if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
+    if (reportBlow.active) {
+        if (!renderReportBlowFrame(display, reportLines, reportLineCount, reportBlow.frame, reportBlow.strength) ||
+            reportBlow.frame >= REPORT_BLOW_MAX_FRAMES) {
+            reportBlow.active = false;   // blown away: on to the next screen (drawn on the next pass)
+            switchScreen(reportBlow.next);
+        } else {
+            state.displayDirty = false;   // the next frame comes with the frame tick
+        }
+        display.display();
+        return;
+    } else if (!state.wifiConnected && state.apModeStarted && !state.weatherValid) {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
     } else if (screen == SCREEN_CLOCK) {
         renderClock();
@@ -1019,7 +1065,10 @@ void loop() {
 
     // Animation frame tick (15 FPS); nothing to draw while the panel is off
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
-        if (!state.weatherValid) {
+        if (reportBlow.active) {
+            reportBlow.frame++;
+            state.displayDirty = true;
+        } else if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
         } else if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_VILLAGE) {
             WeatherData weather = getCurrentWeather();
