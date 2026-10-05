@@ -395,9 +395,10 @@ static KidsCountdown kidsCountdownNow() {
 }
 
 /**
- * Kids variant: the next three parts of the day (morning, afternoon, evening), as outfits or as weather
+ * Kids screens: the next parts of the day (morning, afternoon, evening; at most `max`, the current one first)
+ * with their outlook. Returns how many.
  */
-void renderKids(bool weather) {
+static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
     // Forecast hours from the current one on; the current hour uses what is measured now
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
@@ -417,18 +418,44 @@ void renderKids(bool weather) {
         hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true };
     }
 
-    KidsPart parts[3];
-    size_t np = kidsDayParts(localHours, count, parts, 3);
-    KidsColumn cols[3];
-    int nowColumn = -1, nightBefore = -1;
+    size_t np = kidsDayParts(localHours, count, parts, max);
     for (size_t i = 0; i < np; i++) {
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
         cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.tempC) };
+    }
+    return np;
+}
+
+/**
+ * Kids variant: the next three parts of the day, as outfits or as weather
+ */
+void renderKids(bool weather) {
+    KidsPart parts[3];
+    KidsColumn cols[3];
+    size_t np = kidsColumns(cols, parts, 3);
+    int nowColumn = -1, nightBefore = -1;
+    for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
     renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather);
+}
+
+/**
+ * Kids home screen: the outfit for now (the first column of the clothes screen) next to the village of the ride
+ * screen, with its sun or moon, rain, snow, gusts and leaves
+ */
+void renderKidsVillage() {
+    KidsPart part;
+    KidsColumn col = {};
+    bool any = kidsColumns(&col, &part, 1) > 0;
+    WeatherData weather = getCurrentWeather();
+    char tempStr[8];
+    snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');
+    renderKidsVillageView(display, col, any, any && part.afterSleep, state.isNight, weather.condition,
+                          weather.condition == WEATHER_RAIN ? 2 : weather.condition == WEATHER_SNOW ? 1 : 0,
+                          (int)weather.windKmh, tempStr, weather.trend);
 }
 
 /**
@@ -515,8 +542,8 @@ void renderHourly() {
 
 
 /**
- * The weather report: a few sentences in the display language, word wrapped. Sentences at the end are left out
- * when they do not fit.
+ * The weather report: a few sentences in the display language, word wrapped. The least important ones are left
+ * out when they do not fit.
  */
 #define REPORT_MAX_LINES 7
 void renderReport() {
@@ -540,16 +567,15 @@ void renderReport() {
     }
 
     bool nl = displayLanguage == "nl";
-    static WeatherReport report;   // static: 260 bytes off the stack
+    static WeatherReport report;   // static: about 400 bytes off the stack
     weatherReport(hours, count, nl ? REPORT_LANG_NL : REPORT_LANG_EN, report);
     if (report.count == 0) {
         report.count = 1;
         strcpy(report.sentences[0], nl ? "Nog geen verwachting." : "No forecast yet.");
+        report.priority[0] = 4;
     }
     char lines[REPORT_MAX_LINES][REPORT_COLS + 1];
-    size_t sentences = report.count, used;
-    while ((used = wrapReport(report, sentences, lines, REPORT_MAX_LINES)) > REPORT_MAX_LINES && sentences > 1) sentences--;
-    renderReportView(display, lines, used < REPORT_MAX_LINES ? used : REPORT_MAX_LINES);
+    renderReportView(display, lines, fitReport(report, lines, REPORT_MAX_LINES));
 }
 
 
@@ -569,7 +595,7 @@ static void stopWindAnimation();
 
 // The area gusts and leaves blow in on a screen; nullptr for the screens without them
 static const WindArea *windAreaFor(int screen) {
-    if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER) return &WIND_AREA_RIDE;
+    if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_VILLAGE) return &WIND_AREA_RIDE;
     if (screen == SCREEN_WEATHER || screen == SCREEN_CLOTHES) return &WIND_AREA_KIDS;
     return nullptr;
 }
@@ -617,6 +643,7 @@ void render() {
         case SCREEN_WEEK:      renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay); break;
         case SCREEN_HOURS:     renderHourly(); break;
         case SCREEN_REPORT:    renderReport(); break;
+        case SCREEN_VILLAGE:   renderKidsVillage(); break;
         default:
             renderDisplay();
             renderStatusMarks(display, rideShowsTomorrow(), wifiBars());
@@ -969,10 +996,10 @@ void loop() {
         }
     }
 
-    // The clock redraws every second (blinking colon)
     int screen = currentScreen();
-    // The report changes with the hour (from 18:00 it is about tomorrow)
-    if (screen == SCREEN_REPORT && !state.displayOff && timezoneKnown()) {
+    // The report and the kids village change with the hour (from 18:00 the report is about tomorrow; the
+    // outfit follows the part of the day)
+    if ((screen == SCREEN_REPORT || screen == SCREEN_VILLAGE) && !state.displayOff && timezoneKnown()) {
         static int lastHour = -1;
         int hour = localHourOf(time(nullptr));
         if (hour != lastHour) {
@@ -980,6 +1007,7 @@ void loop() {
             state.displayDirty = true;
         }
     }
+    // The clock redraws every second (blinking colon)
     if (screen == SCREEN_CLOCK && !state.displayOff) {
         static time_t lastSecond = 0;
         time_t nowSecond = time(nullptr);
@@ -993,7 +1021,7 @@ void loop() {
     if (!state.displayOff && intervalPassed(state.lastFrameMs, RAIN_FRAME_INTERVAL)) {
         if (!state.weatherValid) {
             state.displayDirty = true;   // loading animation
-        } else if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER) {
+        } else if (screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_VILLAGE) {
             WeatherData weather = getCurrentWeather();
             bool rain = weather.condition == WEATHER_RAIN;
             bool gustsOn = weather.condition == WEATHER_WIND;

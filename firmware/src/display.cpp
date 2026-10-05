@@ -1029,8 +1029,7 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, bool nigh
 
 // Time-of-day symbol (about 14x13) at the top of a column: morning a rising half sun (arrow up), afternoon a
 // small high sun, evening a setting half sun (arrow down)
-static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part) {
-    const int y = 8;
+static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part, int y = 8) {
     if (part == KIDS_PART_AFTERNOON) {
         d.fillCircle(cx, y, 3, SSD1306_WHITE);
         static const int8_t ray[8][2] = { {6,0}, {4,4}, {0,6}, {-4,4}, {-6,0}, {-4,-4}, {0,-6}, {4,-4} };
@@ -1284,4 +1283,21 @@ void renderReportView(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS + 1],
         y += lineHeight;
     }
     d.cp437(false);
+}
+
+void renderKidsVillageView(Adafruit_SSD1306 &d, const KidsColumn &now, bool hasOutfit, bool afterSleep, bool isNight,
+                           int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow) {
+    d.clearDisplay();
+    if (hasOutfit && now.valid) drawOutfit(d, 4, now.outfit);   // the outfits are 56x64: the whole left half
+    d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
+    renderSkylineCard(d, isNight, weatherCondition, intensity, windSpeed, tempStr, trendArrow);
+    // On the street, right of the lamp: the part of the day the outfit is for, after a bed when a night
+    // comes first (in the evening it is tomorrow morning's outfit)
+    if (!hasOutfit) return;
+    if (afterSleep) {
+        drawBed(d, 86, 53);
+        drawPartSymbol(d, 113, now.part, 56);
+    } else {
+        drawPartSymbol(d, 104, now.part, 56);
+    }
 }
