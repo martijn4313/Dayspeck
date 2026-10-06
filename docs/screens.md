@@ -94,9 +94,9 @@ it.
 
 ## Demo
 
-*Play demo* in the web UI (under *Display*) shows about a minute of every screen and animation with made-up
-weather: the ride screen in sun, rain, snow and a stormy autumn night; the village, weather and clothes
-screens with leaves; a birthday countdown and Christmas day with confetti; the weather report blowing away;
+*Play demo* in the web UI (under *Display*) shows about a minute and a half of every screen and animation with
+made-up weather: the ride screen in sun, rain, a windless downpour, driving rain in a gale, snow and a stormy
+autumn night; the village in drizzle, in slanting rain and with leaves; the weather and clothes screens; a birthday countdown and Christmas day with confetti; the weather report blowing away;
 then the next hours, the week grid and the clock. With *Repeat* it starts over until you press *Stop demo*
 or touch the sensor (any touch stops it).
 

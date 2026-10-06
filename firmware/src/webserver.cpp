@@ -174,7 +174,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Screen off until (hour):</span> <input name="quietEnd" type="number" min="-1" max="23"><br>
             <button type="submit">Save Settings</button>
         </form>
-        <p><small>Demo: about a minute of every screen and animation (rain, snow, gusts, leaves, confetti, the
+        <p><small>Demo: about a minute and a half of every screen and animation (rain, snow, gusts, leaves, confetti, the
         report blowing away) with made-up weather. A touch on the sensor stops it.</small></p>
         <span class="label">Repeat:</span> <input id="demoRepeat" type="checkbox"> <small>until stopped</small><br>
         <button type="button" id="demoStart">Play demo</button> <button type="button" id="demoStop">Stop demo</button>
