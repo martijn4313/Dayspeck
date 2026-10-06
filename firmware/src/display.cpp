@@ -144,14 +144,14 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity) {
     }
 }
 
-// Reset a rain drop to random position at top
+static int computeWindDrift(int windSpeed);
+
 // Reset a single rain drop to a new random position above the scene
 void resetRainDrop(RainDrop &drop) {
-    // Calculate extended spawn zone based on wind for better coverage
-    // Average fall frames = HORIZON_Y / avg_speed (roughly 9 frames)
-    // x_spawn_extend = abs(wind_drift) * 9
-    int xSpawnExtend = 0;  // Simplified for reset
-    
+    // Wind blows the drops left while they fall (up to about 15 frames): spawn them that much further right, off
+    // screen if need be, so the right edge of the scene gets as much rain as the rest
+    int xSpawnExtend = -computeWindDrift(currentWindSpeed) * 15;
+
     drop.x = RAIN_AREA_X_START + random(RAIN_AREA_X_END - RAIN_AREA_X_START + 1 + xSpawnExtend);
     drop.y = random(-8, -1);  // Start just above top edge
     drop.targetY = HORIZON_Y - random(4);  // Ground level varies by 3 px, always above the text
@@ -280,6 +280,23 @@ void updateRainAnimation(int windSpeed, float rainIntensity) {
     }
 }
 
+// A rain pixel, only right of the scene's left border (the border line itself stays clean)
+static void drawPixelInScene(Adafruit_SSD1306 &display, int x, int y) {
+    if (x > RAIN_AREA_X_START) display.drawPixel(x, y, SSD1306_WHITE);
+}
+
+// drawBitmap, cut off at the scene's left border
+static void drawBitmapInScene(Adafruit_SSD1306 &display, int x, int y, const uint8_t *bitmap, int w, int h) {
+    int byteWidth = (w + 7) / 8;
+    for (int row = 0; row < h; row++) {
+        for (int col = 0; col < w; col++) {
+            if (pgm_read_byte(&bitmap[row * byteWidth + col / 8]) & (0x80 >> (col & 7))) {
+                drawPixelInScene(display, x + col, y + row);
+            }
+        }
+    }
+}
+
 // Draw rain animation — render active drops and splashes with sprite support
 void drawRainAnimation(Adafruit_SSD1306 &display) {
     // Draw rain drops (sprite-based if bitmaps available, else fallback to procedural)
@@ -308,7 +325,7 @@ void drawRainAnimation(Adafruit_SSD1306 &display) {
             display.drawPixel(rainDrops[i].x, rainDrops[i].y, SSD1306_WHITE);
             display.drawPixel(rainDrops[i].x, rainDrops[i].y + 1, SSD1306_WHITE);
             display.drawPixel(rainDrops[i].x, rainDrops[i].y + 2, SSD1306_WHITE);
-            display.drawPixel(rainDrops[i].x - 1, rainDrops[i].y + 1, SSD1306_WHITE);
+            drawPixelInScene(display, rainDrops[i].x - 1, rainDrops[i].y + 1);
         }
     }
     
@@ -329,22 +346,18 @@ void drawRainAnimation(Adafruit_SSD1306 &display) {
         }
         
         if (splashSprite) {
-            // Center splash on impact point, but keep it right of the scene's left border
-            int left = splashes[i].x - splashW/2;
-            if (left <= RAIN_AREA_X_START) left = RAIN_AREA_X_START + 1;
-            display.drawBitmap(left, splashes[i].y - splashH, splashSprite, splashW, splashH, SSD1306_WHITE);
+            // Center splash on impact point; the part left of the scene's border is cut off
+            drawBitmapInScene(display, splashes[i].x - splashW/2, splashes[i].y - splashH, splashSprite, splashW, splashH);
         } else
         #endif
         {
-            // Fallback: procedural splash (width based on frame counter), right of the scene's left border
+            // Fallback: procedural splash (width based on frame counter)
             int fx = splashes[i].frameCounter;  // 3 = wide, 1 = narrow
-            int cx = splashes[i].x;
-            if (cx - fx <= RAIN_AREA_X_START) cx = RAIN_AREA_X_START + 1 + fx;
-            display.drawPixel(cx - fx, splashes[i].y, SSD1306_WHITE);
-            display.drawPixel(cx + fx, splashes[i].y, SSD1306_WHITE);
+            drawPixelInScene(display, splashes[i].x - fx, splashes[i].y);
+            drawPixelInScene(display, splashes[i].x + fx, splashes[i].y);
             if (splashes[i].frameCounter >= 2) {
-                display.drawPixel(cx - fx + 1, splashes[i].y - 1, SSD1306_WHITE);
-                display.drawPixel(cx + fx - 1, splashes[i].y - 1, SSD1306_WHITE);
+                drawPixelInScene(display, splashes[i].x - fx + 1, splashes[i].y - 1);
+                drawPixelInScene(display, splashes[i].x + fx - 1, splashes[i].y - 1);
             }
         }
     }
