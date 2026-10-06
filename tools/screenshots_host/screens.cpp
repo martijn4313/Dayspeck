@@ -167,14 +167,20 @@ struct VillageScene {
 };
 
 static void village(const VillageScene& s, int windFrames) {
-    KidsPart part;
-    KidsColumn col = {};
-    bool any = columns(s.day, &col, &part, 1) > 0;
+    KidsHour hours[36];
+    for (size_t i = 0; i < s.day.count; i++) {
+        const Hour& x = s.day.hours[i];
+        int h = (s.day.now + (int)i) % 24;
+        hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < s.day.sunrise || h >= s.day.sunset, true, KIDS_LIGHT_DAY };
+    }
+    KidsOutlook o = kidsNowOutlook(hours, s.day.count, LIMITS);
+    KidsColumn col = { partOfDay(s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
+    bool any = s.day.count > 0;
     initWindAnimation(WIND_AREA_RIDE);
     hostSeed(5);
     bool gusts = s.condition == WEATHER_WIND;
     for (int i = 0; i < windFrames; i++) updateWindAnimation(s.windKmh, gusts, true);
-    renderKidsVillageView(d, col, any, any && part.afterSleep, s.night, s.condition, 0, s.windKmh, s.temp, s.trend);
+    renderKidsVillageView(d, col, any, s.night, s.condition, 0, s.windKmh, s.temp, s.trend);
 }
 
 static Hour windyAutumnMorning(int h) { return Hour{ h < 12 ? 9.0f + (h - 8) : 14.0f, 0, 40, 2 }; }
@@ -185,7 +191,7 @@ static void villages() {
     VillageScene scenes[3] = {
         { makeDay(8, 7, 19, windyAutumnMorning), false, WEATHER_WIND, 38, "11C", 'u' },
         { makeDay(14, 6, 21, hotAfternoon), false, WEATHER_CLEAR, 10, "27C", 'u' },
-        { makeDay(22, 8, 17, coldEvening), true, WEATHER_CLEAR, 8, "2C", 'd' },   // after 22:00: tomorrow morning
+        { makeDay(22, 8, 17, coldEvening), true, WEATHER_CLEAR, 8, "2C", 'd' },   // after 22:00: sleeping
     };
     for (int i = 0; i < 3; i++) {
         village(scenes[i], i == 0 ? 10 : 0);

@@ -464,16 +464,13 @@ static KidsCountdown kidsCountdownNow() {
 }
 
 /**
- * Kids screens: the next parts of the day (morning, afternoon, dinner and maybe the night; at most `max`, the
- * current one first) with their outlook. Returns how many.
+ * Kids screens: forecast hours from the current one on (at most 24), the current hour with the conditions of
+ * now, and their local hours. Returns how many.
  */
-static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn) {
-    // Forecast hours from the current one on; the current hour uses what is measured now
+static size_t kidsHours(KidsHour* hours, int* localHours) {
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
     size_t n = getUpcomingHours(slices, firstEpoch);
-    KidsHour hours[24];
-    int localHours[24];
     size_t count = 0;
     for (; count < n && count < 24; count++) {
         const HourSlice& s = slices[count];
@@ -486,7 +483,17 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
         WeatherData w = getCurrentWeather();
         hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true, lightOf(time(nullptr)) };
     }
+    return count;
+}
 
+/**
+ * Kids screens: the next parts of the day (morning, afternoon, dinner and maybe the night; at most `max`, the
+ * current one first) with their outlook. Returns how many.
+ */
+static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn) {
+    KidsHour hours[24];
+    int localHours[24];
+    size_t count = kidsHours(hours, localHours);
     size_t np = kidsDayParts(localHours, count, parts, max, kidsDinnerHour, nightColumn);
     for (size_t i = 0; i < np; i++) {
         // One number per part, shown on the weather screen and the one the outfit goes by
@@ -512,17 +519,20 @@ void renderKids(bool weather) {
 }
 
 /**
- * Kids home screen: the outfit for now (the first column of the clothes screen) next to the village of the ride
- * screen, with its sun or moon, rain, snow, gusts and leaves
+ * Kids home screen: what to wear right now (at night: sleeping) next to the village of the ride screen, with
+ * its sun or moon, rain, snow, gusts and leaves
  */
 void renderKidsVillage() {
-    KidsPart part;
-    KidsColumn col = {};
-    bool any = kidsColumns(&col, &part, 1, false) > 0;   // the outfit to wear: never the night
+    KidsHour hours[24];
+    int localHours[24];
+    size_t count = kidsHours(hours, localHours);
+    KidsOutlook o = kidsNowOutlook(hours, count, kidsLimits);
+    KidsColumn col = { count ? partOfDay(localHours[0], kidsDinnerHour) : KIDS_PART_MORNING, o.valid, o.outfit,
+                       o.weather, o.light, kidsShownTemp((float)o.tempC) };
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');
-    renderKidsVillageView(display, col, any, any && part.afterSleep, state.isNight, weather.condition,
+    renderKidsVillageView(display, col, count > 0, state.isNight, weather.condition,
                           weather.condition == WEATHER_RAIN ? 2 : weather.condition == WEATHER_SNOW ? 1 : 0,
                           (int)weather.windKmh, tempStr, weather.trend);
 }

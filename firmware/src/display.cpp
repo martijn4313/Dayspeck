@@ -1099,14 +1099,15 @@ static void drawBed(Adafruit_SSD1306 &d, int bx, int by) {
     d.fillRect(bx + 3, by, 4, 3, SSD1306_WHITE);        // pillow
 }
 
-// The night column of the clothes screen: no outfit, the moon over a sleeping "z z"
-static void drawSleeping(Adafruit_SSD1306 &d, int cx) {
-    drawSmallMoon(d, cx - 4, 30, 10);
-    d.setTextSize(1);
-    d.setCursor(cx + 6, 22);
+// The night: no outfit, the moon next to a sleeping "z Z" (the clothes screen's column, or big: the village)
+static void drawSleeping(Adafruit_SSD1306 &d, int cx, bool big = false) {
+    int k = big ? 2 : 1;
+    drawSmallMoon(d, big ? cx - 10 : cx - 4, big ? 32 : 30, 10 * k);
+    d.setTextSize(k);
+    d.setCursor(cx + 6 * k, big ? 8 : 22);
     d.print('z');
-    d.setTextSize(2);
-    d.setCursor(cx + 9, 36);
+    d.setTextSize(k + 1);
+    d.setCursor(cx + 9 * k - (big ? 6 : 0), big ? 36 : 36);
     d.print('Z');
 }
 
@@ -1340,21 +1341,16 @@ void renderReportView(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS + 1],
     d.cp437(false);
 }
 
-void renderKidsVillageView(Adafruit_SSD1306 &d, const KidsColumn &now, bool hasOutfit, bool afterSleep, bool isNight,
+void renderKidsVillageView(Adafruit_SSD1306 &d, const KidsColumn &now, bool hasOutfit, bool isNight,
                            int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow) {
     d.clearDisplay();
-    if (hasOutfit && now.valid) drawOutfit(d, 4, now.outfit);   // the outfits are 56x64: the whole left half
+    if (hasOutfit && now.part == KIDS_PART_NIGHT) drawSleeping(d, 32, true);   // bedtime: nothing to wear
+    else if (hasOutfit && now.valid) drawOutfit(d, 4, now.outfit);   // the outfits are 56x64: the whole left half
     d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
     renderSkylineCard(d, isNight, weatherCondition, intensity, windSpeed, tempStr, trendArrow);
-    // On the street, right of the lamp: the part of the day the outfit is for, after a bed when a night
-    // comes first (in the evening it is tomorrow morning's outfit)
+    // On the street, right of the lamp: the part of the day it is now (the night: a bed)
     if (!hasOutfit) return;
-    if (afterSleep) {
-        drawBed(d, 86, 53);
-        drawPartSymbol(d, 113, now.part, 56);
-    } else {
-        drawPartSymbol(d, 104, now.part, 56);
-    }
+    drawPartSymbol(d, 104, now.part, 56);
 }
 
 bool renderReportBlowFrame(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS + 1], size_t count, int frame,

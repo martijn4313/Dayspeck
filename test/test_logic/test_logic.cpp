@@ -410,6 +410,29 @@ void test_kids_part_temperature() {
     TEST_ASSERT_FALSE(kidsPartOutlook(gaps, KidsPart{ KIDS_PART_MORNING, 0, 3, false, false }, K).valid);
 }
 
+// The village: the temperature of now, and rain on its way
+void test_kids_now_outlook() {
+    // Noon, 18 now and 27 this afternoon: a t-shirt now, not the shorts of the afternoon
+    KidsHour h[5] = { hr(18, 0, 1), hr(22, 0, 1), hr(25, 0, 1), hr(27, 0, 1), hr(27, 0, 1) };
+    KidsOutlook o = kidsNowOutlook(h, 5, K);
+    TEST_ASSERT_TRUE(o.valid);
+    TEST_ASSERT_EQUAL(18, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+
+    // Rain within the next two hours: the rain coat now; rain later does not count
+    h[2] = hr(17, 1.0f, 61);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, kidsNowOutlook(h, 5, K).outfit);
+    h[2] = hr(25, 0, 1);
+    h[3] = hr(17, 1.0f, 61);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, kidsNowOutlook(h, 5, K).outfit);
+
+    // Fewer hours than the window, and none at all
+    TEST_ASSERT_EQUAL(18, kidsNowOutlook(h, 1, K).tempC);
+    TEST_ASSERT_FALSE(kidsNowOutlook(h, 0, K).valid);
+    h[0].valid = false;
+    TEST_ASSERT_FALSE(kidsNowOutlook(h, 5, K).valid);
+}
+
 void test_part_of_day() {
     TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(6, 18));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7, 18));
@@ -895,6 +918,7 @@ int main(int, char**) {
     RUN_TEST(test_kids_window);
     RUN_TEST(test_kids_window_highest_temperature);
     RUN_TEST(test_kids_part_temperature);
+    RUN_TEST(test_kids_now_outlook);
     RUN_TEST(test_part_of_day);
     RUN_TEST(test_light_at);
     RUN_TEST(test_dinner_light);

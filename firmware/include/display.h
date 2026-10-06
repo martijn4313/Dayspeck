@@ -171,9 +171,9 @@ void renderKidsCountdown(Adafruit_SSD1306 &display, const KidsCountdown &c, unsi
 // about 65 km/h gusts (faster above). Returns false once everything has left the screen.
 bool renderReportBlowFrame(Adafruit_SSD1306 &display, const char (*lines)[REPORT_COLS + 1], size_t count, int frame,
                            float strength);
-// Kids home screen: the outfit of `now` (the first part of the day on the clothes screen) on the left, the
-// village of the ride screen on the right, and on its street the part of the day (after a bed: tomorrow)
-void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, bool hasOutfit, bool afterSleep,
+// Kids home screen: what to wear right now (`now`, see kidsNowOutlook; at night a sleeping moon) on the left,
+// the village of the ride screen on the right, and on its street the current part of the day
+void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, bool hasOutfit,
                            bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr,
                            char trendArrow);
 // Weather report: lines of text (REPORT_COLS characters at most, REPORT_DEGREE for the degree sign), centred

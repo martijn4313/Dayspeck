@@ -10,13 +10,17 @@ near, the countdown comes after the clothes.
 
 ## Village
 
-On the left the outfit for now, big; on the right the animated village of the [ride screen](rider.md) with the
-temperature, the sun or the moon, rain, snow, gusts and autumn leaves. On the street a small picture says
-which part of the day the outfit is for. From 22:00 (bedtime) until the morning it is tomorrow morning's
-outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit as the first
-one on the clothes screen.
+On the left what to wear **right now**, big; on the right the animated village of the [ride screen](rider.md)
+with the temperature, the sun or the moon, rain, snow, gusts and autumn leaves. The outfit goes by the
+temperature the village shows, so the picture and the number always match, and by the weather of this hour and
+the next two: rain on its way already gives the rain coat. On the street a small picture says which part of the
+day it is.
 
-![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with, after the bed, the winter coat and scarf for tomorrow morning](images/kids-village.png){ .center }
+From 22:00 (bedtime) until 07:00 there is nothing to wear: the left side shows a moon and a sleeping Z, with a
+bed on the street. Tomorrow morning's outfit is on the clothes screen. That screen plans ahead per part of the
+day, so in the afternoon its first column can differ from the village (the warmest of the afternoon, not now).
+
+![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with a moon and a sleeping Z](images/kids-village.png){ .center }
 
 ## The day in three parts
 

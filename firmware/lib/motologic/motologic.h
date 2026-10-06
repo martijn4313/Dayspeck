@@ -180,6 +180,12 @@ size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t m
 // number. Dinner takes its light from that same hour, the night always has the moon.
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l);
 
+// The village: what to wear right now. The outfit goes by the current temperature (tempC, the number the
+// village shows) and the weather of the current hour and the next ones (KIDS_NOW_HOURS in all), so rain on
+// its way already gives the rain coat. Not valid without the current hour.
+#define KIDS_NOW_HOURS 3
+KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits& l);
+
 // Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)
 #define KIDS_EVENT_BIRTHDAY     0
 #define KIDS_EVENT_HALLOWEEN    1   // 31 October

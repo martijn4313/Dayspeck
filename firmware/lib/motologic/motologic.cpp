@@ -215,6 +215,19 @@ KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const K
     return o;
 }
 
+KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits& l) {
+    KidsOutlook o = kidsWindowOutlook(hours, 0, count < KIDS_NOW_HOURS ? count : KIDS_NOW_HOURS, l);
+    if (count == 0 || !hours[0].valid || isnan(hours[0].tempC)) {
+        o.valid = false;
+        return o;
+    }
+    o.night = hours[0].night;
+    o.light = hours[0].light;
+    o.tempC = (int)lroundf(hours[0].tempC);
+    o.outfit = outfitFor(hours[0].tempC, o.weather, o.night, l);
+    return o;
+}
+
 int partOfDay(int localHour, int dinnerHour) {
     if (dinnerHour < KIDS_DINNER_MIN_HR || dinnerHour > KIDS_DINNER_MAX_HR) dinnerHour = KIDS_EVENING_FROM_HR;
     if (localHour >= KIDS_MORNING_FROM_HR && localHour < KIDS_AFTERNOON_FROM_HR) return KIDS_PART_MORNING;
