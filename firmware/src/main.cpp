@@ -294,7 +294,7 @@ bool initDisplay() {
 
 
 /**
- * Demo mode (web UI, Display card): about a minute of the screens and their animations with made-up weather,
+ * Demo mode (web UI, Display card): about a minute and a half of the screens and their animations with made-up weather,
  * so you can see the rain, snow, gusts, leaves, confetti and the report blowing away without waiting for the
  * weather. The real forecast is left alone; a touch stops it.
  */
@@ -314,9 +314,13 @@ struct DemoScene {
 static const DemoScene DEMO_SCENES[] = {
     { SCREEN_RIDE,       5, RIDE_GOOD,    18, 12, 18,  0, WEATHER_CLEAR,  1, false, 0, false },   // a good day
     { SCREEN_RIDE,       6, RIDE_CAUTION,  9, 20, 30, 12, WEATHER_RAIN,  63, false, 0, false },   // rain
+    { SCREEN_RIDE,       5, RIDE_DONT,    12,  4,  8, 80, WEATHER_RAIN,  65, false, 0, false },   // a downpour, no wind
+    { SCREEN_RIDE,       6, RIDE_DONT,    10, 80, 100, 60, WEATHER_RAIN, 82, false, 0, false },   // driving rain in a gale
     { SCREEN_RIDE,       5, RIDE_DONT,    -2, 15, 25,  6, WEATHER_SNOW,  73, false, 0, false },   // snow
     { SCREEN_RIDE,       7, RIDE_DONT,     8, 45, 70,  0, WEATHER_WIND,   3, true,  0, false },   // a stormy autumn night
-    { SCREEN_VILLAGE,    7, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },   // kids home, leaves
+    { SCREEN_VILLAGE,    5, RIDE_CAUTION, 14,  6, 10,  8, WEATHER_RAIN,  51, false, 0, false },   // kids home, drizzle
+    { SCREEN_VILLAGE,    6, RIDE_DONT,    11, 40, 60, 50, WEATHER_RAIN,  63, false, 0, false },   // slanting rain
+    { SCREEN_VILLAGE,    7, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },   // leaves
     { SCREEN_WEATHER,    6, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },
     { SCREEN_CLOTHES,    5, RIDE_GOOD,    11, 30, 55,  0, WEATHER_WIND,   2, false, 0, false },
     { SCREEN_COUNTDOWN,  4, RIDE_GOOD,    11, 10, 15,  0, WEATHER_CLEAR,  1, false, 1, false },

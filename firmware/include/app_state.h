@@ -90,7 +90,7 @@ extern int  screensReturnSeconds; // display.screens.returnSeconds: back to the 
 extern String locationName;       // name of the manually chosen place (web UI search), may be empty
 extern String displayLanguage;    // "en" (default) or "nl"
 
-// Demo mode: about a minute of all screens and animations with made-up weather (once, or until a touch or
+// Demo mode: about a minute and a half of all screens and animations with made-up weather (once, or until a touch or
 // stopDemo() when repeat is set). The real forecast is not changed.
 void startDemo(bool repeat);
 void stopDemo();

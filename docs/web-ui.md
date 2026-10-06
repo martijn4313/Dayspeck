@@ -98,7 +98,7 @@ only matter when a ride screen is in use.
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
-**Demo**: *Play demo* shows about a minute of every screen and animation with made-up weather; with
+**Demo**: *Play demo* shows about a minute and a half of every screen and animation with made-up weather; with
 *Repeat* it starts over until *Stop demo* or a touch. See [Demo](screens.md#demo).
 
 **Clothing**: the limits of the outfits on the [picture screens](kids.md), in °C, and the wind limit
