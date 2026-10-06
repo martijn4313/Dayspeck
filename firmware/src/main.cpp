@@ -504,7 +504,8 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
     for (size_t i = 0; i < np; i++) {
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
+        int shown = kidsShownPart(parts[i].part, parts[i].now, localHours[0], kidsEveningStart());
+        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
     }
     return np;
 }
@@ -533,7 +534,8 @@ void renderKidsVillage() {
     int localHours[24];
     size_t count = kidsHours(hours, localHours);
     KidsOutlook o = kidsNowOutlook(hours, count, kidsLimits);
-    KidsColumn col = { count ? partOfDay(localHours[0], kidsEveningStart()) : KIDS_PART_MORNING, o.valid, o.outfit,
+    int part = count ? partOfDay(localHours[0], kidsEveningStart()) : KIDS_PART_MORNING;
+    KidsColumn col = { count ? kidsShownPart(part, true, localHours[0], kidsEveningStart()) : part, o.valid, o.outfit,
                        o.weather, o.light, kidsShownTemp((float)o.tempC) };
     WeatherData weather = getCurrentWeather();
     char tempStr[8];

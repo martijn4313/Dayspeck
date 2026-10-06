@@ -161,6 +161,11 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
 #define KIDS_DINNER_MAX_HR     21
 int partOfDay(int localHour, int dinnerHour);   // KIDS_PART_*
 
+// The symbol a column shows for its part: an hour after dinner time the current dinner column becomes the
+// evening (setting sun), dinner is over. Its outlook keeps the dinner rules (the conditions of now).
+#define KIDS_DINNER_LENGTH_HR  1
+int kidsShownPart(int part, bool now, int localHourNow, int dinnerHour);
+
 // One column of the kids screens: a part of the day and the forecast hours [from, to) that belong to it
 struct KidsPart {
     int    part;         // KIDS_PART_*

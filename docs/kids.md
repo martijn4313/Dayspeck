@@ -33,7 +33,7 @@ what is past:
 |------|---------|
 | 10:00 | the rest of this morning, this afternoon, dinner |
 | 14:00 | the rest of this afternoon, dinner, tomorrow morning |
-| 19:00 | the rest of dinner, tomorrow morning, tomorrow afternoon |
+| 19:00 | the rest of the evening (dinner is over), tomorrow morning, tomorrow afternoon |
 | at night | tomorrow morning, afternoon and dinner |
 
 With the **night column** switched on, the night (22-07) gets a column of its own once dinner has started,
@@ -42,7 +42,7 @@ and tomorrow morning stays in view. The afternoon is unchanged:
 | Time | Columns with the night column |
 |------|-------------------------------|
 | 14:00 | the rest of this afternoon, dinner, tomorrow morning |
-| 19:00 | the rest of dinner, the night, tomorrow morning |
+| 19:00 | the rest of the evening, the night, tomorrow morning |
 | at night | the rest of the night, tomorrow morning and afternoon |
 
 The current part has **three dots** underneath. Where a night lies between two columns there is a dotted line
@@ -53,7 +53,7 @@ it is:
 |--------|---------|
 | half sun on the horizon, arrow up | morning (the sun comes up) |
 | small sun | afternoon (the sun is high) |
-| plate with a fork and a knife | dinner |
+| plate with a fork and a knife | dinner (an hour after dinner time the current column shows the setting sun: dinner is over) |
 | half sun on the horizon, arrow down | the sunset evening, if chosen instead of dinner |
 | bed | the night (night column only) |
 
@@ -75,7 +75,7 @@ defaults, see [Settings](#settings)):
 **Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
 rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
 
-![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; dinner at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
+![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
 **One number per part.** Each part of the day has one temperature that the weather screen shows and the
 outfit goes by, so the number and the picture always match:
@@ -107,7 +107,7 @@ The night column works with both.
 
 ![The sunset evening instead of dinner: a summer afternoon with a thunderstorm in the evening; a winter day with the moon in the evening](images/kids-sunset.png){ .center }
 
-![The night column at 19:00: the setting sun at dinner, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
+![The night column at 19:00, dinner is over: the evening with the setting sun, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
 thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).

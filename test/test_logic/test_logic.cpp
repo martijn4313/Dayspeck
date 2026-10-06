@@ -458,6 +458,18 @@ void test_part_of_day() {
     TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(22, KIDS_SUNSET_EVENING));
 }
 
+// An hour after dinner time the current dinner column shows the evening
+void test_kids_shown_part() {
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, kidsShownPart(KIDS_PART_DINNER, true, 18, 18));     // eating
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, kidsShownPart(KIDS_PART_DINNER, true, 19, 18));    // dinner is over
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, kidsShownPart(KIDS_PART_DINNER, true, 21, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, kidsShownPart(KIDS_PART_DINNER, false, 19, 18));   // still to come: dinner
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, kidsShownPart(KIDS_PART_DINNER, true, 18, 17));    // dinner at 17
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, kidsShownPart(KIDS_PART_DINNER, true, 21, 21));     // until bedtime
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, kidsShownPart(KIDS_PART_AFTERNOON, true, 19, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, kidsShownPart(KIDS_PART_EVENING, true, 18, KIDS_SUNSET_EVENING));
+}
+
 void test_light_at() {
     const long rise = 7 * 3600, set = 19 * 3600;    // day 0, in seconds
     TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, lightAt(12 * 3600, rise, set));
@@ -944,6 +956,7 @@ int main(int, char**) {
     RUN_TEST(test_kids_part_temperature);
     RUN_TEST(test_kids_now_outlook);
     RUN_TEST(test_part_of_day);
+    RUN_TEST(test_kids_shown_part);
     RUN_TEST(test_light_at);
     RUN_TEST(test_dinner_light);
     RUN_TEST(test_day_parts_in_the_morning);

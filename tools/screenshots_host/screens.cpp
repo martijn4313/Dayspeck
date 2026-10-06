@@ -68,7 +68,8 @@ static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t 
     size_t np = kidsDayParts(localHours, day.count, parts, max, evening, nightColumn);
     for (size_t i = 0; i < np; i++) {
         KidsOutlook o = kidsPartOutlook(hours, parts[i], LIMITS);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, o.tempC };
+        int shown = kidsShownPart(parts[i].part, parts[i].now, day.now, evening);
+        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, o.tempC };
     }
     return np;
 }
@@ -178,7 +179,8 @@ static void village(const VillageScene& s, int windFrames) {
         hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < s.day.sunrise || h >= s.day.sunset, true, KIDS_LIGHT_DAY };
     }
     KidsOutlook o = kidsNowOutlook(hours, s.day.count, LIMITS);
-    KidsColumn col = { partOfDay(s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
+    int part = partOfDay(s.day.now, KIDS_DINNER_HOUR);
+    KidsColumn col = { kidsShownPart(part, true, s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
     bool any = s.day.count > 0;
     initWindAnimation(WIND_AREA_RIDE);
     hostSeed(5);

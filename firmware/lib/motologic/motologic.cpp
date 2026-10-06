@@ -239,6 +239,12 @@ int partOfDay(int localHour, int dinnerHour) {
     return KIDS_PART_NIGHT;
 }
 
+int kidsShownPart(int part, bool now, int localHourNow, int dinnerHour) {
+    if (part != KIDS_PART_DINNER || !now) return part;
+    if (dinnerHour < KIDS_DINNER_MIN_HR || dinnerHour > KIDS_DINNER_MAX_HR) dinnerHour = KIDS_EVENING_FROM_HR;
+    return localHourNow >= dinnerHour + KIDS_DINNER_LENGTH_HR ? KIDS_PART_EVENING : part;
+}
+
 int lightAt(long t, long sunrise, long sunset) {
     long days = (t >= sunrise) ? (t - sunrise) / 86400 : 0;
     long set = sunset + days * 86400;
