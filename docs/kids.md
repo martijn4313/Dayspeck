@@ -16,7 +16,7 @@ which part of the day the outfit is for. From 22:00 (bedtime) until the morning 
 outfit, with a bed in front of it: what to put out before going to sleep. It is the same outfit as the first
 one on the clothes screen.
 
-![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with, after the bed, the winter coat and hat for tomorrow morning](images/kids-village.png){ .center }
+![Village screens: an autumn morning with a sweater; a hot afternoon with a sun cap, t-shirt and shorts; a cold night with, after the bed, the winter coat and scarf for tomorrow morning](images/kids-village.png){ .center }
 
 ## The day in three parts
 
@@ -53,8 +53,8 @@ defaults, see [Settings](#settings)):
 | 15 to under 20 °C | t-shirt |
 | 5 to under 15 °C | sweater |
 | rain or thunderstorm (5 °C and up) | hooded rain coat and boots |
-| 0 to under 5 °C | winter coat and hat |
-| below 0 °C, or snow | winter coat, hat, scarf and mittens |
+| 0 to under 5 °C | winter coat and scarf |
+| below 0 °C, or snow | winter coat, scarf, hat and mittens |
 
 **Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
 rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.

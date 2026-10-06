@@ -187,8 +187,8 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Sun cap, t-shirt and shorts from:</span> <input name="hot" type="number" step="1" min="-30" max="50"> <small>sunny daytime only</small><br>
             <span class="label">T-shirt and shorts from:</span> <input name="shorts" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Sweater below:</span> <input name="sweater" type="number" step="1" min="-30" max="50"> <small>t-shirt above</small><br>
-            <span class="label">Winter coat and hat below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
-            <span class="label">Scarf and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Winter coat and scarf below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Hat and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Wind picture above (km/h):</span> <input name="gust" type="number" step="1" min="1" max="150"> <small>gusts, dry weather</small><br>
             <button type="submit">Save Settings</button>
         </form>
@@ -970,7 +970,7 @@ static void handleApiKids() {
     }
     KidsLimits k = { hot, shorts, sweater, coat, freeze, gust };
     if (!kidsLimitsValid(k)) {
-        sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= scarf below");
+        sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= hat below");
         return;
     }
 

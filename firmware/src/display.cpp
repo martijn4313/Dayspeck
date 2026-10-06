@@ -903,19 +903,19 @@ template <typename G> static void drawRainOutfit(G &d, int ox, int oy) {
     d.drawFastHLine(ox + 32, oy + 57, 9, SSD1306_BLACK);
 }
 
-// Padded winter coat with a zip, under a knitted hat, 56x64; `freezing` adds a scarf and mittens
+// Padded winter coat with a zip and a scarf, 56x64; `freezing` adds a knitted hat and mittens
 template <typename G> static void drawWinterOutfit(G &d, int ox, int oy, bool freezing) {
-    drawBeanie(d, ox + 28, oy);
+    if (freezing) drawBeanie(d, ox + 28, oy);
     drawLongSleeved(d, ox, oy + 16, 47);
     for (int y = 27; y <= 54; y += 9) d.drawFastHLine(ox, oy + y, 56, SSD1306_BLACK);   // padding
     d.drawFastVLine(ox + 28, oy + 17, 47, SSD1306_BLACK);                               // zip
-    if (!freezing) return;
     d.fillRect(ox + 15, oy + 16, 26, 8, SSD1306_BLACK);          // scarf round the neck...
     d.fillRect(ox + 16, oy + 17, 24, 6, SSD1306_WHITE);
     d.fillRect(ox + 31, oy + 22, 8, 17, SSD1306_BLACK);          // ...and its hanging end
     d.fillRect(ox + 32, oy + 23, 6, 15, SSD1306_WHITE);
     d.drawFastHLine(ox + 32, oy + 30, 6, SSD1306_BLACK);
     d.drawFastHLine(ox + 32, oy + 34, 6, SSD1306_BLACK);
+    if (!freezing) return;
     for (int side = 0; side < 2; side++) {                        // mittens at the cuffs
         int cx = side ? ox + 51 : ox + 5;
         d.fillCircle(cx, oy + 57, 5, SSD1306_BLACK);

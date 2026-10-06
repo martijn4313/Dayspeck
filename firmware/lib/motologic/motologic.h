@@ -85,7 +85,7 @@ uint8_t contrastForPercent(int percent);
 #define OUTFIT_MILD      2   // t-shirt
 #define OUTFIT_COOL      3   // sweater
 #define OUTFIT_RAIN      4   // rain coat and boots
-#define OUTFIT_COLD      5   // winter coat and hat
+#define OUTFIT_COLD      5   // winter coat and scarf
 #define OUTFIT_FREEZING  6   // winter coat, hat, scarf and mittens
 
 struct KidsLimits {
@@ -93,7 +93,7 @@ struct KidsLimits {
     float shortsFromC;    // shorts from here on
     float sweaterBelowC;  // sweater below this
     float coatBelowC;     // winter coat below this
-    float freezeBelowC;   // scarf and mittens below this
+    float freezeBelowC;   // hat and mittens below this
     float windyGustKmh;   // gusts above this show the wind picture (dry weather only)
 };
 
