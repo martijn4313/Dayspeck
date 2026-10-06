@@ -329,18 +329,22 @@ void drawRainAnimation(Adafruit_SSD1306 &display) {
         }
         
         if (splashSprite) {
-            // Center splash on impact point
-            display.drawBitmap(splashes[i].x - splashW/2, splashes[i].y - splashH, splashSprite, splashW, splashH, SSD1306_WHITE);
+            // Center splash on impact point, but keep it right of the scene's left border
+            int left = splashes[i].x - splashW/2;
+            if (left <= RAIN_AREA_X_START) left = RAIN_AREA_X_START + 1;
+            display.drawBitmap(left, splashes[i].y - splashH, splashSprite, splashW, splashH, SSD1306_WHITE);
         } else
         #endif
         {
-            // Fallback: procedural splash (width based on frame counter)
+            // Fallback: procedural splash (width based on frame counter), right of the scene's left border
             int fx = splashes[i].frameCounter;  // 3 = wide, 1 = narrow
-            display.drawPixel(splashes[i].x - fx, splashes[i].y, SSD1306_WHITE);
-            display.drawPixel(splashes[i].x + fx, splashes[i].y, SSD1306_WHITE);
+            int cx = splashes[i].x;
+            if (cx - fx <= RAIN_AREA_X_START) cx = RAIN_AREA_X_START + 1 + fx;
+            display.drawPixel(cx - fx, splashes[i].y, SSD1306_WHITE);
+            display.drawPixel(cx + fx, splashes[i].y, SSD1306_WHITE);
             if (splashes[i].frameCounter >= 2) {
-                display.drawPixel(splashes[i].x - fx + 1, splashes[i].y - 1, SSD1306_WHITE);
-                display.drawPixel(splashes[i].x + fx - 1, splashes[i].y - 1, SSD1306_WHITE);
+                display.drawPixel(cx - fx + 1, splashes[i].y - 1, SSD1306_WHITE);
+                display.drawPixel(cx + fx - 1, splashes[i].y - 1, SSD1306_WHITE);
             }
         }
     }
