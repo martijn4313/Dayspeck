@@ -36,6 +36,9 @@ extern float rainProbPct;
 
 // Kids variant: outfit limits (config.json "kids", defaults KIDS_* in config.h) and the wind picture
 extern KidsLimits kidsLimits;
+// Kids variant: dinner time (local hour) and whether the night gets a column after dinner (config.json "kids")
+extern int kidsDinnerHour;
+extern bool kidsNightColumn;
 // Kids variant: countdowns (config.json "kids"): two birthdays (month 0 = not set), the holidays that count
 // down (KIDS_HOLIDAY mask) and from how many sleeps before the day
 extern KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS];

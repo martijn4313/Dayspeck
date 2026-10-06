@@ -14,7 +14,7 @@ rebuilding.
 - **Ride rating:** *can I ride today?* A check mark, exclamation mark or cross next to an animated village,
   for today or tomorrow, plus a 7-day grid and the next hours with the best time to leave.
 - **Picture screens:** *what do I wear today?* Outfits, weather pictures and one temperature for the
-  morning, afternoon and evening, and a countdown in sleeps to birthdays and holidays. No words, so young
+  morning, afternoon and dinner time, and a countdown in sleeps to birthdays and holidays. No words, so young
   children can use them.
 - **Weather report:** the day in a few short sentences, in English or Dutch, written on the device by fixed
   rules.

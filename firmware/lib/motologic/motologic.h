@@ -116,7 +116,14 @@ struct KidsHour {
     int   code;
     bool  night;
     bool  valid;
+    int   light;   // KIDS_LIGHT_* at the start of the hour (the current hour: now)
 };
+
+// How light it is at a moment: dusk is the hour before sunset up to half an hour after it
+#define KIDS_LIGHT_DAY   0
+#define KIDS_LIGHT_DUSK  1
+#define KIDS_LIGHT_DARK  2
+int lightAt(long t, long sunrise, long sunset);
 
 // Weather picture of one hour (without a code: rain from the amount, otherwise clear)
 int kidsHourWeather(const KidsHour& h, const KidsLimits& l);
@@ -130,22 +137,26 @@ struct KidsOutlook {
     int  tempC;      // average temperature, rounded (kidsPartOutlook: the part's own temperature)
     int  maxTempC;   // highest temperature, rounded
     int  hour;       // index of the middle hour
+    int  light;      // KIDS_LIGHT_*: sun, setting sun or moon for a clear sky
 };
 
 // Summary of hours [from, to): the most severe precipitation if there is any (at least 0.2 mm in an
 // hour, or a storm), otherwise the most common sky; outfit from the average temperature.
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
 
-// Parts of the day on the kids screens, by local hour: morning 07-12, afternoon 12-18, evening 18-22.
-// The hours from 22 to 07 belong to no part: that is the night, when the kids sleep.
+// Parts of the day on the kids screens, by local hour: morning 07-12, afternoon 12 to dinner time, dinner
+// until 22, and the night (22-07), when the kids sleep.
 #define KIDS_PART_MORNING    0
 #define KIDS_PART_AFTERNOON  1
-#define KIDS_PART_EVENING    2
+#define KIDS_PART_DINNER     2
+#define KIDS_PART_NIGHT      3
 #define KIDS_MORNING_FROM_HR    7
 #define KIDS_AFTERNOON_FROM_HR 12
-#define KIDS_EVENING_FROM_HR   18
-#define KIDS_EVENING_UNTIL_HR  22
-int partOfDay(int localHour);   // KIDS_PART_*, or -1 at night
+#define KIDS_EVENING_FROM_HR   18   // the weather report's evening
+#define KIDS_EVENING_UNTIL_HR  22   // bedtime: the night starts
+#define KIDS_DINNER_MIN_HR     15   // the range of the dinner time setting
+#define KIDS_DINNER_MAX_HR     21
+int partOfDay(int localHour, int dinnerHour);   // KIDS_PART_*
 
 // One column of the kids screens: a part of the day and the forecast hours [from, to) that belong to it
 struct KidsPart {
@@ -157,13 +168,16 @@ struct KidsPart {
 
 // Split forecast hours into the next parts of the day. localHours[i] is the local hour of forecast
 // hour i, and hour 0 is the current one. Fills at most maxParts parts, the current part first (only
-// its remaining hours); returns how many.
-size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts);
+// its remaining hours); returns how many. The night is skipped (the next part is then afterSleep),
+// unless nightColumn is set and it is not the last column: tomorrow morning always stays in view.
+size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts, int dinnerHour,
+                    bool nightColumn);
 
 // One column of the kids screens: the weather picture of the part (as kidsWindowOutlook), and one
 // characteristic temperature that is both the number on the weather screen and what the outfit goes by:
-// the morning its lowest (the walk to school), the afternoon its highest, the evening its first hour
-// (18:00, before bedtime). For the current part only its remaining hours count. tempC holds that number.
+// the morning its lowest (the walk to school), the afternoon its highest, dinner its first hour (dinner
+// time) and the night its lowest. For the current part only its remaining hours count. tempC holds that
+// number. Dinner takes its light from that same hour, the night always has the moon.
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l);
 
 // Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)

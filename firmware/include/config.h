@@ -58,8 +58,10 @@
 #define KIDS_FREEZE_BELOW_C     0   // winter coat, scarf, hat and mittens
 #define KIDS_WINDY_GUST_KMH    50   // gusts above this show the wind picture
 // Rain or a storm gives the rain coat and boots (above KIDS_COAT_BELOW_C), snow the full winter outfit.
-// The screens show the next three parts of the day: morning 07-12, afternoon 12-18, evening 18-22
-// (KIDS_*_HR in firmware/lib/motologic/motologic.h).
+// The screens show the next three parts of the day: morning 07-12, afternoon 12 to dinner time, dinner
+// until 22 and, if switched on, the night (KIDS_*_HR in firmware/lib/motologic/motologic.h).
+#define KIDS_DINNER_HOUR       18   // dinner time (15-21): the dinner column's temperature and light
+#define KIDS_NIGHT_COLUMN   false   // after dinner: dinner, night, tomorrow morning
 
 // Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
 // config.json "display.nightBrightness")

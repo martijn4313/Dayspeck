@@ -172,6 +172,10 @@ void loadConfig() {
         if (o["windyGustKmh"].is<float>()) k.windyGustKmh = o["windyGustKmh"];
         if (kidsLimitsValid(k)) kidsLimits = k;
         else logMessage("config.json: the kids limits are not ordered from warm to cold, using the defaults");
+        if (o["dinnerHour"].is<int>()) {
+            kidsDinnerHour = constrain((int)o["dinnerHour"], KIDS_DINNER_MIN_HR, KIDS_DINNER_MAX_HR);
+        }
+        if (o["nightColumn"].is<bool>()) kidsNightColumn = o["nightColumn"];
 
         // Countdowns: [{"date": "YYYY-MM-DD", "initial": "A"}], the holidays and the range in sleeps
         if (o["birthdays"].is<JsonArray>()) {
@@ -435,6 +439,12 @@ static bool nightAt(time_t t) {
     return h >= 21 || h < 6;
 }
 
+// Sun, setting sun or moon at a moment (without sunrise and sunset: by the hour)
+static int lightOf(time_t t) {
+    if (sunriseTime > 0 && sunsetTime > 0) return lightAt((long)t, (long)sunriseTime, (long)sunsetTime);
+    return nightAt(t) ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
+}
+
 /**
  * Kids variant: the nearest birthday or holiday within range, from the local date (none until the clock is set)
  */
@@ -454,10 +464,10 @@ static KidsCountdown kidsCountdownNow() {
 }
 
 /**
- * Kids screens: the next parts of the day (morning, afternoon, evening; at most `max`, the current one first)
- * with their outlook. Returns how many.
+ * Kids screens: the next parts of the day (morning, afternoon, dinner and maybe the night; at most `max`, the
+ * current one first) with their outlook. Returns how many.
  */
-static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
+static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn) {
     // Forecast hours from the current one on; the current hour uses what is measured now
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
@@ -469,19 +479,19 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
         const HourSlice& s = slices[count];
         time_t t = firstEpoch + (time_t)count * 3600;
         hours[count] = KidsHour{ (float)s.tempC, s.rainTenthMm / 10.0f, (float)s.gustKmh,
-                                 s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid };
+                                 s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid, lightOf(t) };
         localHours[count] = localHourOf(t);
     }
     if (count > 0) {
         WeatherData w = getCurrentWeather();
-        hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true };
+        hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true, lightOf(time(nullptr)) };
     }
 
-    size_t np = kidsDayParts(localHours, count, parts, max);
+    size_t np = kidsDayParts(localHours, count, parts, max, kidsDinnerHour, nightColumn);
     for (size_t i = 0; i < np; i++) {
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.tempC) };
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
     }
     return np;
 }
@@ -492,7 +502,7 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
 void renderKids(bool weather) {
     KidsPart parts[3];
     KidsColumn cols[3];
-    size_t np = kidsColumns(cols, parts, 3);
+    size_t np = kidsColumns(cols, parts, 3, kidsNightColumn);
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
@@ -508,7 +518,7 @@ void renderKids(bool weather) {
 void renderKidsVillage() {
     KidsPart part;
     KidsColumn col = {};
-    bool any = kidsColumns(&col, &part, 1) > 0;
+    bool any = kidsColumns(&col, &part, 1, false) > 0;   // the outfit to wear: never the night
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');

@@ -981,11 +981,32 @@ static void drawSmallMoon(Adafruit_SSD1306 &d, int cx, int cy, int r) {
     d.fillCircle(cx + r * 2 / 5, cy - r / 4, r * 5 / 6, SSD1306_BLACK);   // bite out of it: a crescent
 }
 
-static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, bool night) {
+// Sun half under the horizon, centred on cx with the horizon at hy: the sun setting
+static void drawSettingSun(Adafruit_SSD1306 &d, int cx, int hy, int r, int horizonHalf) {
+    d.fillCircle(cx, hy, r, SSD1306_WHITE);
+    d.fillRect(cx - r - 1, hy + 1, 2 * r + 3, r + 1, SSD1306_BLACK);   // the part below the horizon
+    static const int8_t dir[5][2] = { {1,0}, {1,-1}, {0,-1}, {-1,-1}, {-1,0} };
+    for (int i = 0; i < 5; i++) {
+        int dx = dir[i][0], dy = dir[i][1];
+        int a = r + 2, b = r + 5;
+        if (dx && dy) { a = a * 7 / 10; b = b * 7 / 10; }
+        d.drawLine(cx + dx * a, hy + dy * a, cx + dx * b, hy + dy * b, SSD1306_WHITE);
+    }
+    d.drawFastHLine(cx - horizonHalf, hy + 2, 2 * horizonHalf + 1, SSD1306_WHITE);
+}
+
+// The sky light of a clear picture: sun, setting sun or moon
+static void drawSmallSky(Adafruit_SSD1306 &d, int cx, int cy, int r, int light) {
+    if (light == KIDS_LIGHT_DARK) drawSmallMoon(d, cx, cy, r + r / 2);
+    else if (light == KIDS_LIGHT_DUSK) drawSettingSun(d, cx, cy + r, r + 1, r + 6);
+    else drawSmallSun(d, cx, cy, r);
+}
+
+static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light) {
     const int y = 17;
     switch (weather) {
     case KIDS_WEATHER_PARTLY:
-        if (night) drawSmallMoon(d, cx - 6, y + 7, 6); else drawSmallSun(d, cx - 6, y + 7, 4);
+        drawSmallSky(d, cx - 6, y + 7, 4, light);
         drawSmallCloud(d, cx + 3, y + 8, 1, SSD1306_BLACK);
         drawSmallCloud(d, cx + 3, y + 8, 0, SSD1306_WHITE);
         break;
@@ -1021,15 +1042,37 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, bool nigh
         }
         break;
     default:
-        if (night) drawSmallMoon(d, cx, y + 13, 11); else drawSmallSun(d, cx, y + 13, 7);
+        drawSmallSky(d, cx, y + 13, 7, light);
     }
 }
 
 // ---- Symbols and the strip ------------------------------------------------------------------------
 
+static void drawBed(Adafruit_SSD1306 &d, int bx, int by);
+
+// Plate between a fork and a knife, about 17x11, centred on cx
+static void drawPlate(Adafruit_SSD1306 &d, int cx, int y) {
+    d.drawCircle(cx, y + 1, 4, SSD1306_WHITE);
+    d.drawCircle(cx, y + 1, 2, SSD1306_WHITE);
+    d.drawFastVLine(cx - 7, y - 4, 11, SSD1306_WHITE);        // fork: handle...
+    d.drawFastVLine(cx - 8, y - 4, 3, SSD1306_WHITE);         // ...and its tines
+    d.drawFastVLine(cx - 6, y - 4, 3, SSD1306_WHITE);
+    d.drawFastHLine(cx - 8, y - 1, 3, SSD1306_WHITE);
+    d.drawFastVLine(cx + 7, y - 4, 11, SSD1306_WHITE);        // knife: handle...
+    d.drawFastVLine(cx + 8, y - 4, 5, SSD1306_WHITE);         // ...and its blade
+}
+
 // Time-of-day symbol (about 14x13) at the top of a column: morning a rising half sun (arrow up), afternoon a
-// small high sun, evening a setting half sun (arrow down)
+// small high sun, dinner a plate with a fork and a knife, the night a bed
 static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part, int y = 8) {
+    if (part == KIDS_PART_DINNER) {
+        drawPlate(d, cx, y - 1);
+        return;
+    }
+    if (part == KIDS_PART_NIGHT) {
+        drawBed(d, cx - 7, y - 2);
+        return;
+    }
     if (part == KIDS_PART_AFTERNOON) {
         d.fillCircle(cx, y, 3, SSD1306_WHITE);
         static const int8_t ray[8][2] = { {6,0}, {4,4}, {0,6}, {-4,4}, {-6,0}, {-4,-4}, {0,-6}, {4,-4} };
@@ -1045,8 +1088,7 @@ static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part, int y = 8) {
     d.drawPixel(sx - 4, y - 2, SSD1306_WHITE);
     d.drawPixel(sx, y - 3, SSD1306_WHITE);
     d.drawFastVLine(cx + 5, y - 5, 8, SSD1306_WHITE);
-    if (part == KIDS_PART_MORNING) d.fillTriangle(cx + 5, y - 8, cx + 2, y - 5, cx + 8, y - 5, SSD1306_WHITE);
-    else                           d.fillTriangle(cx + 2, y + 1, cx + 8, y + 1, cx + 5, y + 4, SSD1306_WHITE);
+    d.fillTriangle(cx + 5, y - 8, cx + 2, y - 5, cx + 8, y - 5, SSD1306_WHITE);   // morning: arrow up
 }
 
 // A bed, 14x9, left edge at bx, top at by - 2
@@ -1055,6 +1097,17 @@ static void drawBed(Adafruit_SSD1306 &d, int bx, int by) {
     d.fillRect(bx, by + 3, 14, 3, SSD1306_WHITE);       // mattress
     d.fillRect(bx + 12, by + 1, 2, 6, SSD1306_WHITE);   // foot end
     d.fillRect(bx + 3, by, 4, 3, SSD1306_WHITE);        // pillow
+}
+
+// The night column of the clothes screen: no outfit, the moon over a sleeping "z z"
+static void drawSleeping(Adafruit_SSD1306 &d, int cx) {
+    drawSmallMoon(d, cx - 4, 30, 10);
+    d.setTextSize(1);
+    d.setCursor(cx + 6, 22);
+    d.print('z');
+    d.setTextSize(2);
+    d.setCursor(cx + 9, 36);
+    d.print('Z');
 }
 
 // The night between two columns: a dotted line, with a bed at its top ("after sleeping")
@@ -1078,13 +1131,15 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
             d.setCursor(cx - 5, 26);
             d.print('?');
         } else if (weather) {
-            drawSmallWeather(d, cx, c.weather, c.night);
+            drawSmallWeather(d, cx, c.weather, c.light);
             char num[8];
             snprintf(num, sizeof(num), "%d", c.temp);
             int w = (int)strlen(num) * 12 - 2;
             d.setTextSize(2);
             d.setCursor(cx - w / 2, 45);
             d.print(num);
+        } else if (c.part == KIDS_PART_NIGHT) {
+            drawSleeping(d, cx);
         } else {
             ScaledCanvas art{ d, 0.66f, cx - 18, 17 };   // the 56x64 outfits at 37x42
             drawOutfit(art, 0, c.outfit);
