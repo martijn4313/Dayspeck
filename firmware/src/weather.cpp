@@ -54,6 +54,7 @@ float rainProbPct = DEFAULT_RAIN_PROB_PCT;
 KidsLimits kidsLimits = { KIDS_HOT_FROM_C, KIDS_SHORTS_FROM_C, KIDS_SWEATER_BELOW_C,
                           KIDS_COAT_BELOW_C, KIDS_FREEZE_BELOW_C, KIDS_WINDY_GUST_KMH };
 int kidsDinnerHour = KIDS_DINNER_HOUR;
+bool kidsSunsetColumn = KIDS_SUNSET_COLUMN;
 bool kidsNightColumn = KIDS_NIGHT_COLUMN;
 KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS] = {};
 unsigned kidsHolidays = KIDS_ALL_HOLIDAYS;

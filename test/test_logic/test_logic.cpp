@@ -450,6 +450,12 @@ void test_part_of_day() {
     TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(17, 17));
     TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(18, 99));   // out of range: 18:00
     TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17, 99));
+
+    // The sunset evening: 18-22, like dinner at 18:00
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17, KIDS_SUNSET_EVENING));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(18, KIDS_SUNSET_EVENING));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(21, KIDS_SUNSET_EVENING));
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(22, KIDS_SUNSET_EVENING));
 }
 
 void test_light_at() {
@@ -489,6 +495,16 @@ void test_dinner_light() {
     o = kidsPartOutlook(h, KidsPart{ KIDS_PART_NIGHT, 0, 3, false, false }, K);
     TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, o.light);
     TEST_ASSERT_TRUE(o.night);
+
+    // The sunset evening: the temperature of its first hour, the moon when most of it is dark
+    h[0].light = KIDS_LIGHT_DAY;
+    o = kidsPartOutlook(h, KidsPart{ KIDS_PART_EVENING, 0, 3, false, false }, K);
+    TEST_ASSERT_EQUAL(15, o.tempC);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, o.light);
+    TEST_ASSERT_TRUE(o.night);
+    h[1].night = false;
+    o = kidsPartOutlook(h, KidsPart{ KIDS_PART_EVENING, 0, 3, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, o.light);
 }
 
 // Local hours of `count` forecast hours from `first` on
@@ -586,7 +602,15 @@ void test_day_parts_night_column() {
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[1].part);
     TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[2].part);
 
+    // The sunset evening gets the night column too
+    hoursFrom(19, h, 24);
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, KIDS_SUNSET_EVENING, true));
+    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[0].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, p[1].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[2].part);
+
     // One column (the village): never the night
+    hoursFrom(23, h, 24);
     TEST_ASSERT_EQUAL(1, kidsDayParts(h, 24, p, 1, 18, true));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
     TEST_ASSERT_TRUE(p[0].afterSleep);

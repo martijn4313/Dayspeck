@@ -113,6 +113,7 @@ weather, clothes or report screen is in one of the screen lists.
 | Winter coat and scarf below | default 5 |
 | Hat and mittens below | default 0 |
 | Wind picture above (km/h) | gusts above this show the wind picture in dry weather, and blow the weather report away (default 50) |
+| Evening column | *Dinner*: a plate, from dinner time, with the sun, setting sun or moon at dinner time (default). *Sunset*: the setting sun of earlier versions, 18-22, with the moon when most of it is dark |
 | Dinner time (hour) | the start of the dinner column, 15-21: its temperature and its sun, setting sun or moon (default 18) |
 | Night column | once dinner has started, show dinner, the night and tomorrow morning (default off) |
 

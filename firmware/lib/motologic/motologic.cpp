@@ -199,6 +199,7 @@ KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const K
                 o.night = h.light == KIDS_LIGHT_DARK;
                 break;
             }
+            if (part.part == KIDS_PART_EVENING) break;           // its first hour; sun or moon for all of it
         } else if (lowest) {
             if (h.tempC < t) t = h.tempC;                       // the coldest of the morning or the night
         } else if (h.tempC > t) {
@@ -229,10 +230,12 @@ KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits
 }
 
 int partOfDay(int localHour, int dinnerHour) {
+    int evening = KIDS_PART_DINNER;
+    if (dinnerHour == KIDS_SUNSET_EVENING) evening = KIDS_PART_EVENING;
     if (dinnerHour < KIDS_DINNER_MIN_HR || dinnerHour > KIDS_DINNER_MAX_HR) dinnerHour = KIDS_EVENING_FROM_HR;
     if (localHour >= KIDS_MORNING_FROM_HR && localHour < KIDS_AFTERNOON_FROM_HR) return KIDS_PART_MORNING;
     if (localHour >= KIDS_AFTERNOON_FROM_HR && localHour < dinnerHour) return KIDS_PART_AFTERNOON;
-    if (localHour >= dinnerHour && localHour < KIDS_EVENING_UNTIL_HR) return KIDS_PART_DINNER;
+    if (localHour >= dinnerHour && localHour < KIDS_EVENING_UNTIL_HR) return evening;
     return KIDS_PART_NIGHT;
 }
 

@@ -1063,7 +1063,8 @@ static void drawPlate(Adafruit_SSD1306 &d, int cx, int y) {
 }
 
 // Time-of-day symbol (about 14x13) at the top of a column: morning a rising half sun (arrow up), afternoon a
-// small high sun, dinner a plate with a fork and a knife, the night a bed
+// small high sun, the sunset evening a setting half sun (arrow down), dinner a plate with a fork and a knife,
+// the night a bed
 static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part, int y = 8) {
     if (part == KIDS_PART_DINNER) {
         drawPlate(d, cx, y - 1);
@@ -1088,7 +1089,8 @@ static void drawPartSymbol(Adafruit_SSD1306 &d, int cx, int part, int y = 8) {
     d.drawPixel(sx - 4, y - 2, SSD1306_WHITE);
     d.drawPixel(sx, y - 3, SSD1306_WHITE);
     d.drawFastVLine(cx + 5, y - 5, 8, SSD1306_WHITE);
-    d.fillTriangle(cx + 5, y - 8, cx + 2, y - 5, cx + 8, y - 5, SSD1306_WHITE);   // morning: arrow up
+    if (part == KIDS_PART_MORNING) d.fillTriangle(cx + 5, y - 8, cx + 2, y - 5, cx + 8, y - 5, SSD1306_WHITE);
+    else                           d.fillTriangle(cx + 2, y + 1, cx + 8, y + 1, cx + 5, y + 4, SSD1306_WHITE);
 }
 
 // A bed, 14x9, left edge at bx, top at by - 2
