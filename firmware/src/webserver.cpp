@@ -190,7 +190,8 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Winter coat and scarf below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Hat and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Wind picture above (km/h):</span> <input name="gust" type="number" step="1" min="1" max="150"> <small>gusts, dry weather</small><br>
-            <span class="label">Dinner time (hour):</span> <input name="dinner" type="number" step="1" min="15" max="21"> <small>the dinner column: its temperature, and sun, sunset or moon</small><br>
+            <span class="label">Evening column:</span> <select name="evening"><option value="dinner">Dinner (plate)</option><option value="sunset">Sunset (setting sun, 18-22)</option></select><br>
+            <span class="label">Dinner time (hour):</span> <input name="dinner" type="number" step="1" min="15" max="21"> <small>dinner only: its temperature, and sun, sunset or moon</small><br>
             <span class="label">Night column:</span> <input name="nightColumn" type="checkbox"> <small>after dinner: dinner, night, tomorrow morning</small><br>
             <button type="submit">Save Settings</button>
         </form>
@@ -413,6 +414,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     k.coat.value = s.kids.coatBelowC;
                     k.freeze.value = s.kids.freezeBelowC;
                     k.gust.value = s.kids.windyGustKmh;
+                    k.evening.value = s.kids.evening;
                     k.dinner.value = s.kids.dinnerHour;
                     k.nightColumn.checked = s.kids.nightColumn;
 
@@ -867,6 +869,7 @@ static void handleApiStatus() {
     kids["coatBelowC"] = kidsLimits.coatBelowC;
     kids["freezeBelowC"] = kidsLimits.freezeBelowC;
     kids["windyGustKmh"] = kidsLimits.windyGustKmh;
+    kids["evening"] = kidsSunsetColumn ? "sunset" : "dinner";
     kids["dinnerHour"] = kidsDinnerHour;
     kids["nightColumn"] = kidsNightColumn;
     JsonArray birthdays = kids["birthdays"].to<JsonArray>();
@@ -979,6 +982,11 @@ static void handleApiKids() {
         return;
     }
     bool nightColumn = server.hasArg("nightColumn");
+    String evening = server.arg("evening");
+    if (evening != "dinner" && evening != "sunset") {
+        sendMessage(400, "The evening column must be dinner or sunset");
+        return;
+    }
     KidsLimits k = { hot, shorts, sweater, coat, freeze, gust };
     if (!kidsLimitsValid(k)) {
         sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= hat below");
@@ -992,6 +1000,7 @@ static void handleApiKids() {
         doc["kids"]["coatBelowC"] = coat;
         doc["kids"]["freezeBelowC"] = freeze;
         doc["kids"]["windyGustKmh"] = gust;
+        doc["kids"]["evening"] = evening;
         doc["kids"]["dinnerHour"] = dinner;
         doc["kids"]["nightColumn"] = nightColumn;
     });
@@ -1001,6 +1010,7 @@ static void handleApiKids() {
     }
     kidsLimits = k;
     kidsDinnerHour = dinner;
+    kidsSunsetColumn = evening == "sunset";
     kidsNightColumn = nightColumn;
     state.displayDirty = true;
     sendMessage(200, "Clothing settings saved");

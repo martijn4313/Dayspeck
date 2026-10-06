@@ -145,11 +145,14 @@ struct KidsOutlook {
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
 
 // Parts of the day on the kids screens, by local hour: morning 07-12, afternoon 12 to dinner time, dinner
-// until 22, and the night (22-07), when the kids sleep.
+// until 22, and the night (22-07), when the kids sleep. Instead of dinner there can be the sunset evening
+// (18-22, dinnerHour KIDS_SUNSET_EVENING): a setting sun as its symbol, and the moon when most of it is dark.
 #define KIDS_PART_MORNING    0
 #define KIDS_PART_AFTERNOON  1
 #define KIDS_PART_DINNER     2
 #define KIDS_PART_NIGHT      3
+#define KIDS_PART_EVENING    4
+#define KIDS_SUNSET_EVENING  0   // dinnerHour for the sunset evening instead of dinner
 #define KIDS_MORNING_FROM_HR    7
 #define KIDS_AFTERNOON_FROM_HR 12
 #define KIDS_EVENING_FROM_HR   18   // the weather report's evening
@@ -157,6 +160,11 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
 #define KIDS_DINNER_MIN_HR     15   // the range of the dinner time setting
 #define KIDS_DINNER_MAX_HR     21
 int partOfDay(int localHour, int dinnerHour);   // KIDS_PART_*
+
+// The symbol a column shows for its part: an hour after dinner time the current dinner column becomes the
+// evening (setting sun), dinner is over. Its outlook keeps the dinner rules (the conditions of now).
+#define KIDS_DINNER_LENGTH_HR  1
+int kidsShownPart(int part, bool now, int localHourNow, int dinnerHour);
 
 // One column of the kids screens: a part of the day and the forecast hours [from, to) that belong to it
 struct KidsPart {
@@ -176,7 +184,7 @@ size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t m
 // One column of the kids screens: the weather picture of the part (as kidsWindowOutlook), and one
 // characteristic temperature that is both the number on the weather screen and what the outfit goes by:
 // the morning its lowest (the walk to school), the afternoon its highest, dinner its first hour (dinner
-// time) and the night its lowest. For the current part only its remaining hours count. tempC holds that
+// time; the sunset evening its first hour too) and the night its lowest. For the current part only its remaining hours count. tempC holds that
 // number. Dinner takes its light from that same hour, the night always has the moon.
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l);
 

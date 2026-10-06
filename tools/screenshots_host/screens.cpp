@@ -53,7 +53,8 @@ static Day makeDay(int now, int sunrise, int sunset, HourFn f, size_t count = 24
 }
 
 // The kids columns of a day, as the firmware's kidsColumns() makes them
-static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn = false) {
+static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn = false,
+                      int evening = KIDS_DINNER_HOUR) {
     KidsHour hours[36];
     int localHours[36];
     for (size_t i = 0; i < day.count; i++) {
@@ -64,18 +65,19 @@ static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t 
         hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < day.sunrise || h >= day.sunset, true, light };
         localHours[i] = h;
     }
-    size_t np = kidsDayParts(localHours, day.count, parts, max, KIDS_DINNER_HOUR, nightColumn);
+    size_t np = kidsDayParts(localHours, day.count, parts, max, evening, nightColumn);
     for (size_t i = 0; i < np; i++) {
         KidsOutlook o = kidsPartOutlook(hours, parts[i], LIMITS);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, o.tempC };
+        int shown = kidsShownPart(parts[i].part, parts[i].now, day.now, evening);
+        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, o.tempC };
     }
     return np;
 }
 
-static void dayStrip(const Day& day, bool weather, bool nightColumn = false) {
+static void dayStrip(const Day& day, bool weather, bool nightColumn = false, int evening = KIDS_DINNER_HOUR) {
     KidsPart parts[3];
     KidsColumn cols[3];
-    size_t np = columns(day, cols, parts, 3, nightColumn);
+    size_t np = columns(day, cols, parts, 3, nightColumn, evening);
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
@@ -127,6 +129,9 @@ static void kidsScreens() {
     // The night column after dinner: weather and clothes
     dayStrip(makeDay(19, 7, 19, autumnEvening), true, true);   frame("kids-night", 0);
     dayStrip(makeDay(19, 7, 19, autumnEvening), false, true);  frame("kids-night", 1);
+    // The sunset evening instead of dinner: a summer afternoon and a winter morning
+    dayStrip(makeDay(13, 6, 21, summerAfternoon), true, false, KIDS_SUNSET_EVENING);   frame("kids-sunset", 0);
+    dayStrip(makeDay(8, 8, 17, winterMorning), true, false, KIDS_SUNSET_EVENING);      frame("kids-sunset", 1);
 
     // Leaves blowing over the autumn evening's weather screen
     initWindAnimation(WIND_AREA_KIDS);
@@ -174,7 +179,8 @@ static void village(const VillageScene& s, int windFrames) {
         hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < s.day.sunrise || h >= s.day.sunset, true, KIDS_LIGHT_DAY };
     }
     KidsOutlook o = kidsNowOutlook(hours, s.day.count, LIMITS);
-    KidsColumn col = { partOfDay(s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
+    int part = partOfDay(s.day.now, KIDS_DINNER_HOUR);
+    KidsColumn col = { kidsShownPart(part, true, s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
     bool any = s.day.count > 0;
     initWindAnimation(WIND_AREA_RIDE);
     hostSeed(5);

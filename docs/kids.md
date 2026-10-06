@@ -33,7 +33,7 @@ what is past:
 |------|---------|
 | 10:00 | the rest of this morning, this afternoon, dinner |
 | 14:00 | the rest of this afternoon, dinner, tomorrow morning |
-| 19:00 | the rest of dinner, tomorrow morning, tomorrow afternoon |
+| 19:00 | the rest of the evening (dinner is over), tomorrow morning, tomorrow afternoon |
 | at night | tomorrow morning, afternoon and dinner |
 
 With the **night column** switched on, the night (22-07) gets a column of its own once dinner has started,
@@ -42,7 +42,7 @@ and tomorrow morning stays in view. The afternoon is unchanged:
 | Time | Columns with the night column |
 |------|-------------------------------|
 | 14:00 | the rest of this afternoon, dinner, tomorrow morning |
-| 19:00 | the rest of dinner, the night, tomorrow morning |
+| 19:00 | the rest of the evening, the night, tomorrow morning |
 | at night | the rest of the night, tomorrow morning and afternoon |
 
 The current part has **three dots** underneath. Where a night lies between two columns there is a dotted line
@@ -53,7 +53,8 @@ it is:
 |--------|---------|
 | half sun on the horizon, arrow up | morning (the sun comes up) |
 | small sun | afternoon (the sun is high) |
-| plate with a fork and a knife | dinner |
+| plate with a fork and a knife | dinner (an hour after dinner time the current column shows the setting sun: dinner is over) |
+| half sun on the horizon, arrow down | the sunset evening, if chosen instead of dinner |
 | bed | the night (night column only) |
 
 **Clothes screen:** one outfit per part of the day. The outfits, from warm to cold (the limits are the
@@ -74,7 +75,7 @@ defaults, see [Settings](#settings)):
 **Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
 rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
 
-![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; dinner at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
+![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
 **One number per part.** Each part of the day has one temperature that the weather screen shows and the
 outfit goes by, so the number and the picture always match:
@@ -98,7 +99,15 @@ sun around the start of October and the moon in winter. The night column always 
 
 ![Dinner at 18:00, seen at noon: a summer day with the sun before a thunderstorm at dinner; an autumn day with rain at dinner; a winter day with the moon at dinner](images/kids-dinner.png){ .center }
 
-![The night column at 19:00: the setting sun at dinner, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
+**Sunset evening instead of dinner.** Under *Clothing* the evening column can also be the **sunset evening**,
+as in earlier versions: always 18-22, a setting sun with an arrow down as its symbol, the temperature at 18:00,
+and the moon when most of 18-22 is dark (otherwise the sun). In early autumn that can show the moon next to the
+temperature of a still light 18:00; the dinner column avoids that by judging the light at dinner time itself.
+The night column works with both.
+
+![The sunset evening instead of dinner: a summer afternoon with a thunderstorm in the evening; a winter day with the moon in the evening](images/kids-sunset.png){ .center }
+
+![The night column at 19:00, dinner is over: the evening with the setting sun, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
 thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).
@@ -136,8 +145,9 @@ Under *Clothing* in the [web UI](web-ui.md) you can change the temperature limit
 the gust speed for the wind picture), for a child who feels the cold sooner or later than the defaults. The
 limits must go from warm to cold; an equal pair skips that outfit, for example a sweater limit equal to the
 shorts limit has no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
-[configuration reference](configuration.md)) and are always in °C. The same card sets the **dinner time**
-(an hour, 15-21, default 18) and switches the **night column** on (off by default).
+[configuration reference](configuration.md)) and are always in °C. The same card chooses the **evening column**
+(dinner, the default, or the sunset evening), sets the **dinner time** (an hour, 15-21, default 18) and switches
+the **night column** on (off by default).
 
 Under *Countdowns* you enter the two birthdays (the date of birth, for the number of candles, and a
 letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps

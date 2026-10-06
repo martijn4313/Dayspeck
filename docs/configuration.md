@@ -17,6 +17,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `thresholds.rainProbPct` | a chance of rain from this percentage on gives "caution"; 101 switches it off |
 | `kids.hotFromC`, `kids.shortsFromC`, `kids.sweaterBelowC`, `kids.coatBelowC`, `kids.freezeBelowC` | picture screens: the outfit limits in °C, from warm to cold (defaults 25, 20, 15, 5, 0); each must be equal to or below the one before it, otherwise all of them fall back to the defaults |
 | `kids.windyGustKmh` | gusts above this show the wind picture and blow the weather report away (default 50) |
+| `kids.evening` | the evening column of the picture screens: `"dinner"` (default) or `"sunset"` (18-22 with a setting sun) |
 | `kids.dinnerHour` | dinner time, the start of the dinner column on the picture screens, 15-21 (default 18) |
 | `kids.nightColumn` | after dinner the picture screens show dinner, the night and tomorrow morning (default false) |
 | `kids.birthdays` | countdown: up to two `[{"date": "YYYY-MM-DD", "initial": "E"}]`, the date of birth and the letter on the cake (A-Z, may be empty) |
