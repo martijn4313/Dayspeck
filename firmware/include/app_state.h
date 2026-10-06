@@ -40,6 +40,8 @@ struct SystemState {
     int8_t        wifiSignal;
     bool          mdnsStarted;
     bool          apModeStarted;
+    unsigned long staRetryStartMs;    // AP mode: start of the current station retry window (0 = idle)
+    unsigned long lastStaRetryMs;     // AP mode: when the last retry window ended
     bool          ntpStarted;
 
     // Validity flags

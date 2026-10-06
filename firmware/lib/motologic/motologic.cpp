@@ -141,7 +141,7 @@ static int wetRank(int weather) {
 }
 
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l) {
-    KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, 0, (int)from };
+    KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, 0, (int)from, KIDS_LIGHT_DAY };
     float tempSum = 0, tempMax = -1000;
     int n = 0, nights = 0, wettest = KIDS_WEATHER_CLEAR;
     int skyCount[7] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -165,6 +165,7 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
 
     o.valid = true;
     o.night = nights * 2 > n;
+    o.light = o.night ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
     if (wetRank(wettest) > 0) {
         o.weather = wettest;
     } else {
@@ -187,43 +188,74 @@ KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const K
     KidsOutlook o = kidsWindowOutlook(hours, part.from, part.to, l);
     if (!o.valid) return o;
     float t = NAN;
+    bool lowest = part.part == KIDS_PART_MORNING || part.part == KIDS_PART_NIGHT;
     for (size_t i = part.from; i < part.to; i++) {
         const KidsHour& h = hours[i];
         if (!h.valid || isnan(h.tempC)) continue;
         if (isnan(t)) {
             t = h.tempC;
-            if (part.part == KIDS_PART_EVENING) break;          // the start of the evening
-        } else if (part.part == KIDS_PART_MORNING) {
-            if (h.tempC < t) t = h.tempC;                       // the coldest of the morning
+            if (part.part == KIDS_PART_DINNER) {                 // dinner time: its temperature and light
+                o.light = h.light;
+                o.night = h.light == KIDS_LIGHT_DARK;
+                break;
+            }
+        } else if (lowest) {
+            if (h.tempC < t) t = h.tempC;                       // the coldest of the morning or the night
         } else if (h.tempC > t) {
             t = h.tempC;                                        // the warmest of the afternoon
         }
     }
     if (isnan(t)) return o;
+    if (part.part == KIDS_PART_NIGHT) {
+        o.night = true;
+        o.light = KIDS_LIGHT_DARK;
+    }
     o.tempC = (int)lroundf(t);
     o.outfit = outfitFor(t, o.weather, o.night, l);
     return o;
 }
 
-int partOfDay(int localHour) {
-    if (localHour >= KIDS_MORNING_FROM_HR && localHour < KIDS_AFTERNOON_FROM_HR) return KIDS_PART_MORNING;
-    if (localHour >= KIDS_AFTERNOON_FROM_HR && localHour < KIDS_EVENING_FROM_HR) return KIDS_PART_AFTERNOON;
-    if (localHour >= KIDS_EVENING_FROM_HR && localHour < KIDS_EVENING_UNTIL_HR) return KIDS_PART_EVENING;
-    return -1;
+KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits& l) {
+    KidsOutlook o = kidsWindowOutlook(hours, 0, count < KIDS_NOW_HOURS ? count : KIDS_NOW_HOURS, l);
+    if (count == 0 || !hours[0].valid || isnan(hours[0].tempC)) {
+        o.valid = false;
+        return o;
+    }
+    o.night = hours[0].night;
+    o.light = hours[0].light;
+    o.tempC = (int)lroundf(hours[0].tempC);
+    o.outfit = outfitFor(hours[0].tempC, o.weather, o.night, l);
+    return o;
 }
 
-size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts) {
+int partOfDay(int localHour, int dinnerHour) {
+    if (dinnerHour < KIDS_DINNER_MIN_HR || dinnerHour > KIDS_DINNER_MAX_HR) dinnerHour = KIDS_EVENING_FROM_HR;
+    if (localHour >= KIDS_MORNING_FROM_HR && localHour < KIDS_AFTERNOON_FROM_HR) return KIDS_PART_MORNING;
+    if (localHour >= KIDS_AFTERNOON_FROM_HR && localHour < dinnerHour) return KIDS_PART_AFTERNOON;
+    if (localHour >= dinnerHour && localHour < KIDS_EVENING_UNTIL_HR) return KIDS_PART_DINNER;
+    return KIDS_PART_NIGHT;
+}
+
+int lightAt(long t, long sunrise, long sunset) {
+    long days = (t >= sunrise) ? (t - sunrise) / 86400 : 0;
+    long set = sunset + days * 86400;
+    if (t >= set - 3600 && t <= set + 1800) return KIDS_LIGHT_DUSK;
+    return isNightAt(t, sunrise, sunset) ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
+}
+
+size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t maxParts, int dinnerHour,
+                    bool nightColumn) {
     size_t n = 0;
     bool night = false;
     for (size_t i = 0; i < count && n < maxParts;) {
-        int part = partOfDay(localHours[i]);
-        if (part < 0) {          // a night hour: whatever comes next is after sleeping
-            night = true;
+        int part = partOfDay(localHours[i], dinnerHour);
+        if (part == KIDS_PART_NIGHT && !(nightColumn && n + 1 < maxParts)) {
+            night = true;        // a night hour: whatever comes next is after sleeping
             i++;
             continue;
         }
         size_t from = i;
-        while (i < count && partOfDay(localHours[i]) == part) i++;
+        while (i < count && partOfDay(localHours[i], dinnerHour) == part) i++;
         out[n++] = KidsPart{ part, from, i, night, from == 0 };
         night = false;
     }

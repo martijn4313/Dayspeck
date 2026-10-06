@@ -187,9 +187,11 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Sun cap, t-shirt and shorts from:</span> <input name="hot" type="number" step="1" min="-30" max="50"> <small>sunny daytime only</small><br>
             <span class="label">T-shirt and shorts from:</span> <input name="shorts" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Sweater below:</span> <input name="sweater" type="number" step="1" min="-30" max="50"> <small>t-shirt above</small><br>
-            <span class="label">Winter coat and hat below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
-            <span class="label">Scarf and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Winter coat and scarf below:</span> <input name="coat" type="number" step="1" min="-30" max="50"><br>
+            <span class="label">Hat and mittens below:</span> <input name="freeze" type="number" step="1" min="-30" max="50"><br>
             <span class="label">Wind picture above (km/h):</span> <input name="gust" type="number" step="1" min="1" max="150"> <small>gusts, dry weather</small><br>
+            <span class="label">Dinner time (hour):</span> <input name="dinner" type="number" step="1" min="15" max="21"> <small>the dinner column: its temperature, and sun, sunset or moon</small><br>
+            <span class="label">Night column:</span> <input name="nightColumn" type="checkbox"> <small>after dinner: dinner, night, tomorrow morning</small><br>
             <button type="submit">Save Settings</button>
         </form>
     </div>
@@ -411,6 +413,8 @@ static const char index_html[] PROGMEM = R"HTML(
                     k.coat.value = s.kids.coatBelowC;
                     k.freeze.value = s.kids.freezeBelowC;
                     k.gust.value = s.kids.windyGustKmh;
+                    k.dinner.value = s.kids.dinnerHour;
+                    k.nightColumn.checked = s.kids.nightColumn;
 
                     const c = document.forms.countdownForm;
                     [1, 2].forEach(i => {
@@ -533,7 +537,7 @@ static const char index_html[] PROGMEM = R"HTML(
             .catch(() => toast('Request failed', false));
         document.getElementById('demoStart').addEventListener('click', () => demo('start'));
         document.getElementById('demoStop').addEventListener('click', () => demo('stop'));
-        submitForm('kidsForm', '/api/kids', 'Clothing limits saved');
+        submitForm('kidsForm', '/api/kids', 'Clothing settings saved');
         submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
         submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
@@ -863,6 +867,8 @@ static void handleApiStatus() {
     kids["coatBelowC"] = kidsLimits.coatBelowC;
     kids["freezeBelowC"] = kidsLimits.freezeBelowC;
     kids["windyGustKmh"] = kidsLimits.windyGustKmh;
+    kids["dinnerHour"] = kidsDinnerHour;
+    kids["nightColumn"] = kidsNightColumn;
     JsonArray birthdays = kids["birthdays"].to<JsonArray>();
     for (const KidsBirthday& b : kidsBirthdays) {
         if (b.month == 0) continue;
@@ -960,17 +966,22 @@ static void handleApiThresholds() {
     sendMessage(200, "Thresholds saved");
 }
 
+static bool argInt(const char* name, int lo, int hi, int& out);
+
 static void handleApiKids() {
     float hot, shorts, sweater, coat, freeze, gust;
+    int dinner;
     if (!argFloat("hot", -30, 50, hot) || !argFloat("shorts", -30, 50, shorts) ||
         !argFloat("sweater", -30, 50, sweater) || !argFloat("coat", -30, 50, coat) ||
-        !argFloat("freeze", -30, 50, freeze) || !argFloat("gust", 1, 150, gust)) {
-        sendMessage(400, "Invalid value: temperatures -30 to 50 C, wind 1-150 km/h");
+        !argFloat("freeze", -30, 50, freeze) || !argFloat("gust", 1, 150, gust) ||
+        !argInt("dinner", KIDS_DINNER_MIN_HR, KIDS_DINNER_MAX_HR, dinner)) {
+        sendMessage(400, "Invalid value: temperatures -30 to 50 C, wind 1-150 km/h, dinner time 15-21");
         return;
     }
+    bool nightColumn = server.hasArg("nightColumn");
     KidsLimits k = { hot, shorts, sweater, coat, freeze, gust };
     if (!kidsLimitsValid(k)) {
-        sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= scarf below");
+        sendMessage(400, "The limits must go from warm to cold: sun cap from >= shorts from >= sweater below >= winter coat below >= hat below");
         return;
     }
 
@@ -981,14 +992,18 @@ static void handleApiKids() {
         doc["kids"]["coatBelowC"] = coat;
         doc["kids"]["freezeBelowC"] = freeze;
         doc["kids"]["windyGustKmh"] = gust;
+        doc["kids"]["dinnerHour"] = dinner;
+        doc["kids"]["nightColumn"] = nightColumn;
     });
     if (!saved) {
         sendMessage(500, "Could not save configuration");
         return;
     }
     kidsLimits = k;
+    kidsDinnerHour = dinner;
+    kidsNightColumn = nightColumn;
     state.displayDirty = true;
-    sendMessage(200, "Clothing limits saved");
+    sendMessage(200, "Clothing settings saved");
 }
 
 static bool argInt(const char* name, int lo, int hi, int& out) {
@@ -1270,6 +1285,9 @@ static void handleApiWifiConfig() {
     state.disconnectedSinceMs = 0;
     WiFi.disconnect();
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    if (state.apModeStarted) {
+        state.staRetryStartMs = millis() | 1;   // give this attempt a full window, then go idle again
+    }
 
     sendMessage(200, "WiFi settings saved, connecting...");
 }

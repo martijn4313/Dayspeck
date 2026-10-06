@@ -386,11 +386,16 @@ void test_kids_part_temperature() {
     TEST_ASSERT_EQUAL(21, o.tempC);
     TEST_ASSERT_EQUAL(OUTFIT_WARM, o.outfit);
 
-    // The evening: its first hour, not the cold of 22:00
+    // Dinner: its first hour (dinner time), not the cold of 22:00
     KidsHour ev[4] = { hr(16, 0, 1), hr(14, 0, 1), hr(12, 0, 1), hr(11, 0, 1) };
-    o = kidsPartOutlook(ev, KidsPart{ KIDS_PART_EVENING, 0, 4, false, false }, K);
+    o = kidsPartOutlook(ev, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
     TEST_ASSERT_EQUAL(16, o.tempC);
     TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+
+    // The night: its lowest
+    KidsHour nt[4] = { hr(12, 0, 1), hr(9, 0, 1), hr(7, 0, 1), hr(8, 0, 1) };
+    o = kidsPartOutlook(nt, KidsPart{ KIDS_PART_NIGHT, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(7, o.tempC);
 
     // Rain still makes it a rain coat, whatever the number
     KidsHour wet[2] = { hr(18, 0, 1), hr(18, 1.0f, 61) };
@@ -405,16 +410,85 @@ void test_kids_part_temperature() {
     TEST_ASSERT_FALSE(kidsPartOutlook(gaps, KidsPart{ KIDS_PART_MORNING, 0, 3, false, false }, K).valid);
 }
 
+// The village: the temperature of now, and rain on its way
+void test_kids_now_outlook() {
+    // Noon, 18 now and 27 this afternoon: a t-shirt now, not the shorts of the afternoon
+    KidsHour h[5] = { hr(18, 0, 1), hr(22, 0, 1), hr(25, 0, 1), hr(27, 0, 1), hr(27, 0, 1) };
+    KidsOutlook o = kidsNowOutlook(h, 5, K);
+    TEST_ASSERT_TRUE(o.valid);
+    TEST_ASSERT_EQUAL(18, o.tempC);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+
+    // Rain within the next two hours: the rain coat now; rain later does not count
+    h[2] = hr(17, 1.0f, 61);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, kidsNowOutlook(h, 5, K).outfit);
+    h[2] = hr(25, 0, 1);
+    h[3] = hr(17, 1.0f, 61);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, kidsNowOutlook(h, 5, K).outfit);
+
+    // Fewer hours than the window, and none at all
+    TEST_ASSERT_EQUAL(18, kidsNowOutlook(h, 1, K).tempC);
+    TEST_ASSERT_FALSE(kidsNowOutlook(h, 0, K).valid);
+    h[0].valid = false;
+    TEST_ASSERT_FALSE(kidsNowOutlook(h, 5, K).valid);
+}
+
 void test_part_of_day() {
-    TEST_ASSERT_EQUAL(-1, partOfDay(6));
-    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7));
-    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(11));
-    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(12));
-    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17));
-    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(18));
-    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, partOfDay(21));
-    TEST_ASSERT_EQUAL(-1, partOfDay(22));
-    TEST_ASSERT_EQUAL(-1, partOfDay(0));
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(6, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(11, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(12, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(18, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(21, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(22, 18));
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(0, 18));
+
+    // Dinner time moves the boundary with the afternoon
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(18, 19));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(19, 19));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(17, 17));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, partOfDay(18, 99));   // out of range: 18:00
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, partOfDay(17, 99));
+}
+
+void test_light_at() {
+    const long rise = 7 * 3600, set = 19 * 3600;    // day 0, in seconds
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, lightAt(12 * 3600, rise, set));
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, lightAt(17 * 3600 + 59 * 60, rise, set));
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DUSK, lightAt(18 * 3600, rise, set));        // an hour before sunset
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DUSK, lightAt(19 * 3600 + 30 * 60, rise, set));   // half an hour after
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, lightAt(19 * 3600 + 31 * 60, rise, set));
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, lightAt(3 * 3600, rise, set));
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DUSK, lightAt(86400 + 18 * 3600 + 30 * 60, rise, set));   // the next day too
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, lightAt(86400 + 9 * 3600, rise, set));
+}
+
+// Dinner takes the light of dinner time: summer sun, autumn sunset, winter moon
+void test_dinner_light() {
+    KidsHour h[3] = { hr(15, 0, 0), hr(14, 0, 0), hr(13, 0, 0) };   // a clear evening
+    h[1].night = h[2].night = true;                                // most of it after sunset
+    KidsPart dinner = { KIDS_PART_DINNER, 0, 3, false, false };
+
+    h[0].light = KIDS_LIGHT_DAY;
+    KidsOutlook o = kidsPartOutlook(h, dinner, K);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DAY, o.light);   // not the moon, though the evening is mostly dark
+    TEST_ASSERT_FALSE(o.night);
+
+    h[0].light = KIDS_LIGHT_DUSK;
+    o = kidsPartOutlook(h, dinner, K);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DUSK, o.light);
+    TEST_ASSERT_FALSE(o.night);
+
+    h[0].light = KIDS_LIGHT_DARK;
+    o = kidsPartOutlook(h, dinner, K);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, o.light);
+    TEST_ASSERT_TRUE(o.night);
+
+    // The night always has the moon
+    o = kidsPartOutlook(h, KidsPart{ KIDS_PART_NIGHT, 0, 3, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_LIGHT_DARK, o.light);
+    TEST_ASSERT_TRUE(o.night);
 }
 
 // Local hours of `count` forecast hours from `first` on
@@ -426,7 +500,7 @@ void test_day_parts_in_the_morning() {
     int h[24];
     hoursFrom(10, h, 24);                       // 10:00
     KidsPart p[3];
-    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, false));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
     TEST_ASSERT_EQUAL(0, p[0].from);            // only what is left of the morning: 10 and 11
     TEST_ASSERT_EQUAL(2, p[0].to);
@@ -435,7 +509,7 @@ void test_day_parts_in_the_morning() {
     TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[1].part);
     TEST_ASSERT_EQUAL(6, p[1].to - p[1].from);
     TEST_ASSERT_FALSE(p[1].now);
-    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[2].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[2].part);
     TEST_ASSERT_FALSE(p[2].afterSleep);
 }
 
@@ -443,8 +517,8 @@ void test_day_parts_roll_into_tomorrow() {
     int h[24];
     hoursFrom(19, h, 24);                       // 19:00: evening, then tomorrow morning and afternoon
     KidsPart p[3];
-    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
-    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[0].part);
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, false));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[0].part);
     TEST_ASSERT_TRUE(p[0].now);
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[1].part);
     TEST_ASSERT_TRUE(p[1].afterSleep);          // the night lies before it
@@ -458,13 +532,64 @@ void test_day_parts_at_night() {
     int h[24];
     hoursFrom(23, h, 24);                       // 23:00: nothing is "now"; the morning is after sleeping
     KidsPart p[3];
-    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3));
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, false));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
     TEST_ASSERT_FALSE(p[0].now);
     TEST_ASSERT_TRUE(p[0].afterSleep);
-    TEST_ASSERT_EQUAL(KIDS_PART_EVENING, p[2].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[2].part);
 
-    TEST_ASSERT_EQUAL(0, kidsDayParts(h, 3, p, 3));   // only night hours: no parts
+    TEST_ASSERT_EQUAL(0, kidsDayParts(h, 3, p, 3, 18, false));   // only night hours: no parts
+}
+
+void test_day_parts_dinner_time() {
+    int h[24];
+    hoursFrom(13, h, 24);                       // 13:00, dinner at 19:00
+    KidsPart p[3];
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 19, false));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[0].part);
+    TEST_ASSERT_EQUAL(6, p[0].to);              // 13:00-18:00
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[1].part);
+    TEST_ASSERT_EQUAL(6, p[1].from);            // from 19:00...
+    TEST_ASSERT_EQUAL(9, p[1].to);              // ...until 22:00
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[2].part);
+}
+
+void test_day_parts_night_column() {
+    int h[24];
+    KidsPart p[3];
+
+    // The afternoon: the night would be the last column, so tomorrow morning keeps it
+    hoursFrom(13, h, 24);
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, true));
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[0].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[1].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[2].part);
+    TEST_ASSERT_TRUE(p[2].afterSleep);
+
+    // The evening: dinner, the night, tomorrow morning
+    hoursFrom(19, h, 24);
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, true));
+    TEST_ASSERT_EQUAL(KIDS_PART_DINNER, p[0].part);
+    TEST_ASSERT_TRUE(p[0].now);
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, p[1].part);
+    TEST_ASSERT_EQUAL(3, p[1].from);            // 22:00...
+    TEST_ASSERT_EQUAL(12, p[1].to);             // ...until 07:00
+    TEST_ASSERT_FALSE(p[1].afterSleep);
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[2].part);
+    TEST_ASSERT_FALSE(p[2].afterSleep);         // the night has a column of its own
+
+    // At night: the night now, then tomorrow morning and afternoon
+    hoursFrom(23, h, 24);
+    TEST_ASSERT_EQUAL(3, kidsDayParts(h, 24, p, 3, 18, true));
+    TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, p[0].part);
+    TEST_ASSERT_TRUE(p[0].now);
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[1].part);
+    TEST_ASSERT_EQUAL(KIDS_PART_AFTERNOON, p[2].part);
+
+    // One column (the village): never the night
+    TEST_ASSERT_EQUAL(1, kidsDayParts(h, 24, p, 1, 18, true));
+    TEST_ASSERT_EQUAL(KIDS_PART_MORNING, p[0].part);
+    TEST_ASSERT_TRUE(p[0].afterSleep);
 }
 
 void test_kids_weather() {
@@ -793,10 +918,15 @@ int main(int, char**) {
     RUN_TEST(test_kids_window);
     RUN_TEST(test_kids_window_highest_temperature);
     RUN_TEST(test_kids_part_temperature);
+    RUN_TEST(test_kids_now_outlook);
     RUN_TEST(test_part_of_day);
+    RUN_TEST(test_light_at);
+    RUN_TEST(test_dinner_light);
     RUN_TEST(test_day_parts_in_the_morning);
     RUN_TEST(test_day_parts_roll_into_tomorrow);
     RUN_TEST(test_day_parts_at_night);
+    RUN_TEST(test_day_parts_dinner_time);
+    RUN_TEST(test_day_parts_night_column);
     RUN_TEST(test_contrast_for_percent);
     RUN_TEST(test_kids_initial);
     RUN_TEST(test_days_from_civil);

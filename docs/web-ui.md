@@ -110,9 +110,11 @@ weather, clothes or report screen is in one of the screen lists.
 | Sun cap, t-shirt and shorts from | the sun cap on sunny days from this temperature on (default 25) |
 | T-shirt and shorts from | shorts from here on (default 20) |
 | Sweater below | a sweater below this, a t-shirt above (default 15) |
-| Winter coat and hat below | default 5 |
-| Scarf and mittens below | default 0 |
+| Winter coat and scarf below | default 5 |
+| Hat and mittens below | default 0 |
 | Wind picture above (km/h) | gusts above this show the wind picture in dry weather, and blow the weather report away (default 50) |
+| Dinner time (hour) | the start of the dinner column, 15-21: its temperature and its sun, setting sun or moon (default 18) |
+| Night column | once dinner has started, show dinner, the night and tomorrow morning (default off) |
 
 **Countdowns**: the [countdown screen](kids.md) to birthdays and holidays. The card shows while the
 countdown screen is in one of the screen lists.

@@ -14,7 +14,7 @@ is all set in the web page of the device, so changing your mind needs no new bui
 | Screens | What they tell you |
 |---------|--------------------|
 | [Ride rating](rider.md) | *Can I ride today?* A big check mark, exclamation mark or cross next to an animated village, with the other day, a week grid and the next hours |
-| [Picture screens](kids.md) | *What do I wear today?* Outfits, weather pictures and numbers for the morning, afternoon and evening, and a countdown in sleeps to birthdays and holidays. No words, so children who cannot read yet can use them |
+| [Picture screens](kids.md) | *What do I wear today?* Outfits, weather pictures and numbers for the morning, afternoon and dinner time, and a countdown in sleeps to birthdays and holidays. No words, so children who cannot read yet can use them |
 | [Weather report](report.md) | The day in a few short sentences, in English or Dutch |
 | [Clock](screens.md#the-clock) | The time and the date |
 

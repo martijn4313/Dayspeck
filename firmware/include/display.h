@@ -153,12 +153,13 @@ struct KidsColumn {
     bool valid;     // false: no forecast for it (drawn as a question mark)
     int  outfit;    // OUTFIT_* (clothes screen)
     int  weather;   // KIDS_WEATHER_* (weather screen)
-    bool night;     // moon instead of sun
+    int  light;     // KIDS_LIGHT_*: sun, setting sun or moon
     int  temp;      // the part's temperature, as shown (weather screen): see kidsPartOutlook
 };
 // Kids variant: the next parts of the day in up to three columns, outfits (weather = false) or weather
-// pictures with the part's temperature. nowColumn gets dots underneath (-1 = none); nightBefore is the
-// column a night lies before (a dotted line with a bed; -1 or 0 = none).
+// pictures with the part's temperature (the night column: a bed instead of an outfit). nowColumn gets dots
+// underneath (-1 = none); nightBefore is the column a night lies before (a dotted line with a bed; -1 or 0 =
+// none).
 void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_t count, int nowColumn,
                         int nightBefore, bool weather);
 // Kids variant: the countdown screen. The picture of the event (a cake with a candle per year and the initial,
@@ -170,9 +171,9 @@ void renderKidsCountdown(Adafruit_SSD1306 &display, const KidsCountdown &c, unsi
 // about 65 km/h gusts (faster above). Returns false once everything has left the screen.
 bool renderReportBlowFrame(Adafruit_SSD1306 &display, const char (*lines)[REPORT_COLS + 1], size_t count, int frame,
                            float strength);
-// Kids home screen: the outfit of `now` (the first part of the day on the clothes screen) on the left, the
-// village of the ride screen on the right, and on its street the part of the day (after a bed: tomorrow)
-void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, bool hasOutfit, bool afterSleep,
+// Kids home screen: what to wear right now (`now`, see kidsNowOutlook; at night a sleeping moon) on the left,
+// the village of the ride screen on the right, and on its street the current part of the day
+void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, bool hasOutfit,
                            bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr,
                            char trendArrow);
 // Weather report: lines of text (REPORT_COLS characters at most, REPORT_DEGREE for the degree sign), centred

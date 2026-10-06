@@ -53,27 +53,29 @@ static Day makeDay(int now, int sunrise, int sunset, HourFn f, size_t count = 24
 }
 
 // The kids columns of a day, as the firmware's kidsColumns() makes them
-static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t max) {
+static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn = false) {
     KidsHour hours[36];
     int localHours[36];
     for (size_t i = 0; i < day.count; i++) {
         int h = (day.now + (int)i) % 24;
         const Hour& x = day.hours[i];
-        hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < day.sunrise || h >= day.sunset, true };
+        int light = h < day.sunrise || h > day.sunset ? KIDS_LIGHT_DARK
+                  : h >= day.sunset - 1 ? KIDS_LIGHT_DUSK : KIDS_LIGHT_DAY;   // dusk: an hour before sunset on
+        hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < day.sunrise || h >= day.sunset, true, light };
         localHours[i] = h;
     }
-    size_t np = kidsDayParts(localHours, day.count, parts, max);
+    size_t np = kidsDayParts(localHours, day.count, parts, max, KIDS_DINNER_HOUR, nightColumn);
     for (size_t i = 0; i < np; i++) {
         KidsOutlook o = kidsPartOutlook(hours, parts[i], LIMITS);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, o.tempC };
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, o.tempC };
     }
     return np;
 }
 
-static void dayStrip(const Day& day, bool weather) {
+static void dayStrip(const Day& day, bool weather, bool nightColumn = false) {
     KidsPart parts[3];
     KidsColumn cols[3];
-    size_t np = columns(day, cols, parts, 3);
+    size_t np = columns(day, cols, parts, 3, nightColumn);
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
@@ -118,6 +120,13 @@ static void kidsScreens() {
     dayStrip(makeDay(8, 8, 17, winterMorning), true);      frame("kids-weather", 1);
     dayStrip(makeDay(13, 6, 21, summerAfternoon), true);   frame("kids-weather", 2);
     dayStrip(makeDay(19, 7, 19, autumnEvening), true);     frame("kids-weather", 3);
+    // Dinner at 18:00 seen at noon: in summer, at sunset in autumn, in the dark in winter
+    dayStrip(makeDay(13, 6, 21, summerAfternoon), true);   frame("kids-dinner", 0);
+    dayStrip(makeDay(12, 7, 18, autumnMorning), true);     frame("kids-dinner", 1);
+    dayStrip(makeDay(12, 8, 16, winterMorning), true);     frame("kids-dinner", 2);
+    // The night column after dinner: weather and clothes
+    dayStrip(makeDay(19, 7, 19, autumnEvening), true, true);   frame("kids-night", 0);
+    dayStrip(makeDay(19, 7, 19, autumnEvening), false, true);  frame("kids-night", 1);
 
     // Leaves blowing over the autumn evening's weather screen
     initWindAnimation(WIND_AREA_KIDS);
@@ -158,14 +167,20 @@ struct VillageScene {
 };
 
 static void village(const VillageScene& s, int windFrames) {
-    KidsPart part;
-    KidsColumn col = {};
-    bool any = columns(s.day, &col, &part, 1) > 0;
+    KidsHour hours[36];
+    for (size_t i = 0; i < s.day.count; i++) {
+        const Hour& x = s.day.hours[i];
+        int h = (s.day.now + (int)i) % 24;
+        hours[i] = KidsHour{ x.t, x.rainMm, x.gust, x.code, h < s.day.sunrise || h >= s.day.sunset, true, KIDS_LIGHT_DAY };
+    }
+    KidsOutlook o = kidsNowOutlook(hours, s.day.count, LIMITS);
+    KidsColumn col = { partOfDay(s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
+    bool any = s.day.count > 0;
     initWindAnimation(WIND_AREA_RIDE);
     hostSeed(5);
     bool gusts = s.condition == WEATHER_WIND;
     for (int i = 0; i < windFrames; i++) updateWindAnimation(s.windKmh, gusts, true);
-    renderKidsVillageView(d, col, any, any && part.afterSleep, s.night, s.condition, 0, s.windKmh, s.temp, s.trend);
+    renderKidsVillageView(d, col, any, s.night, s.condition, 0, s.windKmh, s.temp, s.trend);
 }
 
 static Hour windyAutumnMorning(int h) { return Hour{ h < 12 ? 9.0f + (h - 8) : 14.0f, 0, 40, 2 }; }
@@ -176,7 +191,7 @@ static void villages() {
     VillageScene scenes[3] = {
         { makeDay(8, 7, 19, windyAutumnMorning), false, WEATHER_WIND, 38, "11C", 'u' },
         { makeDay(14, 6, 21, hotAfternoon), false, WEATHER_CLEAR, 10, "27C", 'u' },
-        { makeDay(22, 8, 17, coldEvening), true, WEATHER_CLEAR, 8, "2C", 'd' },   // after 22:00: tomorrow morning
+        { makeDay(22, 8, 17, coldEvening), true, WEATHER_CLEAR, 8, "2C", 'd' },   // after 22:00: sleeping
     };
     for (int i = 0; i < 3; i++) {
         village(scenes[i], i == 0 ? 10 : 0);

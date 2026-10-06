@@ -69,6 +69,8 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 
 #define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
+#define WIFI_STA_RETRY_INTERVAL_MS 120000UL  // AP up: retry the saved network this often (if nobody is connected to the AP)
+#define WIFI_STA_RETRY_WINDOW_MS   15000UL   // ...for this long
 #define AP_SSID                   "Dayspeck"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
 
@@ -170,6 +172,10 @@ void loadConfig() {
         if (o["windyGustKmh"].is<float>()) k.windyGustKmh = o["windyGustKmh"];
         if (kidsLimitsValid(k)) kidsLimits = k;
         else logMessage("config.json: the kids limits are not ordered from warm to cold, using the defaults");
+        if (o["dinnerHour"].is<int>()) {
+            kidsDinnerHour = constrain((int)o["dinnerHour"], KIDS_DINNER_MIN_HR, KIDS_DINNER_MAX_HR);
+        }
+        if (o["nightColumn"].is<bool>()) kidsNightColumn = o["nightColumn"];
 
         // Countdowns: [{"date": "YYYY-MM-DD", "initial": "A"}], the holidays and the range in sleeps
         if (o["birthdays"].is<JsonArray>()) {
@@ -433,6 +439,12 @@ static bool nightAt(time_t t) {
     return h >= 21 || h < 6;
 }
 
+// Sun, setting sun or moon at a moment (without sunrise and sunset: by the hour)
+static int lightOf(time_t t) {
+    if (sunriseTime > 0 && sunsetTime > 0) return lightAt((long)t, (long)sunriseTime, (long)sunsetTime);
+    return nightAt(t) ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
+}
+
 /**
  * Kids variant: the nearest birthday or holiday within range, from the local date (none until the clock is set)
  */
@@ -452,34 +464,41 @@ static KidsCountdown kidsCountdownNow() {
 }
 
 /**
- * Kids screens: the next parts of the day (morning, afternoon, evening; at most `max`, the current one first)
- * with their outlook. Returns how many.
+ * Kids screens: forecast hours from the current one on (at most 24), the current hour with the conditions of
+ * now, and their local hours. Returns how many.
  */
-static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
-    // Forecast hours from the current one on; the current hour uses what is measured now
+static size_t kidsHours(KidsHour* hours, int* localHours) {
     const HourSlice* slices = nullptr;
     time_t firstEpoch = 0;
     size_t n = getUpcomingHours(slices, firstEpoch);
-    KidsHour hours[24];
-    int localHours[24];
     size_t count = 0;
     for (; count < n && count < 24; count++) {
         const HourSlice& s = slices[count];
         time_t t = firstEpoch + (time_t)count * 3600;
         hours[count] = KidsHour{ (float)s.tempC, s.rainTenthMm / 10.0f, (float)s.gustKmh,
-                                 s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid };
+                                 s.code == 255 ? -1 : (int)s.code, nightAt(t + 1800), s.valid, lightOf(t) };
         localHours[count] = localHourOf(t);
     }
     if (count > 0) {
         WeatherData w = getCurrentWeather();
-        hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true };
+        hours[0] = KidsHour{ w.tempC, w.precipMm, w.gustKmh, w.code, state.isNight, true, lightOf(time(nullptr)) };
     }
+    return count;
+}
 
-    size_t np = kidsDayParts(localHours, count, parts, max);
+/**
+ * Kids screens: the next parts of the day (morning, afternoon, dinner and maybe the night; at most `max`, the
+ * current one first) with their outlook. Returns how many.
+ */
+static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool nightColumn) {
+    KidsHour hours[24];
+    int localHours[24];
+    size_t count = kidsHours(hours, localHours);
+    size_t np = kidsDayParts(localHours, count, parts, max, kidsDinnerHour, nightColumn);
     for (size_t i = 0; i < np; i++) {
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
-        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.night, kidsShownTemp((float)o.tempC) };
+        cols[i] = KidsColumn{ parts[i].part, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
     }
     return np;
 }
@@ -490,7 +509,7 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max) {
 void renderKids(bool weather) {
     KidsPart parts[3];
     KidsColumn cols[3];
-    size_t np = kidsColumns(cols, parts, 3);
+    size_t np = kidsColumns(cols, parts, 3, kidsNightColumn);
     int nowColumn = -1, nightBefore = -1;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
@@ -500,17 +519,20 @@ void renderKids(bool weather) {
 }
 
 /**
- * Kids home screen: the outfit for now (the first column of the clothes screen) next to the village of the ride
- * screen, with its sun or moon, rain, snow, gusts and leaves
+ * Kids home screen: what to wear right now (at night: sleeping) next to the village of the ride screen, with
+ * its sun or moon, rain, snow, gusts and leaves
  */
 void renderKidsVillage() {
-    KidsPart part;
-    KidsColumn col = {};
-    bool any = kidsColumns(&col, &part, 1) > 0;
+    KidsHour hours[24];
+    int localHours[24];
+    size_t count = kidsHours(hours, localHours);
+    KidsOutlook o = kidsNowOutlook(hours, count, kidsLimits);
+    KidsColumn col = { count ? partOfDay(localHours[0], kidsDinnerHour) : KIDS_PART_MORNING, o.valid, o.outfit,
+                       o.weather, o.light, kidsShownTemp((float)o.tempC) };
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');
-    renderKidsVillageView(display, col, any, any && part.afterSleep, state.isNight, weather.condition,
+    renderKidsVillageView(display, col, count > 0, state.isNight, weather.condition,
                           weather.condition == WEATHER_RAIN ? 2 : weather.condition == WEATHER_SNOW ? 1 : 0,
                           (int)weather.windKmh, tempStr, weather.trend);
 }
@@ -970,7 +992,9 @@ void onWifiConnected() {
     if (state.apModeStarted) {
         WiFi.softAPdisconnect(true);
         WiFi.mode(WIFI_STA);
+        WiFi.setAutoReconnect(true);
         state.apModeStarted = false;
+        state.staRetryStartMs = 0;
     }
 
     // Network time (needed for sunrise/sunset and ride windows); runs in the background
@@ -1036,10 +1060,30 @@ void manageWifi() {
 
     unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS : WIFI_AP_DELAY_FIRST_MS;
     if (!state.apModeStarted && (now - state.disconnectedSinceMs) > delayMs) {
-        WiFi.mode(WIFI_AP_STA);   // keep the station side alive so it can still reconnect
+        WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, effectivePassword().c_str());
+        // A station endlessly searching for an absent network hops channels, which starves the
+        // AP (slow pages, failing scans). Keep it idle and retry only in short windows.
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect();
+        state.staRetryStartMs = 0;
+        state.lastStaRetryMs = now;
         state.apModeStarted = true;
         // AP IP will be 192.168.4.1
+    }
+
+    if (state.apModeStarted) {
+        if (state.staRetryStartMs == 0) {
+            if ((now - state.lastStaRetryMs) > WIFI_STA_RETRY_INTERVAL_MS && WiFi.softAPgetStationNum() == 0) {
+                WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+                state.staRetryStartMs = now | 1;
+            }
+        } else if ((now - state.staRetryStartMs) > WIFI_STA_RETRY_WINDOW_MS ||
+                   WiFi.softAPgetStationNum() > 0) {
+            WiFi.disconnect();
+            state.staRetryStartMs = 0;
+            state.lastStaRetryMs = now;
+        }
     }
 }
 
