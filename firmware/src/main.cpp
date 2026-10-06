@@ -69,6 +69,8 @@ bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 
 #define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
+#define WIFI_STA_RETRY_INTERVAL_MS 120000UL  // AP up: retry the saved network this often (if nobody is connected to the AP)
+#define WIFI_STA_RETRY_WINDOW_MS   15000UL   // ...for this long
 #define AP_SSID                   "Dayspeck"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
 
@@ -970,7 +972,9 @@ void onWifiConnected() {
     if (state.apModeStarted) {
         WiFi.softAPdisconnect(true);
         WiFi.mode(WIFI_STA);
+        WiFi.setAutoReconnect(true);
         state.apModeStarted = false;
+        state.staRetryStartMs = 0;
     }
 
     // Network time (needed for sunrise/sunset and ride windows); runs in the background
@@ -1036,10 +1040,30 @@ void manageWifi() {
 
     unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS : WIFI_AP_DELAY_FIRST_MS;
     if (!state.apModeStarted && (now - state.disconnectedSinceMs) > delayMs) {
-        WiFi.mode(WIFI_AP_STA);   // keep the station side alive so it can still reconnect
+        WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, effectivePassword().c_str());
+        // A station endlessly searching for an absent network hops channels, which starves the
+        // AP (slow pages, failing scans). Keep it idle and retry only in short windows.
+        WiFi.setAutoReconnect(false);
+        WiFi.disconnect();
+        state.staRetryStartMs = 0;
+        state.lastStaRetryMs = now;
         state.apModeStarted = true;
         // AP IP will be 192.168.4.1
+    }
+
+    if (state.apModeStarted) {
+        if (state.staRetryStartMs == 0) {
+            if ((now - state.lastStaRetryMs) > WIFI_STA_RETRY_INTERVAL_MS && WiFi.softAPgetStationNum() == 0) {
+                WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+                state.staRetryStartMs = now | 1;
+            }
+        } else if ((now - state.staRetryStartMs) > WIFI_STA_RETRY_WINDOW_MS ||
+                   WiFi.softAPgetStationNum() > 0) {
+            WiFi.disconnect();
+            state.staRetryStartMs = 0;
+            state.lastStaRetryMs = now;
+        }
     }
 }
 

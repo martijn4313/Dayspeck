@@ -1270,6 +1270,9 @@ static void handleApiWifiConfig() {
     state.disconnectedSinceMs = 0;
     WiFi.disconnect();
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    if (state.apModeStarted) {
+        state.staRetryStartMs = millis() | 1;   // give this attempt a full window, then go idle again
+    }
 
     sendMessage(200, "WiFi settings saved, connecting...");
 }
