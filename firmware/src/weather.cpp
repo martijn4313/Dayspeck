@@ -56,6 +56,7 @@ KidsLimits kidsLimits = { KIDS_HOT_FROM_C, KIDS_SHORTS_FROM_C, KIDS_SWEATER_BELO
 int kidsDinnerHour = KIDS_DINNER_HOUR;
 bool kidsSunsetColumn = KIDS_SUNSET_COLUMN;
 bool kidsNightColumn = KIDS_NIGHT_COLUMN;
+bool kidsUmbrella = KIDS_UMBRELLA;
 KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS] = {};
 unsigned kidsHolidays = KIDS_ALL_HOLIDAYS;
 int kidsCountdownDays = KIDS_COUNTDOWN_DAYS;

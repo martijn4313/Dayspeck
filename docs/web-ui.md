@@ -116,6 +116,7 @@ weather, clothes or report screen is in one of the screen lists.
 | Evening column | *Dinner*: a plate, from dinner time, with the sun, setting sun or moon at dinner time (default). *Sunset*: the setting sun of earlier versions, 18-22, with the moon when most of it is dark |
 | Dinner time (hour) | the start of the dinner column, 15-21: its temperature and its sun, setting sun or moon (default 18) |
 | Night column | once dinner has started, show dinner, the night and tomorrow morning (default off) |
+| Umbrella for showers | a small umbrella with the outfit when it rains in less than 70% of a part's hours (default off) |
 
 **Countdowns**: the [countdown screen](kids.md) to birthdays and holidays. The card shows while the
 countdown screen is in one of the screen lists.

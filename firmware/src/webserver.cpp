@@ -193,6 +193,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Evening column:</span> <select name="evening"><option value="dinner">Dinner (plate)</option><option value="sunset">Sunset (setting sun, 18-22)</option></select><br>
             <span class="label">Dinner time (hour):</span> <input name="dinner" type="number" step="1" min="15" max="21"> <small>dinner only: its temperature, and sun, sunset or moon</small><br>
             <span class="label">Night column:</span> <input name="nightColumn" type="checkbox"> <small>after dinner: dinner, night, tomorrow morning</small><br>
+            <span class="label">Umbrella for showers:</span> <input name="umbrella" type="checkbox"> <small>beside the outfit when it rains less than 70% of the time</small><br>
             <button type="submit">Save Settings</button>
         </form>
     </div>
@@ -417,6 +418,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     k.evening.value = s.kids.evening;
                     k.dinner.value = s.kids.dinnerHour;
                     k.nightColumn.checked = s.kids.nightColumn;
+                    k.umbrella.checked = s.kids.umbrella;
 
                     const c = document.forms.countdownForm;
                     [1, 2].forEach(i => {
@@ -872,6 +874,7 @@ static void handleApiStatus() {
     kids["evening"] = kidsSunsetColumn ? "sunset" : "dinner";
     kids["dinnerHour"] = kidsDinnerHour;
     kids["nightColumn"] = kidsNightColumn;
+    kids["umbrella"] = kidsUmbrella;
     JsonArray birthdays = kids["birthdays"].to<JsonArray>();
     for (const KidsBirthday& b : kidsBirthdays) {
         if (b.month == 0) continue;
@@ -982,6 +985,7 @@ static void handleApiKids() {
         return;
     }
     bool nightColumn = server.hasArg("nightColumn");
+    bool umbrella = server.hasArg("umbrella");
     String evening = server.arg("evening");
     if (evening != "dinner" && evening != "sunset") {
         sendMessage(400, "The evening column must be dinner or sunset");
@@ -1003,6 +1007,7 @@ static void handleApiKids() {
         doc["kids"]["evening"] = evening;
         doc["kids"]["dinnerHour"] = dinner;
         doc["kids"]["nightColumn"] = nightColumn;
+        doc["kids"]["umbrella"] = umbrella;
     });
     if (!saved) {
         sendMessage(500, "Could not save configuration");
@@ -1012,6 +1017,7 @@ static void handleApiKids() {
     kidsDinnerHour = dinner;
     kidsSunsetColumn = evening == "sunset";
     kidsNightColumn = nightColumn;
+    kidsUmbrella = umbrella;
     state.displayDirty = true;
     sendMessage(200, "Clothing settings saved");
 }

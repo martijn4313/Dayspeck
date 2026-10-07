@@ -63,6 +63,7 @@
 #define KIDS_DINNER_HOUR       18   // dinner time (15-21): the dinner column's temperature and light
 #define KIDS_NIGHT_COLUMN   false   // after dinner: dinner, night, tomorrow morning
 #define KIDS_SUNSET_COLUMN  false   // true: the sunset evening (18-22) instead of dinner
+#define KIDS_UMBRELLA       false   // an umbrella with the outfit for a shower (less than 70% of the hours wet)
 
 // Display brightness: SSD1306 contrast by day, and the default night brightness (percent, 1-100;
 // config.json "display.nightBrightness")

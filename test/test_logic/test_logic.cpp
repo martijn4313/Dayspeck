@@ -347,10 +347,14 @@ void test_kids_window() {
     TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
     TEST_ASSERT_EQUAL(1, o.hour);
 
-    h[2] = hr(18, 0.5f, 61);                             // one wet hour makes it a rainy window
+    h[2] = hr(18, 0.5f, 61);                             // one wet hour makes it a rainy window...
     o = kidsWindowOutlook(h, 0, 4, K);
     TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
-    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);            // ...but a shower: the t-shirt and an umbrella
+    TEST_ASSERT_TRUE(o.umbrella);
+    TEST_ASSERT_EQUAL(1, o.wetHours);
+    TEST_ASSERT_EQUAL(4, o.hours);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.sky);
 
     h[2] = hr(18, 0.1f, 61);                             // a trace is only a cloud
     TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWindowOutlook(h, 0, 4, K).weather);
@@ -392,13 +396,32 @@ void test_kids_part_temperature() {
     TEST_ASSERT_EQUAL(16, o.tempC);
     TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
 
+    // Dinner: rain from 21:00 (dinner at 18:00) is not dinner's rain; rain in the hour after dinner time is
+    KidsHour late[4] = { hr(16, 0, 1), hr(15, 0, 1), hr(14, 0, 1), hr(13, 1.5f, 63) };
+    o = kidsPartOutlook(late, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+    late[1] = hr(15, 1.5f, 63);
+    o = kidsPartOutlook(late, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);            // one of its two hours: an umbrella
+    TEST_ASSERT_TRUE(o.umbrella);
+    late[0] = hr(16, 1.5f, 63);
+    o = kidsPartOutlook(late, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);            // both: the rain coat
+    TEST_ASSERT_FALSE(o.umbrella);
+    late[0] = hr(16, 0, 1);
+    // The sunset evening still goes by all of its hours
+    late[1] = hr(15, 0, 1);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsPartOutlook(late, KidsPart{ KIDS_PART_EVENING, 0, 4, false, false }, K).weather);
+
     // The night: its lowest
     KidsHour nt[4] = { hr(12, 0, 1), hr(9, 0, 1), hr(7, 0, 1), hr(8, 0, 1) };
     o = kidsPartOutlook(nt, KidsPart{ KIDS_PART_NIGHT, 0, 4, false, false }, K);
     TEST_ASSERT_EQUAL(7, o.tempC);
 
-    // Rain still makes it a rain coat, whatever the number
-    KidsHour wet[2] = { hr(18, 0, 1), hr(18, 1.0f, 61) };
+    // A wet part still makes it a rain coat, whatever the number
+    KidsHour wet[2] = { hr(18, 1.0f, 61), hr(18, 1.0f, 61) };
     o = kidsPartOutlook(wet, KidsPart{ KIDS_PART_AFTERNOON, 0, 2, false, false }, K);
     TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
 
@@ -419,9 +442,20 @@ void test_kids_now_outlook() {
     TEST_ASSERT_EQUAL(18, o.tempC);
     TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
 
-    // Rain within the next two hours: the rain coat now; rain later does not count
+    // Rain within the next two hours: an umbrella now (the rain coat when it rains in most of them); rain
+    // later does not count
     h[2] = hr(17, 1.0f, 61);
-    TEST_ASSERT_EQUAL(OUTFIT_RAIN, kidsNowOutlook(h, 5, K).outfit);
+    o = kidsNowOutlook(h, 5, K);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+    TEST_ASSERT_TRUE(o.umbrella);
+    h[1] = hr(20, 1.0f, 61);
+    h[0].rainMm = 1.0f;
+    h[0].code = 61;
+    o = kidsNowOutlook(h, 5, K);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+    TEST_ASSERT_FALSE(o.umbrella);
+    h[0] = hr(18, 0, 1);
+    h[1] = hr(22, 0, 1);
     h[2] = hr(25, 0, 1);
     h[3] = hr(17, 1.0f, 61);
     TEST_ASSERT_EQUAL(OUTFIT_MILD, kidsNowOutlook(h, 5, K).outfit);
@@ -431,6 +465,80 @@ void test_kids_now_outlook() {
     TEST_ASSERT_FALSE(kidsNowOutlook(h, 0, K).valid);
     h[0].valid = false;
     TEST_ASSERT_FALSE(kidsNowOutlook(h, 5, K).valid);
+}
+
+void test_kids_precip_level() {
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(0.2f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(0.49f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsPrecipLevel(0.5f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsPrecipLevel(1.9f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_HEAVY, kidsPrecipLevel(2.0f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DOWNPOUR, kidsPrecipLevel(5.0f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(NAN));
+
+    // A part goes by its wettest hour
+    KidsHour h[3] = { hr(10, 0.6f, 61), hr(10, 3.0f, 63), hr(10, 0, 1) };
+    KidsOutlook o = kidsWindowOutlook(h, 0, 3, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_HEAVY, o.precip);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsWindowOutlook(h, 0, 1, K).precip);
+    // Snow too
+    KidsHour s[2] = { hr(-1, 6.0f, 75), hr(-1, 0, 3) };
+    o = kidsWindowOutlook(s, 0, 2, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_SNOW, o.weather);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DOWNPOUR, o.precip);
+}
+
+// Rain in 70% of the hours or more: the rain coat; less: the dry outfit and an umbrella
+void test_kids_umbrella() {
+    KidsHour h[10];
+    for (int i = 0; i < 10; i++) h[i] = hr(17, 0, 1);
+    for (int i = 0; i < 6; i++) { h[i].rainMm = 1.0f; h[i].code = 61; }
+    KidsOutlook o = kidsWindowOutlook(h, 0, 10, K);           // 60%
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+    TEST_ASSERT_TRUE(o.umbrella);
+    h[6].rainMm = 1.0f; h[6].code = 61;
+    o = kidsWindowOutlook(h, 0, 10, K);                       // 70%
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+    TEST_ASSERT_FALSE(o.umbrella);
+
+    // A storm counts as rain
+    KidsHour storm[3] = { hr(17, 0, 1), hr(17, 2.0f, 95), hr(17, 0, 1) };
+    o = kidsWindowOutlook(storm, 0, 3, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_STORM, o.weather);
+    TEST_ASSERT_TRUE(o.umbrella);
+
+    // Cold: the winter coat whatever the rain, with an umbrella
+    KidsHour cold[2] = { hr(3, 1.0f, 61), hr(3, 1.0f, 61) };
+    o = kidsWindowOutlook(cold, 0, 2, K);
+    TEST_ASSERT_EQUAL(OUTFIT_COLD, o.outfit);
+    TEST_ASSERT_TRUE(o.umbrella);
+
+    // Snow: the full winter outfit, no umbrella; dry: none
+    KidsHour snow[2] = { hr(-1, 1.0f, 73), hr(-1, 0, 3) };
+    o = kidsWindowOutlook(snow, 0, 2, K);
+    TEST_ASSERT_EQUAL(OUTFIT_FREEZING, o.outfit);
+    TEST_ASSERT_FALSE(o.umbrella);
+    TEST_ASSERT_FALSE(kidsWindowOutlook(h, 7, 10, K).umbrella);
+}
+
+// The time-lapse: every hour's picture in order, rain only from 0.2 mm
+void test_kids_timeline() {
+    KidsHour h[6] = { hr(15, 0, 0), hr(15, 0, 2), hr(15, 3.0f, 63), hr(15, 0.1f, 61), hr(15, 0, 3), hr(15, 0, 0) };
+    h[4].valid = false;
+    uint8_t w[KIDS_MAX_PART_HOURS], p[KIDS_MAX_PART_HOURS];
+    size_t n = kidsPartTimeline(h, KidsPart{ KIDS_PART_AFTERNOON, 0, 6, false, false }, K, w, p, KIDS_MAX_PART_HOURS);
+    TEST_ASSERT_EQUAL(5, n);                                  // the hour without a forecast is left out
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, w[0]);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_PARTLY, w[1]);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, w[2]);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_HEAVY, p[2]);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, w[3]);             // a trace: a cloud
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, w[4]);
+
+    // Dinner: dinner time and the hour after only; and never more than max
+    TEST_ASSERT_EQUAL(2, kidsPartTimeline(h, KidsPart{ KIDS_PART_DINNER, 0, 6, false, false }, K, w, p, 12));
+    TEST_ASSERT_EQUAL(3, kidsPartTimeline(h, KidsPart{ KIDS_PART_AFTERNOON, 0, 6, false, false }, K, w, p, 3));
 }
 
 void test_part_of_day() {
@@ -955,6 +1063,9 @@ int main(int, char**) {
     RUN_TEST(test_kids_window_highest_temperature);
     RUN_TEST(test_kids_part_temperature);
     RUN_TEST(test_kids_now_outlook);
+    RUN_TEST(test_kids_precip_level);
+    RUN_TEST(test_kids_umbrella);
+    RUN_TEST(test_kids_timeline);
     RUN_TEST(test_part_of_day);
     RUN_TEST(test_kids_shown_part);
     RUN_TEST(test_light_at);

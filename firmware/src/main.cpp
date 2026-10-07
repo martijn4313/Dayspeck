@@ -176,6 +176,7 @@ void loadConfig() {
             kidsDinnerHour = constrain((int)o["dinnerHour"], KIDS_DINNER_MIN_HR, KIDS_DINNER_MAX_HR);
         }
         if (o["nightColumn"].is<bool>()) kidsNightColumn = o["nightColumn"];
+        if (o["umbrella"].is<bool>()) kidsUmbrella = o["umbrella"];
         if (o["evening"].is<const char*>()) kidsSunsetColumn = strcmp(o["evening"].as<const char*>(), "sunset") == 0;
 
         // Countdowns: [{"date": "YYYY-MM-DD", "initial": "A"}], the holidays and the range in sleeps
@@ -509,7 +510,17 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
         int shown = kidsShownPart(parts[i].part, parts[i].now, localHours[0], kidsEveningStart());
-        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
+        KidsColumn& c = cols[i];
+        c = KidsColumn{};
+        c.part = shown;
+        c.valid = o.valid;
+        c.outfit = o.outfit;
+        c.weather = o.weather;
+        c.light = o.light;
+        c.temp = kidsShownTemp((float)o.tempC);
+        c.precip = o.precip;
+        c.umbrella = o.umbrella && kidsUmbrella;
+        c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], kidsLimits, c.hourWeather, c.hourPrecip, KIDS_MAX_PART_HOURS);
     }
     return np;
 }
@@ -517,16 +528,32 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
 /**
  * Kids variant: the next three parts of the day, as outfits or as weather
  */
+static bool kidsWeatherMoving = false;   // the weather screen shows rain, snow or changing weather: it animates
+
+// How long the weather screen's time-lapse takes: the time the screen is shown (the demo scene, the cycle time,
+// or until it returns home); a screen that stays loops in KIDS_TIMELAPSE_DEFAULT_MS
+static unsigned long kidsTimelapseMs() {
+    if (demo.active) return (unsigned long)demoScene().seconds * 1000UL;
+    if (displayCycleSeconds > 0) return (unsigned long)displayCycleSeconds * 1000UL;
+    bool home = state.screen.list == 0 && state.screen.slot == 0;
+    if (!home && screensReturnSeconds > 0) return (unsigned long)screensReturnSeconds * 1000UL;
+    return KIDS_TIMELAPSE_DEFAULT_MS;
+}
+
 void renderKids(bool weather) {
     KidsPart parts[3];
     KidsColumn cols[3];
     size_t np = kidsColumns(cols, parts, 3, kidsNightColumn);
     int nowColumn = -1, nightBefore = -1;
+    bool moving = false;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
+        moving |= kidsColumnAnimates(cols[i]);
     }
-    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather);
+    kidsWeatherMoving = weather && moving;
+    unsigned long shownSince = demo.active ? demo.sceneStartMs : state.screenEnteredMs;
+    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather, millis() - shownSince, kidsTimelapseMs());
 }
 
 /**
@@ -539,8 +566,15 @@ void renderKidsVillage() {
     size_t count = kidsHours(hours, localHours);
     KidsOutlook o = kidsNowOutlook(hours, count, kidsLimits);
     int part = count ? partOfDay(localHours[0], kidsEveningStart()) : KIDS_PART_MORNING;
-    KidsColumn col = { count ? kidsShownPart(part, true, localHours[0], kidsEveningStart()) : part, o.valid, o.outfit,
-                       o.weather, o.light, kidsShownTemp((float)o.tempC) };
+    KidsColumn col = {};
+    col.part = count ? kidsShownPart(part, true, localHours[0], kidsEveningStart()) : part;
+    col.valid = o.valid;
+    col.outfit = o.outfit;
+    col.weather = o.weather;
+    col.light = o.light;
+    col.temp = kidsShownTemp((float)o.tempC);
+    col.precip = o.precip;
+    col.umbrella = o.umbrella && kidsUmbrella;
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');
@@ -1326,6 +1360,7 @@ void loop() {
             } else if (state.windAnimationActive) {
                 stopWindAnimation();
             }
+            if (screen == SCREEN_WEATHER && kidsWeatherMoving) state.displayDirty = true;   // the time-lapse plays
         } else if (screen == SCREEN_COUNTDOWN) {
             KidsCountdown countdown = kidsCountdownNow();
             if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself

@@ -68,7 +68,8 @@ defaults, see [Settings](#settings)):
 | 20 °C and up | t-shirt and shorts |
 | 15 to under 20 °C | t-shirt |
 | 5 to under 15 °C | sweater |
-| rain or thunderstorm (5 °C and up) | hooded rain coat and boots |
+| rain or thunderstorm for most of the part (70% of its hours or more), 5 °C and up | hooded rain coat and boots |
+| a shower: rain or thunderstorm in fewer of its hours | the outfit for the temperature (with an umbrella, if switched on) |
 | 0 to under 5 °C | winter coat and scarf |
 | below 0 °C, or snow | winter coat, scarf, hat and mittens |
 
@@ -76,6 +77,35 @@ defaults, see [Settings](#settings)):
 rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
 
 ![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
+
+**A time-lapse of every part.** The weather screen plays the hours of each column one after the other, in the
+time the screen is shown: with the screens cycling every 12 s, a 6-hour afternoon gives each hour 2 s, so a
+shower at 15:00 rains for 2 s between sun before and after, and a wet afternoon rains for most of the 12 s. When
+the weather changes a cloud glides in from the right (it clouds over) or out to the left (it clears up), taking
+its rain or snow along, while the sun or moon stays at the back; also from the last hour back to the first, so the
+loop has no seam. All columns play at once, each through its own hours;
+every hour gets at least 1.5 s. A screen you tap to plays in the time until it goes back home, and one that stays
+loops in 12 s. Steady weather simply stays.
+
+![The time-lapse at 15:00, in 8 s: a shower this afternoon, rain at dinner that clears up, and tomorrow morning clouding over into rain](images/kids-timelapse.gif){ .center }
+
+**Rain and snow fall.** On the weather screen the rain falls from its cloud and splashes on the top of the
+number, and snow drifts down and melts into it. How many drops or flakes there are, and how fast they fall, shows
+how hard it rains or snows in that hour:
+
+| Rain or snow per hour | Drops | Flakes |
+|-----------------------|-------|--------|
+| under 0.5 mm (drizzle) | 2, slow | 2, slow |
+| 0.5 to under 2 mm | 3 | 3, slow |
+| 2 to under 5 mm | 5, faster | 4 |
+| 5 mm and up (a downpour) | 7, fast | 6 |
+
+A thunderstorm has the same rain beside its lightning bolt. The clothes screen does not move: the rain coat says
+enough there.
+
+![A wet day on the weather screen: drizzle this morning, heavy rain this afternoon, a thunderstorm with a downpour at dinner](images/kids-rain.gif){ .center }
+
+![A snowy day: light snow this morning, heavy snow this afternoon, snowing hard at dinner](images/kids-snow.gif){ .center }
 
 **One number per part.** Each part of the day has one temperature that the weather screen shows and the
 outfit goes by, so the number and the picture always match:
@@ -110,7 +140,16 @@ The night column works with both.
 ![The night column at 19:00, dinner is over: the evening with the setting sun, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
-thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).
+thunderstorm) makes it rain. The clothes go by how much of the part is wet: rain in 70% of its hours or more
+gives the rain coat, a shower the usual outfit. When it is cold enough for the winter coat, the winter coat stays;
+snow gives the full winter outfit. The dinner column only looks at dinner time and the hour after it, like its
+temperature and its light: with dinner at 18:00, rain from 21:00 does not make dinner rainy (the night column
+shows it, if switched on). The sunset evening still goes by all of 18-22.
+
+With **Umbrella for showers** switched on (see [Settings](#settings)), a shower adds a small umbrella beside the
+part-of-day symbol, and in the village above the outfit; the winter coat gets it whenever it rains.
+
+![The clothes screen at 15:00 with an umbrella: a t-shirt and an umbrella for a shower this afternoon, a t-shirt and an umbrella for dinner (rain at 18:00, dry at 19:00), a sweater and an umbrella for tomorrow morning (rain at 11:00)](images/kids-umbrella.png){ .center }
 
 **Autumn leaves** blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the numbers, and
@@ -147,7 +186,7 @@ limits must go from warm to cold; an equal pair skips that outfit, for example a
 shorts limit has no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
 [configuration reference](configuration.md)) and are always in °C. The same card chooses the **evening column**
 (dinner, the default, or the sunset evening), sets the **dinner time** (an hour, 15-21, default 18) and switches
-the **night column** on (off by default).
+the **night column** and the **umbrella for showers** on (both off by default).
 
 Under *Countdowns* you enter the two birthdays (the date of birth, for the number of candles, and a
 letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps

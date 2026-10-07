@@ -41,6 +41,7 @@ extern KidsLimits kidsLimits;
 extern int kidsDinnerHour;
 extern bool kidsSunsetColumn;
 extern bool kidsNightColumn;
+extern bool kidsUmbrella;   // an umbrella with the outfit for a shower
 // Kids variant: countdowns (config.json "kids"): two birthdays (month 0 = not set), the holidays that count
 // down (KIDS_HOLIDAY mask) and from how many sleeps before the day
 extern KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS];
