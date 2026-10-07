@@ -141,8 +141,9 @@ static int wetRank(int weather) {
 }
 
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l) {
-    KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, 0, (int)from, KIDS_LIGHT_DAY };
-    float tempSum = 0, tempMax = -1000;
+    KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, 0, (int)from, KIDS_LIGHT_DAY,
+                      KIDS_PRECIP_DRIZZLE };
+    float tempSum = 0, tempMax = -1000, wetMm = 0;
     int n = 0, nights = 0, wettest = KIDS_WEATHER_CLEAR;
     int skyCount[7] = { 0, 0, 0, 0, 0, 0, 0 };
     for (size_t i = from; i < to; i++) {
@@ -151,6 +152,7 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
         int w = kidsHourWeather(h, l);
         if (isWet(h, w)) {
             if (wetRank(w) > wetRank(wettest)) wettest = w;
+            if (h.rainMm > wetMm) wetMm = h.rainMm;
         } else if (wetRank(w) == 0) {
             skyCount[w]++;
         } else {
@@ -168,6 +170,7 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
     o.light = o.night ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
     if (wetRank(wettest) > 0) {
         o.weather = wettest;
+        o.precip = kidsPrecipLevel(wetMm);
     } else {
         static const int sky[4] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_WIND };
         int best = KIDS_WEATHER_CLEAR;
@@ -230,6 +233,13 @@ KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits
     o.tempC = (int)lroundf(hours[0].tempC);
     o.outfit = outfitFor(hours[0].tempC, o.weather, o.night, l);
     return o;
+}
+
+int kidsPrecipLevel(float mm) {
+    if (!(mm >= 0.5f)) return KIDS_PRECIP_DRIZZLE;
+    if (mm < 2.0f) return KIDS_PRECIP_RAIN;
+    if (mm < 5.0f) return KIDS_PRECIP_HEAVY;
+    return KIDS_PRECIP_DOWNPOUR;
 }
 
 int partOfDay(int localHour, int dinnerHour) {

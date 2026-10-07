@@ -69,12 +69,13 @@ static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t 
     for (size_t i = 0; i < np; i++) {
         KidsOutlook o = kidsPartOutlook(hours, parts[i], LIMITS);
         int shown = kidsShownPart(parts[i].part, parts[i].now, day.now, evening);
-        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, o.tempC };
+        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, o.tempC, o.precip };
     }
     return np;
 }
 
-static void dayStrip(const Day& day, bool weather, bool nightColumn = false, int evening = KIDS_DINNER_HOUR) {
+static void dayStrip(const Day& day, bool weather, bool nightColumn = false, int evening = KIDS_DINNER_HOUR,
+                     unsigned long frame = 0) {
     KidsPart parts[3];
     KidsColumn cols[3];
     size_t np = columns(day, cols, parts, 3, nightColumn, evening);
@@ -83,7 +84,7 @@ static void dayStrip(const Day& day, bool weather, bool nightColumn = false, int
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
     }
-    renderKidsDayStrip(d, cols, np, nowColumn, nightBefore, weather);
+    renderKidsDayStrip(d, cols, np, nowColumn, nightBefore, weather, frame);
 }
 
 // 10:00 in autumn: 12 in the morning, warming up to 19, rain in the evening
@@ -105,6 +106,19 @@ static Hour winterMorning(int h) {
     if (h < 12) x.rainMm = 0.5f;
     return x;
 }
+// 10:00 on a wet day: drizzle this morning, heavy rain this afternoon, a downpour with thunder at dinner
+static Hour wetDay(int h) {
+    if (h < 12) return Hour{ 13, 0.3f, 15, 51 };
+    if (h < 18) return Hour{ 15, 3.0f, 20, 63 };
+    return Hour{ 12, 8.0f, 30, 95 };
+}
+// 10:00 in winter: light snow this morning, heavy snow this afternoon, snowing hard at dinner
+static Hour snowDay(int h) {
+    if (h < 12) return Hour{ -1, 0.3f, 10, 71 };
+    if (h < 18) return Hour{ -2, 3.0f, 15, 73 };
+    return Hour{ -4, 6.0f, 15, 75 };
+}
+
 // 13:00 in summer: hot and sunny, a thunderstorm in the evening
 static Hour summerAfternoon(int h) {
     Hour x = { h < 18 ? 28.0f : 22.0f, 0, 20, h < 18 ? 0 : (h < 20 ? 95 : 2) };
@@ -132,6 +146,13 @@ static void kidsScreens() {
     // The sunset evening instead of dinner: a summer afternoon and a winter morning
     dayStrip(makeDay(13, 6, 21, summerAfternoon), true, false, KIDS_SUNSET_EVENING);   frame("kids-sunset", 0);
     dayStrip(makeDay(8, 8, 17, winterMorning), true, false, KIDS_SUNSET_EVENING);      frame("kids-sunset", 1);
+    // Rain and snow falling on the numbers, from drizzle to a downpour
+    for (int f = 0; f < 45; f++) {
+        dayStrip(makeDay(10, 7, 19, wetDay), true, false, KIDS_DINNER_HOUR, f);  frame("kids-rain", f);
+    }
+    for (int f = 0; f < 45; f++) {
+        dayStrip(makeDay(10, 8, 17, snowDay), true, false, KIDS_DINNER_HOUR, f); frame("kids-snow", f);
+    }
 
     // Leaves blowing over the autumn evening's weather screen
     initWindAnimation(WIND_AREA_KIDS);
@@ -180,7 +201,7 @@ static void village(const VillageScene& s, int windFrames) {
     }
     KidsOutlook o = kidsNowOutlook(hours, s.day.count, LIMITS);
     int part = partOfDay(s.day.now, KIDS_DINNER_HOUR);
-    KidsColumn col = { kidsShownPart(part, true, s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC };
+    KidsColumn col = { kidsShownPart(part, true, s.day.now, KIDS_DINNER_HOUR), o.valid, o.outfit, o.weather, o.light, o.tempC, o.precip };
     bool any = s.day.count > 0;
     initWindAnimation(WIND_AREA_RIDE);
     hostSeed(5);

@@ -77,6 +77,24 @@ rain, thunderstorm, snow, wind) and its temperature: a number to read, without a
 
 ![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
+**Rain and snow fall.** On the weather screen the rain falls from its cloud and splashes on the top of the
+number, and snow drifts down and melts into it. How many drops or flakes there are, and how fast they fall, shows
+how hard it rains or snows in the wettest hour of that part of the day:
+
+| Rain or snow per hour | Drops | Flakes |
+|-----------------------|-------|--------|
+| under 0.5 mm (drizzle) | 2, slow | 2, slow |
+| 0.5 to under 2 mm | 3 | 3, slow |
+| 2 to under 5 mm | 5, faster | 4 |
+| 5 mm and up (a downpour) | 7, fast | 6 |
+
+A thunderstorm has the same rain beside its lightning bolt. The clothes screen does not move: the rain coat says
+enough there.
+
+![A wet day on the weather screen: drizzle this morning, heavy rain this afternoon, a thunderstorm with a downpour at dinner](images/kids-rain.gif){ .center }
+
+![A snowy day: light snow this morning, heavy snow this afternoon, snowing hard at dinner](images/kids-snow.gif){ .center }
+
 **One number per part.** Each part of the day has one temperature that the weather screen shows and the
 outfit goes by, so the number and the picture always match:
 

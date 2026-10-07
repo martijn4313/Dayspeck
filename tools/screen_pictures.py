@@ -81,7 +81,7 @@ def main():
     for name, columns in layout.items():
         grid(screens[name], columns).save(out / f"{name}.png", optimize=True)
         print("wrote", out / f"{name}.png")
-    for name in ("kids-wind", "report-wind"):
+    for name in ("kids-wind", "report-wind", "kids-rain", "kids-snow"):
         save_gif([device_image(f, scale=3) for f in pictures[name]], out / f"{name}.gif")
         print("wrote", out / f"{name}.gif")
 

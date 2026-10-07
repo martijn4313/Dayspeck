@@ -446,6 +446,28 @@ void test_kids_now_outlook() {
     TEST_ASSERT_FALSE(kidsNowOutlook(h, 5, K).valid);
 }
 
+void test_kids_precip_level() {
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(0.2f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(0.49f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsPrecipLevel(0.5f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsPrecipLevel(1.9f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_HEAVY, kidsPrecipLevel(2.0f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DOWNPOUR, kidsPrecipLevel(5.0f));
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DRIZZLE, kidsPrecipLevel(NAN));
+
+    // A part goes by its wettest hour
+    KidsHour h[3] = { hr(10, 0.6f, 61), hr(10, 3.0f, 63), hr(10, 0, 1) };
+    KidsOutlook o = kidsWindowOutlook(h, 0, 3, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_HEAVY, o.precip);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_RAIN, kidsWindowOutlook(h, 0, 1, K).precip);
+    // Snow too
+    KidsHour s[2] = { hr(-1, 6.0f, 75), hr(-1, 0, 3) };
+    o = kidsWindowOutlook(s, 0, 2, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_SNOW, o.weather);
+    TEST_ASSERT_EQUAL(KIDS_PRECIP_DOWNPOUR, o.precip);
+}
+
 void test_part_of_day() {
     TEST_ASSERT_EQUAL(KIDS_PART_NIGHT, partOfDay(6, 18));
     TEST_ASSERT_EQUAL(KIDS_PART_MORNING, partOfDay(7, 18));
@@ -968,6 +990,7 @@ int main(int, char**) {
     RUN_TEST(test_kids_window_highest_temperature);
     RUN_TEST(test_kids_part_temperature);
     RUN_TEST(test_kids_now_outlook);
+    RUN_TEST(test_kids_precip_level);
     RUN_TEST(test_part_of_day);
     RUN_TEST(test_kids_shown_part);
     RUN_TEST(test_light_at);

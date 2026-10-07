@@ -138,7 +138,15 @@ struct KidsOutlook {
     int  maxTempC;   // highest temperature, rounded
     int  hour;       // index of the middle hour
     int  light;      // KIDS_LIGHT_*: sun, setting sun or moon for a clear sky
+    int  precip;     // KIDS_PRECIP_*: how hard it rains or snows (wettest hour), for the animated picture
 };
+
+// How hard it rains or snows in an hour (mm): the number and speed of the drops or flakes on the weather screen
+#define KIDS_PRECIP_DRIZZLE   0   // under 0.5 mm
+#define KIDS_PRECIP_RAIN      1   // 0.5 to under 2 mm
+#define KIDS_PRECIP_HEAVY     2   // 2 to under 5 mm
+#define KIDS_PRECIP_DOWNPOUR  3   // 5 mm and up
+int kidsPrecipLevel(float mm);
 
 // Summary of hours [from, to): the most severe precipitation if there is any (at least 0.2 mm in an
 // hour, or a storm), otherwise the most common sky; outfit from the average temperature.

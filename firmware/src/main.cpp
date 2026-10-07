@@ -509,7 +509,7 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
         // One number per part, shown on the weather screen and the one the outfit goes by
         KidsOutlook o = kidsPartOutlook(hours, parts[i], kidsLimits);
         int shown = kidsShownPart(parts[i].part, parts[i].now, localHours[0], kidsEveningStart());
-        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC) };
+        cols[i] = KidsColumn{ shown, o.valid, o.outfit, o.weather, o.light, kidsShownTemp((float)o.tempC), o.precip };
     }
     return np;
 }
@@ -517,16 +517,22 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
 /**
  * Kids variant: the next three parts of the day, as outfits or as weather
  */
+static bool kidsPrecipFalling = false;   // the weather screen shows rain or snow: it animates
+
 void renderKids(bool weather) {
     KidsPart parts[3];
     KidsColumn cols[3];
     size_t np = kidsColumns(cols, parts, 3, kidsNightColumn);
     int nowColumn = -1, nightBefore = -1;
+    bool falling = false;
     for (size_t i = 0; i < np; i++) {
         if (parts[i].now) nowColumn = (int)i;
         if (parts[i].afterSleep && i > 0 && nightBefore < 0) nightBefore = (int)i;
+        falling |= cols[i].valid && (cols[i].weather == KIDS_WEATHER_RAIN || cols[i].weather == KIDS_WEATHER_STORM ||
+                                     cols[i].weather == KIDS_WEATHER_SNOW);
     }
-    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather);
+    kidsPrecipFalling = weather && falling;
+    renderKidsDayStrip(display, cols, np, nowColumn, nightBefore, weather, millis() / RAIN_FRAME_INTERVAL);
 }
 
 /**
@@ -540,7 +546,7 @@ void renderKidsVillage() {
     KidsOutlook o = kidsNowOutlook(hours, count, kidsLimits);
     int part = count ? partOfDay(localHours[0], kidsEveningStart()) : KIDS_PART_MORNING;
     KidsColumn col = { count ? kidsShownPart(part, true, localHours[0], kidsEveningStart()) : part, o.valid, o.outfit,
-                       o.weather, o.light, kidsShownTemp((float)o.tempC) };
+                       o.weather, o.light, kidsShownTemp((float)o.tempC), o.precip };
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');
@@ -1326,6 +1332,7 @@ void loop() {
             } else if (state.windAnimationActive) {
                 stopWindAnimation();
             }
+            if (screen == SCREEN_WEATHER && kidsPrecipFalling) state.displayDirty = true;   // rain and snow fall
         } else if (screen == SCREEN_COUNTDOWN) {
             KidsCountdown countdown = kidsCountdownNow();
             if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself

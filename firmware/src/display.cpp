@@ -1019,7 +1019,46 @@ static void drawSmallSky(Adafruit_SSD1306 &d, int cx, int cy, int r, int light) 
     else drawSmallSun(d, cx, cy, r);
 }
 
-static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light) {
+// Rain or snow falling from a small cloud onto the column's number, animated by `frame` (15 per second).
+// `level` (KIDS_PRECIP_*) sets how many drops or flakes there are and how fast they fall. Drops splash on the
+// top edge of the number (x numLeft..numRight) and vanish beside it; flakes melt into it.
+static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, unsigned long frame, int numLeft,
+                            int numRight) {
+    static const uint8_t DROPS[4] = { 2, 3, 5, 7 }, FLAKES[4] = { 2, 3, 4, 6 };
+    static const uint8_t DROP_SPEED[4] = { 1, 2, 2, 3 };   // px per frame
+    static const uint8_t DROP_LEN[4] = { 2, 2, 3, 3 };
+    const int top = 34, ground = 44;                       // under the cloud, just above the number (y 45)
+    const unsigned fall = ground - top + 1;
+    if (level < 0 || level > 3) level = 0;
+    unsigned n = snow ? FLAKES[level] : DROPS[level];
+    unsigned long steps = snow ? (level >= KIDS_PRECIP_HEAVY ? frame : frame / 2) : frame * DROP_SPEED[level];
+    for (unsigned k = 0; k < n; k++) {
+        unsigned long t = steps + k * fall * 7 / n;        // every drop on its own cycle
+        unsigned cycle = (unsigned)(t / fall), pos = (unsigned)(t % fall);
+        int x = cx - 11 + (int)((k * 7 + cycle * 5 + k * cycle * 3) % 23);   // a new place every cycle
+        int y = top + (int)pos;
+        if (snow) {
+            if (y < top + 1 || y > ground - 1) continue;   // still in the cloud, or melted into the number
+            int fx = x + (int)((cycle + pos / 3) % 2);     // drifting a little
+            d.drawFastHLine(fx - 1, y, 3, SSD1306_WHITE);
+            d.drawFastVLine(fx, y - 1, 3, SSD1306_WHITE);
+            continue;
+        }
+        if (pos + DROP_SPEED[level] >= fall) {             // landing
+            if (x >= numLeft && x <= numRight) {
+                d.drawPixel(x - 1, ground - 1, SSD1306_WHITE);
+                d.drawPixel(x + 1, ground - 1, SSD1306_WHITE);
+                d.drawPixel(x - 2, ground, SSD1306_WHITE);
+                d.drawPixel(x + 2, ground, SSD1306_WHITE);
+            }
+            continue;
+        }
+        for (int j = 0; j < DROP_LEN[level] && y - j >= top; j++) d.drawPixel(x, y - j, SSD1306_WHITE);
+    }
+}
+
+static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light, int precip, unsigned long frame,
+                             int numLeft, int numRight) {
     const int y = 17;
     switch (weather) {
     case KIDS_WEATHER_PARTLY:
@@ -1030,26 +1069,20 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light
     case KIDS_WEATHER_CLOUDY:
         drawSmallCloud(d, cx, y + 4, 1, SSD1306_WHITE);
         break;
+    // Rain, a storm and snow: the cloud a little higher, so they fall a little longer
     case KIDS_WEATHER_RAIN:
-        drawSmallCloud(d, cx, y, 0, SSD1306_WHITE);
-        for (int i = 0; i < 3; i++) {
-            int x = cx - 6 + i * 6, yy = y + 19 + (i % 2) * 2;
-            d.drawLine(x, yy, x - 2, yy + 5, SSD1306_WHITE);
-            d.drawLine(x + 1, yy, x - 1, yy + 5, SSD1306_WHITE);
-        }
+        drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
+        drawSmallPrecip(d, cx, false, precip, frame, numLeft, numRight);
         break;
     case KIDS_WEATHER_STORM:
         drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
         d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);
+        drawSmallPrecip(d, cx, false, precip, frame, numLeft, numRight);
         break;
     case KIDS_WEATHER_SNOW:
-        drawSmallCloud(d, cx, y, 0, SSD1306_WHITE);
-        for (int i = 0; i < 3; i++) {
-            int x = cx - 7 + i * 7, yy = y + 21 + (i % 2) * 3;
-            d.drawFastHLine(x - 1, yy, 3, SSD1306_WHITE);
-            d.drawFastVLine(x, yy - 1, 3, SSD1306_WHITE);
-        }
+        drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
+        drawSmallPrecip(d, cx, true, precip, frame, numLeft, numRight);
         break;
     case KIDS_WEATHER_WIND:
         for (int i = 0; i < 3; i++) {
@@ -1138,7 +1171,7 @@ static void drawNightDivider(Adafruit_SSD1306 &d, int column) {
 }
 
 void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t count, int nowColumn,
-                        int nightBefore, bool weather) {
+                        int nightBefore, bool weather, unsigned long frame) {
     d.clearDisplay();
     d.setTextColor(SSD1306_WHITE);
     d.setTextWrap(false);
@@ -1151,10 +1184,10 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
             d.setCursor(cx - 5, 26);
             d.print('?');
         } else if (weather) {
-            drawSmallWeather(d, cx, c.weather, c.light);
             char num[8];
             snprintf(num, sizeof(num), "%d", c.temp);
             int w = (int)strlen(num) * 12 - 2;
+            drawSmallWeather(d, cx, c.weather, c.light, c.precip, frame, cx - w / 2, cx - w / 2 + w - 1);
             d.setTextSize(2);
             d.setCursor(cx - w / 2, 45);
             d.print(num);

@@ -155,13 +155,14 @@ struct KidsColumn {
     int  weather;   // KIDS_WEATHER_* (weather screen)
     int  light;     // KIDS_LIGHT_*: sun, setting sun or moon
     int  temp;      // the part's temperature, as shown (weather screen): see kidsPartOutlook
+    int  precip;    // KIDS_PRECIP_*: how hard it rains or snows (the falling drops or flakes)
 };
 // Kids variant: the next parts of the day in up to three columns, outfits (weather = false) or weather
 // pictures with the part's temperature (the night column: a bed instead of an outfit). nowColumn gets dots
 // underneath (-1 = none); nightBefore is the column a night lies before (a dotted line with a bed; -1 or 0 =
-// none).
+// none). Rain and snow fall from their clouds onto the numbers, moved on by `frame` (15 per second).
 void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_t count, int nowColumn,
-                        int nightBefore, bool weather);
+                        int nightBefore, bool weather, unsigned long frame);
 // Kids variant: the countdown screen. The picture of the event (a cake with a candle per year and the initial,
 // a pumpkin, Sinterklaas' mitre and staff, a Christmas tree), the number of sleeps and, up to ten, as many
 // beds to count. On the day itself the picture with falling confetti (timeMs moves it).
