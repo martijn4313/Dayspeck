@@ -1173,6 +1173,18 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     if (body == 2) drawSmallSky(d, cx, y + 13, 7, c.light);
     else if (body == 1) drawSmallSky(d, cx - 6, y + 7, 4, c.light);
 
+    // Partly cloudy turning cloudy (or the other way round): its own cloud moves up over the sun (or back down),
+    // instead of a second cloud gliding in over it. Rain starts once it is there, and stops before it moves.
+    bool coverUp = p >= 0 && cur == KIDS_WEATHER_PARTLY && isBigCloud(next);
+    bool coverDown = p >= 0 && isBigCloud(cur) && next == KIDS_WEATHER_PARTLY;
+    if (coverUp || coverDown) {
+        int q = coverUp ? p : 100 - p;                  // 0: where partly cloudy has it, 100: over the sun
+        int x = cx + 3 - 3 * q / 100, top = y + 8 - 9 * q / 100;
+        drawSmallCloudClipped(d, x, top, 1, SSD1306_BLACK, xmin, xmax);
+        drawSmallCloudClipped(d, x, top, 0, SSD1306_WHITE, xmin, xmax);
+        return;
+    }
+
     // The small cloud of a partly cloudy sky
     int smallX = cx + 3;
     bool small = cur == KIDS_WEATHER_PARTLY;
@@ -1211,7 +1223,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     int prev = c.hourWeather[prevIdx];
     bool wet = w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW;
     bool prevWet = prev == KIDS_WEATHER_RAIN || prev == KIDS_WEATHER_STORM || prev == KIDS_WEATHER_SNOW;
-    bool stayed = owner == (int)idx && isBigCloud(prev);   // the cloud was already here last hour
+    bool stayed = owner == (int)idx && (isBigCloud(prev) || prev == KIDS_WEATHER_PARTLY);   // the cloud was here
     if (wet) {
         bool fresh = stayed && (!prevWet || (prev == KIDS_WEATHER_SNOW) != (w == KIDS_WEATHER_SNOW));
         drawSmallPrecip(d, bigX, w == KIDS_WEATHER_SNOW, c.hourPrecip[owner], frame, numLeft, numRight, xmin, xmax,
