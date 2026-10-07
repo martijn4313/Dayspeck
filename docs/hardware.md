@@ -42,6 +42,9 @@ Notes:
 
 - GPIO0 and GPIO2 are boot-strap pins and must be **high at power-up**. The OLED's I²C pull-ups
   normally do that; do not hold either low.
+- On an **ESP-01S** the blue LED sits on GPIO2, the OLED's SCL: it flickers whenever the screen is updated.
+  That is normal while something moves (rain, leaves, the time-lapse, the clock); the firmware only sends a
+  frame when it differs from the one on the screen, so a still picture keeps the LED dark.
 - GPIO3 is the UART RX pin, so **serial output and serial flashing are unavailable while the touch
   sensor is attached**. All diagnostics go to the log in the web UI instead. Disconnect the sensor
   while flashing over serial.

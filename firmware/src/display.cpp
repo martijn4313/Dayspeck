@@ -33,6 +33,20 @@ static void drawFilledCircle(Adafruit_SSD1306 &display, int cx, int cy, int r) {
     }
 }
 
+void showFrame(Adafruit_SSD1306 &display) {
+    static uint32_t shown = 0;                       // fingerprint of the frame on the panel (0: none yet)
+    const uint8_t *buf = display.getBuffer();
+    uint32_t h = 2166136261u;                        // FNV-1a over the 1 KB buffer
+    for (int i = 0; i < 128 * 64 / 8; i++) {
+        h ^= buf[i];
+        h *= 16777619u;
+    }
+    if (h == 0) h = 1;
+    if (h == shown) return;
+    display.display();
+    shown = h;
+}
+
 #ifdef DISPLAY_STATUS_DEBUG
 void drawDebugStatus(Adafruit_SSD1306 &display, const char* message) {
     display.fillRect(0, 20, 128, 24, SSD1306_BLACK);
@@ -46,7 +60,7 @@ void drawDebugStatus(Adafruit_SSD1306 &display, const char* message) {
     
     display.setCursor((128 - w) / 2, 26);
     display.print(message);
-    display.display();
+    showFrame(display);
 }
 #endif
 
@@ -617,7 +631,7 @@ void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const c
     }
 }
 
-// Render primary view — full composite display (caller flushes with display.display())
+// Render primary view — full composite display (caller flushes with showFrame())
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm) {
     // Clear the display first
     display.clearDisplay();
