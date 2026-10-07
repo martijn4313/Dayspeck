@@ -392,6 +392,19 @@ void test_kids_part_temperature() {
     TEST_ASSERT_EQUAL(16, o.tempC);
     TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
 
+    // Dinner: rain from 21:00 (dinner at 18:00) is not dinner's rain; rain in the hour after dinner time is
+    KidsHour late[4] = { hr(16, 0, 1), hr(15, 0, 1), hr(14, 0, 1), hr(13, 1.5f, 63) };
+    o = kidsPartOutlook(late, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_MILD, o.outfit);
+    late[1] = hr(15, 1.5f, 63);
+    o = kidsPartOutlook(late, KidsPart{ KIDS_PART_DINNER, 0, 4, false, false }, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, o.weather);
+    TEST_ASSERT_EQUAL(OUTFIT_RAIN, o.outfit);
+    // The sunset evening still goes by all of its hours
+    late[1] = hr(15, 0, 1);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsPartOutlook(late, KidsPart{ KIDS_PART_EVENING, 0, 4, false, false }, K).weather);
+
     // The night: its lowest
     KidsHour nt[4] = { hr(12, 0, 1), hr(9, 0, 1), hr(7, 0, 1), hr(8, 0, 1) };
     o = kidsPartOutlook(nt, KidsPart{ KIDS_PART_NIGHT, 0, 4, false, false }, K);

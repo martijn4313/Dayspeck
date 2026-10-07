@@ -164,6 +164,7 @@ int partOfDay(int localHour, int dinnerHour);   // KIDS_PART_*
 // The symbol a column shows for its part: an hour after dinner time the current dinner column becomes the
 // evening (setting sun), dinner is over. Its outlook keeps the dinner rules (the conditions of now).
 #define KIDS_DINNER_LENGTH_HR  1
+#define KIDS_DINNER_WEATHER_HR 2   // the dinner column's weather: dinner time and the hour after
 int kidsShownPart(int part, bool now, int localHourNow, int dinnerHour);
 
 // One column of the kids screens: a part of the day and the forecast hours [from, to) that belong to it
@@ -184,7 +185,9 @@ size_t kidsDayParts(const int* localHours, size_t count, KidsPart* out, size_t m
 // One column of the kids screens: the weather picture of the part (as kidsWindowOutlook), and one
 // characteristic temperature that is both the number on the weather screen and what the outfit goes by:
 // the morning its lowest (the walk to school), the afternoon its highest, dinner its first hour (dinner
-// time; the sunset evening its first hour too) and the night its lowest. For the current part only its remaining hours count. tempC holds that
+// time; the sunset evening its first hour too) and the night its lowest. Dinner's weather picture (and so the
+// rain coat) goes by dinner time and the hour after only (KIDS_DINNER_WEATHER_HR), the other parts by all their
+// hours. For the current part only its remaining hours count. tempC holds that
 // number. Dinner takes its light from that same hour, the night always has the moon.
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l);
 

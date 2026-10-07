@@ -110,7 +110,10 @@ The night column works with both.
 ![The night column at 19:00, dinner is over: the evening with the setting sun, a cloudy night of 10 and rain tomorrow morning; on the clothes screen the night has the moon and a sleeping Z instead of an outfit](images/kids-night.png){ .center }
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
-thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat).
+thunderstorm) makes it rain, and the outfit a rain coat (unless it is cold enough for the winter coat). The
+dinner column only looks at dinner time and the hour after it, like its temperature and its light: with dinner
+at 18:00, rain from 21:00 does not make dinner rainy (the night column shows it, if switched on). The sunset
+evening still goes by all of 18-22.
 
 **Autumn leaves** blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the numbers, and

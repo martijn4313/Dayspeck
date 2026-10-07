@@ -185,11 +185,14 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
 }
 
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l) {
-    KidsOutlook o = kidsWindowOutlook(hours, part.from, part.to, l);
+    // Dinner goes by dinner time: its weather is that of dinner time and the hour after, not rain at 21:00
+    size_t to = part.to;
+    if (part.part == KIDS_PART_DINNER && to > part.from + KIDS_DINNER_WEATHER_HR) to = part.from + KIDS_DINNER_WEATHER_HR;
+    KidsOutlook o = kidsWindowOutlook(hours, part.from, to, l);
     if (!o.valid) return o;
     float t = NAN;
     bool lowest = part.part == KIDS_PART_MORNING || part.part == KIDS_PART_NIGHT;
-    for (size_t i = part.from; i < part.to; i++) {
+    for (size_t i = part.from; i < to; i++) {
         const KidsHour& h = hours[i];
         if (!h.valid || isnan(h.tempC)) continue;
         if (isnan(t)) {
