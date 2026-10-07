@@ -14,11 +14,14 @@ writes it itself from the hourly forecast, by fixed rules:
 
 1. **The evening and the night** (from 18:00): their rain, and the lowest temperature until 07:00, for
    example *Vanavond regen, vannacht droog, minimaal 3°.*
-2. **The day:** the sky (sunny, sun and clouds, cloudy, foggy), the rain (dry, mostly dry, a shower at times,
+2. **The day:** the sky (sunny, sun and clouds when both are a real part of the day, cloudy, foggy), the rain (dry, mostly dry, a shower at times,
    showers, rain, heavy rain, drizzle, snow, thunderstorms) and the temperature, from lowest to highest, or
    *around* one number when it hardly changes. A morning at least 5 degrees colder than the afternoon gets
    its own sentence, with the coldest morning hour and the warmest afternoon hour.
-3. **A change:** a shower around an hour, rain from an hour on, or rain until an hour and then dry.
+3. **A change:** a shower around an hour, rain from an hour on, or rain until an hour and then dry. Without such
+   a rain change, a change of sky: at least 3 sunny hours and then at least 3 cloudy ones (or the other way
+   round). The day then names the sky it starts with, for example *Vandaag zonnig, droog, 9 tot 16°. Vanaf
+   14 uur bewolkt.*
 4. **One thing to watch out for**, the first that applies: frost tonight or during the day (roads may be
    icy), gusts of 60 km/h or more, 10 mm of rain or more, gusts of 45 km/h or more.
 

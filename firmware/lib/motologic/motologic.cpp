@@ -418,6 +418,9 @@ static int skyWord(const ReportSummary& s) {
     int best = SKY_CLEAR;
     for (int k = 1; k < 4; k++) if (s.sky[k] > s.sky[best]) best = k;
     if (s.sky[best] == 0) return W_CLOUDY;   // wet all day
+    // Sun and clouds when both are a real part of the day (a third of the dry hours each, or more)
+    int sunny = s.sky[SKY_CLEAR] + s.sky[SKY_PARTLY], grey = s.sky[SKY_CLOUDY] + s.sky[SKY_FOG];
+    if (sunny * 3 >= sunny + grey && grey * 3 >= sunny + grey) return W_SUN_CLOUDS;
     // Sun and clouds when the clear hours do not outnumber the cloudy ones
     if (best == SKY_CLEAR && s.sky[SKY_CLOUDY] + s.sky[SKY_PARTLY] > s.sky[SKY_CLEAR]) return W_SUN_CLOUDS;
     static const int words[4] = { W_SUNNY, W_SUN_CLOUDS, W_CLOUDY, W_FOGGY };
@@ -433,6 +436,40 @@ static int precipWord(const ReportSummary& s) {
     if (!most) return W_SHOWERS;
     if (s.drizzle * 2 >= s.wet) return W_DRIZZLE;
     return s.rainSum >= 5 ? W_HEAVY_RAIN : W_RAIN;
+}
+
+// A change of sky during [from, to): at least SKY_CHANGE_MIN_HR sunny hours and then as many grey ones (or the
+// other way round), each part at least 3/4 its own kind; wet hours count as grey. Returns the index where the
+// second part starts (-1: no such change), and in `sunnyFirst` which way round it goes.
+#define SKY_CHANGE_MIN_HR 3
+static size_t skyChange(const ReportHour* hours, size_t from, size_t to, bool& sunnyFirst, bool& found) {
+    found = false;
+    int sunny[48];
+    size_t idx[48], k = 0;
+    for (size_t i = from; i < to && k < 48; i++) {
+        const ReportHour& h = hours[i];
+        if (!h.valid || isnan(h.tempC)) continue;
+        int sky = reportSky(h.code);
+        sunny[k] = !reportWet(h) && (sky == SKY_CLEAR || sky == SKY_PARTLY);
+        idx[k++] = i;
+    }
+    size_t best = 0;
+    int bestScore = -1;
+    for (int dir = 0; dir < 2; dir++) {                  // dir 0: sunny first
+        for (size_t j = SKY_CHANGE_MIN_HR; j + SKY_CHANGE_MIN_HR <= k; j++) {
+            int before = 0, after = 0;
+            for (size_t i = 0; i < j; i++) before += dir == 0 ? sunny[i] : !sunny[i];
+            for (size_t i = j; i < k; i++) after += dir == 0 ? !sunny[i] : sunny[i];
+            if (before * 4 < (int)j * 3 || after * 4 < (int)(k - j) * 3) continue;
+            if (before + after > bestScore) {
+                bestScore = before + after;
+                best = j;
+                sunnyFirst = dir == 0;
+                found = true;
+            }
+        }
+    }
+    return found ? idx[best] : 0;
 }
 
 // Precipitation words that describe the whole day on their own (no sky word in front)
@@ -522,10 +559,31 @@ void weatherReport(const ReportHour* hours, size_t count, int lang, WeatherRepor
         }
     }
 
+    // No rain that starts or stops, but the sky changes (sunny this morning, cloudy from 14:00): the day names the
+    // sky it starts with, the change the other one
+    int sky = skyWord(s), pre = precipWord(s);
+    bool rainChange = change[0] != '\0';
+    if (!rainChange) {
+        bool sunnyFirst = false, found = false;
+        size_t at = skyChange(hours, dayFrom, dayTo, sunnyFirst, found);
+        if (found) {
+            sky = skyWord(summarizeReport(hours, dayFrom, at));
+            int later = skyWord(summarizeReport(hours, at, dayTo));
+            if (sunnyFirst && later == W_SUN_CLOUDS) later = W_CLOUDY;      // mostly grey: say so
+            if (!sunnyFirst && later == W_SUN_CLOUDS) later = W_SUNNY;
+            if (!sunnyFirst && sky == W_SUN_CLOUDS) sky = W_CLOUDY;
+            if (sunnyFirst && sky == W_SUN_CLOUDS) sky = W_SUNNY;
+            if (nl) snprintf(change, sizeof(change), "Vanaf %d uur %s.", hours[at].hour, w[later]);
+            else {
+                snprintf(change, sizeof(change), "%s from %d:00.", w[later], hours[at].hour);
+                if (change[0] >= 'a' && change[0] <= 'z') change[0] -= 'a' - 'A';
+            }
+        }
+    }
+
     // 1. The day: the weather and the temperature
     char weather[40];
-    int sky = skyWord(s), pre = precipWord(s);
-    if (change[0]) snprintf(weather, sizeof(weather), "%s", w[sky]);
+    if (rainChange) snprintf(weather, sizeof(weather), "%s", w[sky]);
     else if (precipAlone(pre)) snprintf(weather, sizeof(weather), "%s", w[pre]);
     else snprintf(weather, sizeof(weather), "%s, %s", w[sky], w[pre]);
     const char* when = w[tomorrow ? W_TOMORROW : W_TODAY];
