@@ -1023,7 +1023,7 @@ static void drawSmallSky(Adafruit_SSD1306 &d, int cx, int cy, int r, int light) 
 // `level` (KIDS_PRECIP_*) sets how many drops or flakes there are and how fast they fall. Drops splash on the
 // top edge of the number (x numLeft..numRight) and vanish beside it; flakes melt into it.
 static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, unsigned long frame, int numLeft,
-                            int numRight) {
+                            int numRight, int xmin = 0, int xmax = 127) {
     static const uint8_t DROPS[4] = { 2, 3, 5, 7 }, FLAKES[4] = { 2, 3, 4, 6 };
     static const uint8_t DROP_SPEED[4] = { 1, 2, 2, 3 };   // px per frame
     static const uint8_t DROP_LEN[4] = { 2, 2, 3, 3 };
@@ -1037,6 +1037,7 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
         unsigned cycle = (unsigned)(t / fall), pos = (unsigned)(t % fall);
         int x = cx - 11 + (int)((k * 7 + cycle * 5 + k * cycle * 3) % 23);   // a new place every cycle
         int y = top + (int)pos;
+        if (x - 2 < xmin || x + 2 > xmax) continue;        // under a cloud gliding past the column's edge
         if (snow) {
             if (y < top + 1 || y > ground - 1) continue;   // still in the cloud, or melted into the number
             int fx = x + (int)((cycle + pos / 3) % 2);     // drifting a little
@@ -1066,10 +1067,10 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light
         drawSmallCloud(d, cx + 3, y + 8, 1, SSD1306_BLACK);
         drawSmallCloud(d, cx + 3, y + 8, 0, SSD1306_WHITE);
         break;
+    // Clouds, rain, a storm and snow: all the same cloud, high enough for the rain and snow to fall
     case KIDS_WEATHER_CLOUDY:
-        drawSmallCloud(d, cx, y + 4, 1, SSD1306_WHITE);
+        drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
         break;
-    // Rain, a storm and snow: the cloud a little higher, so they fall a little longer
     case KIDS_WEATHER_RAIN:
         drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
         drawSmallPrecip(d, cx, false, precip, frame, numLeft, numRight);
@@ -1121,60 +1122,82 @@ static void drawSmallCloudClipped(Adafruit_SSD1306 &d, int cx, int oy, int grow,
     if (x1 >= x0) d.fillRect(x0, oy + 11, x1 - x0 + 1, 6 + grow, color);
 }
 
-// How much of the sky a picture covers: 0 open sky, 1 a small cloud, 2 the big cloud (cloudy, rain, snow, storm);
-// -1 the wind picture, which does not glide
-static int skyCover(int weather) {
-    switch (weather) {
-    case KIDS_WEATHER_CLEAR:  return 0;
-    case KIDS_WEATHER_PARTLY: return 1;
-    case KIDS_WEATHER_WIND:   return -1;
-    default:                  return 2;
-    }
+static bool isBigCloud(int weather) {
+    return weather == KIDS_WEATHER_CLOUDY || weather == KIDS_WEATHER_RAIN || weather == KIDS_WEATHER_STORM ||
+           weather == KIDS_WEATHER_SNOW;
 }
 
-// Where a picture's cloud rests (centre x offset, top, grow)
-static void restingCloud(int weather, int &dx, int &oy, int &grow) {
-    const int y = 17;
-    if (weather == KIDS_WEATHER_PARTLY) { dx = 3; oy = y + 8; grow = 0; }
-    else if (weather == KIDS_WEATHER_CLOUDY) { dx = 0; oy = y + 4; grow = 1; }
-    else { dx = 0; oy = y - 1; grow = 0; }
-}
-
-// One column of the weather screen at a moment of its time-lapse: the picture of the hour it is at, and in the
-// last moments of an hour the change to the next one (wrapping round from the last hour to the first, so the
-// loop has no seam). A cloud glides in from the right as it clouds over and out to the left as it clears.
+// One column of the weather screen at a moment of its time-lapse, drawn in layers so the weather can change
+// smoothly: at the back the sun or moon (it stays while clouds pass in front of it), then the small cloud of
+// "partly cloudy", then the big cloud with its rain, snow or lightning. In the last moments of an hour the clouds
+// of the next hour glide in from the right, and clouds that are not in the next hour glide out to the left, each
+// taking its rain along; from the last hour back to the first too, so the loop has no seam.
 static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsigned long elapsedMs,
                           unsigned long loopMs, int numLeft, int numRight) {
+    const int y = 17;
     unsigned long frame = elapsedMs / RAIN_FRAME_INTERVAL;
     unsigned n = c.hours;
     unsigned long hourMs = loopMs / n;
     if (hourMs < KIDS_TIMELAPSE_MIN_HOUR_MS) hourMs = KIDS_TIMELAPSE_MIN_HOUR_MS;
     unsigned long phase = elapsedMs % (hourMs * n);
-    unsigned idx = (unsigned)(phase / hourMs);
+    unsigned idx = (unsigned)(phase / hourMs), nextIdx = (idx + 1) % n;
     unsigned long within = phase % hourMs;
-    int cur = c.hourWeather[idx], next = c.hourWeather[(idx + 1) % n];
-    unsigned long glideMs = hourMs / 2 < 900 ? hourMs / 2 : 900;
-    int from = skyCover(cur), to = skyCover(next);
-    bool gliding = within + glideMs >= hourMs && from >= 0 && to >= 0 && from != to;
-    if (!gliding) {
-        drawSmallWeather(d, cx, cur, c.light, c.hourPrecip[idx], frame, numLeft, numRight);
+    int cur = c.hourWeather[idx], next = c.hourWeather[nextIdx];
+
+    // The wind picture does not glide: it simply comes and goes with its hours
+    if (cur == KIDS_WEATHER_WIND) {
+        drawSmallWeather(d, cx, cur, c.light, 0, frame, numLeft, numRight);
         return;
     }
-    int p = (int)((within + glideMs - hourMs) * 100 / glideMs);   // 0..100 through the glide
+    unsigned long glideMs = hourMs / 2 < 900 ? hourMs / 2 : 900;
+    int p = within + glideMs >= hourMs ? (int)((within + glideMs - hourMs) * 100 / glideMs) : -1;   // 0..100
+    if (next == KIDS_WEATHER_WIND) p = -1;
     int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
-    int dx, oy, grow;
-    if (to > from) {                       // clouding over: the next hour's cloud glides in over this hour's sky
-        drawSmallWeather(d, cx, cur, c.light, 0, frame, numLeft, numRight);
-        restingCloud(next, dx, oy, grow);
-        int x = cx + dx + (100 - p) * 32 / 100;
-        drawSmallCloudClipped(d, x, oy, grow + 1, SSD1306_BLACK, xmin, xmax);
-        drawSmallCloudClipped(d, x, oy, grow, SSD1306_WHITE, xmin, xmax);
-    } else {                               // clearing: this hour's cloud glides away from the next hour's sky
-        drawSmallWeather(d, cx, next, c.light, 0, frame, numLeft, numRight);
-        restingCloud(cur, dx, oy, grow);
-        int x = cx + dx - p * 32 / 100;
-        drawSmallCloudClipped(d, x, oy, grow + 1, SSD1306_BLACK, xmin, xmax);
-        drawSmallCloudClipped(d, x, oy, grow, SSD1306_WHITE, xmin, xmax);
+
+    // The sun or moon: the big one of a clear sky, the small one of a partly cloudy sky; behind a big cloud the
+    // one of the column's own dry hours (none when it never clears up)
+    bool clear = false, partly = false;
+    for (unsigned i = 0; i < n; i++) {
+        clear |= c.hourWeather[i] == KIDS_WEATHER_CLEAR;
+        partly |= c.hourWeather[i] == KIDS_WEATHER_PARTLY;
+    }
+    int body = cur == KIDS_WEATHER_CLEAR ? 2 : cur == KIDS_WEATHER_PARTLY ? 1 : clear ? 2 : partly ? 1 : 0;
+    if (body == 2) drawSmallSky(d, cx, y + 13, 7, c.light);
+    else if (body == 1) drawSmallSky(d, cx - 6, y + 7, 4, c.light);
+
+    // The small cloud of a partly cloudy sky
+    int smallX = cx + 3;
+    bool small = cur == KIDS_WEATHER_PARTLY;
+    if (p >= 0 && cur != KIDS_WEATHER_PARTLY && next == KIDS_WEATHER_PARTLY && !isBigCloud(cur)) {
+        small = true;                                   // gliding in
+        smallX += (100 - p) * 32 / 100;
+    } else if (p >= 0 && cur == KIDS_WEATHER_PARTLY && next == KIDS_WEATHER_CLEAR) {
+        smallX -= p * 32 / 100;                         // gliding out
+    }
+    if (small) {
+        drawSmallCloudClipped(d, smallX, y + 8, 1, SSD1306_BLACK, xmin, xmax);
+        drawSmallCloudClipped(d, smallX, y + 8, 0, SSD1306_WHITE, xmin, xmax);
+    }
+
+    // The big cloud, with the rain, snow or lightning of the hour it belongs to
+    int bigX = cx, owner = -1;
+    if (isBigCloud(cur)) {
+        owner = (int)idx;
+        if (p >= 0 && !isBigCloud(next)) bigX -= p * 32 / 100;               // gliding out, still raining
+    } else if (p >= 0 && isBigCloud(next)) {
+        owner = (int)nextIdx;                                                 // gliding in, already raining
+        bigX += (100 - p) * 32 / 100;
+    }
+    if (owner < 0) return;
+    int w = c.hourWeather[owner];
+    drawSmallCloudClipped(d, bigX, y - 1, 1, SSD1306_BLACK, xmin, xmax);
+    drawSmallCloudClipped(d, bigX, y - 1, 0, SSD1306_WHITE, xmin, xmax);
+    if (w == KIDS_WEATHER_STORM && bigX == cx) {
+        d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
+        d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);
+    }
+    if (w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW) {
+        drawSmallPrecip(d, bigX, w == KIDS_WEATHER_SNOW, c.hourPrecip[owner], frame, numLeft, numRight, xmin, xmax);
     }
 }
 
