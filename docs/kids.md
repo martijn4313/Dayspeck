@@ -69,7 +69,7 @@ defaults, see [Settings](#settings)):
 | 15 to under 20 °C | t-shirt |
 | 5 to under 15 °C | sweater |
 | rain or thunderstorm for most of the part (70% of its hours or more), 5 °C and up | hooded rain coat and boots |
-| a shower: rain or thunderstorm in fewer of its hours | the outfit for the temperature, with an **umbrella** |
+| a shower: rain or thunderstorm in fewer of its hours | the outfit for the temperature (with an umbrella, if switched on) |
 | 0 to under 5 °C | winter coat and scarf |
 | below 0 °C, or snow | winter coat, scarf, hat and mittens |
 
@@ -141,14 +141,15 @@ The night column works with both.
 
 The weather picture goes by the wettest weather of the part: one hour with 0.2 mm of rain or more (or a
 thunderstorm) makes it rain. The clothes go by how much of the part is wet: rain in 70% of its hours or more
-gives the rain coat, a shower the usual outfit with a small umbrella beside the part-of-day symbol (in the
-village above the outfit). When it is cold enough for the winter coat, the winter coat stays and rain adds the
-umbrella; snow gives the full winter outfit without one.
+gives the rain coat, a shower the usual outfit. When it is cold enough for the winter coat, the winter coat stays;
+snow gives the full winter outfit. The dinner column only looks at dinner time and the hour after it, like its
+temperature and its light: with dinner at 18:00, rain from 21:00 does not make dinner rainy (the night column
+shows it, if switched on). The sunset evening still goes by all of 18-22.
 
-![The clothes screen at 15:00 with an umbrella: a t-shirt and an umbrella for a shower this afternoon, a t-shirt and an umbrella for dinner (rain at 18:00, dry at 19:00), a sweater and an umbrella for tomorrow morning (rain at 11:00)](images/kids-umbrella.png){ .center } The
-dinner column only looks at dinner time and the hour after it, like its temperature and its light: with dinner
-at 18:00, rain from 21:00 does not make dinner rainy (the night column shows it, if switched on). The sunset
-evening still goes by all of 18-22.
+With **Umbrella for showers** switched on (see [Settings](#settings)), a shower adds a small umbrella beside the
+part-of-day symbol, and in the village above the outfit; the winter coat gets it whenever it rains.
+
+![The clothes screen at 15:00 with an umbrella: a t-shirt and an umbrella for a shower this afternoon, a t-shirt and an umbrella for dinner (rain at 18:00, dry at 19:00), a sweater and an umbrella for tomorrow morning (rain at 11:00)](images/kids-umbrella.png){ .center }
 
 **Autumn leaves** blow across the weather and clothes screens when the wind is up (gusts from 20 km/h on,
 and not while it rains, storms or snows). They stay in the upper part of the screen, above the numbers, and
@@ -185,7 +186,7 @@ limits must go from warm to cold; an equal pair skips that outfit, for example a
 shorts limit has no t-shirt step. They are saved in `config.json` (the `kids` keys, see the
 [configuration reference](configuration.md)) and are always in °C. The same card chooses the **evening column**
 (dinner, the default, or the sunset evening), sets the **dinner time** (an hour, 15-21, default 18) and switches
-the **night column** on (off by default).
+the **night column** and the **umbrella for showers** on (both off by default).
 
 Under *Countdowns* you enter the two birthdays (the date of birth, for the number of candles, and a
 letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps

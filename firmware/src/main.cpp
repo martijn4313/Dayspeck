@@ -176,6 +176,7 @@ void loadConfig() {
             kidsDinnerHour = constrain((int)o["dinnerHour"], KIDS_DINNER_MIN_HR, KIDS_DINNER_MAX_HR);
         }
         if (o["nightColumn"].is<bool>()) kidsNightColumn = o["nightColumn"];
+        if (o["umbrella"].is<bool>()) kidsUmbrella = o["umbrella"];
         if (o["evening"].is<const char*>()) kidsSunsetColumn = strcmp(o["evening"].as<const char*>(), "sunset") == 0;
 
         // Countdowns: [{"date": "YYYY-MM-DD", "initial": "A"}], the holidays and the range in sleeps
@@ -518,7 +519,7 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
         c.light = o.light;
         c.temp = kidsShownTemp((float)o.tempC);
         c.precip = o.precip;
-        c.umbrella = o.umbrella;
+        c.umbrella = o.umbrella && kidsUmbrella;
         c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], kidsLimits, c.hourWeather, c.hourPrecip, KIDS_MAX_PART_HOURS);
     }
     return np;
@@ -573,7 +574,7 @@ void renderKidsVillage() {
     col.light = o.light;
     col.temp = kidsShownTemp((float)o.tempC);
     col.precip = o.precip;
-    col.umbrella = o.umbrella;
+    col.umbrella = o.umbrella && kidsUmbrella;
     WeatherData weather = getCurrentWeather();
     char tempStr[8];
     snprintf(tempStr, sizeof(tempStr), "%d%c", kidsShownTemp(weather.tempC), weatherUnits == "imperial" ? 'F' : 'C');

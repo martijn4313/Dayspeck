@@ -1021,9 +1021,11 @@ static void drawSmallSky(Adafruit_SSD1306 &d, int cx, int cy, int r, int light) 
 
 // Rain or snow falling from a small cloud onto the column's number, animated by `frame` (15 per second).
 // `level` (KIDS_PRECIP_*) sets how many drops or flakes there are and how fast they fall. Drops splash on the
-// top edge of the number (x numLeft..numRight) and vanish beside it; flakes melt into it.
+// top edge of the number (x numLeft..numRight) and vanish beside it; flakes melt into it. Rain that starts at
+// frame startFrame only has the drops that left the cloud since then; rain that stopped at stopFrame only the
+// ones still on their way down (-1: none of that).
 static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, unsigned long frame, int numLeft,
-                            int numRight, int xmin = 0, int xmax = 127) {
+                            int numRight, int xmin = 0, int xmax = 127, long startFrame = -1, long stopFrame = -1) {
     static const uint8_t DROPS[4] = { 2, 3, 5, 7 }, FLAKES[4] = { 2, 3, 4, 6 };
     static const uint8_t DROP_SPEED[4] = { 1, 2, 2, 3 };   // px per frame
     static const uint8_t DROP_LEN[4] = { 2, 2, 3, 3 };
@@ -1031,10 +1033,16 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
     const unsigned fall = ground - top + 1;
     if (level < 0 || level > 3) level = 0;
     unsigned n = snow ? FLAKES[level] : DROPS[level];
-    unsigned long steps = snow ? (level >= KIDS_PRECIP_HEAVY ? frame : frame / 2) : frame * DROP_SPEED[level];
+    auto stepsAt = [&](unsigned long f) -> unsigned long {
+        return snow ? (level >= KIDS_PRECIP_HEAVY ? f : f / 2) : f * DROP_SPEED[level];
+    };
+    unsigned long steps = stepsAt(frame);
     for (unsigned k = 0; k < n; k++) {
         unsigned long t = steps + k * fall * 7 / n;        // every drop on its own cycle
         unsigned cycle = (unsigned)(t / fall), pos = (unsigned)(t % fall);
+        long left = (long)steps - (long)pos;               // when this drop left the cloud
+        if (startFrame >= 0 && left < (long)stepsAt((unsigned long)startFrame)) continue;
+        if (stopFrame >= 0 && left >= (long)stepsAt((unsigned long)stopFrame)) continue;
         int x = cx - 11 + (int)((k * 7 + cycle * 5 + k * cycle * 3) % 23);   // a new place every cycle
         int y = top + (int)pos;
         if (x - 2 < xmin || x + 2 > xmax) continue;        // under a cloud gliding past the column's edge
@@ -1196,8 +1204,22 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
         d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);
     }
-    if (w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW) {
-        drawSmallPrecip(d, bigX, w == KIDS_WEATHER_SNOW, c.hourPrecip[owner], frame, numLeft, numRight, xmin, xmax);
+    // Under a cloud that stays, rain or snow starts with the first drops leaving the cloud at the hour, and when
+    // it stops the drops on their way still fall down
+    long hourFrame = (long)((elapsedMs - within) / RAIN_FRAME_INTERVAL);
+    unsigned prevIdx = (idx + n - 1) % n;
+    int prev = c.hourWeather[prevIdx];
+    bool wet = w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW;
+    bool prevWet = prev == KIDS_WEATHER_RAIN || prev == KIDS_WEATHER_STORM || prev == KIDS_WEATHER_SNOW;
+    bool stayed = owner == (int)idx && isBigCloud(prev);   // the cloud was already here last hour
+    if (wet) {
+        bool fresh = stayed && (!prevWet || (prev == KIDS_WEATHER_SNOW) != (w == KIDS_WEATHER_SNOW));
+        drawSmallPrecip(d, bigX, w == KIDS_WEATHER_SNOW, c.hourPrecip[owner], frame, numLeft, numRight, xmin, xmax,
+                        fresh ? hourFrame : -1);
+    }
+    if (stayed && prevWet && (!wet || (prev == KIDS_WEATHER_SNOW) != (w == KIDS_WEATHER_SNOW))) {
+        drawSmallPrecip(d, bigX, prev == KIDS_WEATHER_SNOW, c.hourPrecip[prevIdx], frame, numLeft, numRight, xmin,
+                        xmax, -1, hourFrame);
     }
 }
 

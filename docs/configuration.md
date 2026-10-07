@@ -19,6 +19,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `kids.windyGustKmh` | gusts above this show the wind picture and blow the weather report away (default 50) |
 | `kids.evening` | the evening column of the picture screens: `"dinner"` (default) or `"sunset"` (18-22 with a setting sun) |
 | `kids.dinnerHour` | dinner time, the start of the dinner column on the picture screens, 15-21 (default 18) |
+| `kids.umbrella` | an umbrella with the outfit on the picture screens for a shower, less than 70% of the hours wet (default false) |
 | `kids.nightColumn` | after dinner the picture screens show dinner, the night and tomorrow morning (default false) |
 | `kids.birthdays` | countdown: up to two `[{"date": "YYYY-MM-DD", "initial": "E"}]`, the date of birth and the letter on the cake (A-Z, may be empty) |
 | `kids.halloween`, `kids.sinterklaas`, `kids.christmas` | countdown: count down to 31 October, 5 December and 25 December (default `true`) |
