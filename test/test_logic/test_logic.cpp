@@ -975,6 +975,25 @@ void test_weather_report() {
     weatherReport(h, n, REPORT_LANG_EN, r);
     assertReport(r, { "Today cloudy, mostly dry, around 12\xF8." });
 
+    // G: 08:00, sunny until 14:00, then cloudy (the clear hours left are outnumbered by the cloudy ones)
+    n = reportDay(h, 8, 24, [](int hr) { return rh(hr, 14.0f, 0, 15, 10, hr >= 14 ? 3 : 0); });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zonnig, droog, rond 14\xF8.", "Vanaf 14 uur bewolkt." });
+    weatherReport(h, n, REPORT_LANG_EN, r);
+    assertReport(r, { "Today sunny, dry, around 14\xF8.", "Cloudy from 14:00." });
+    // ...and the other way round: grey until 11:00, then sunny
+    n = reportDay(h, 8, 24, [](int hr) { return rh(hr, 14.0f, 0, 15, 10, hr < 11 ? 3 : 1); });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag bewolkt, droog, rond 14\xF8.", "Vanaf 11 uur zonnig." });
+    // Sun and clouds taking turns: no change, but not "cloudy" either
+    n = reportDay(h, 8, 24, [](int hr) { return rh(hr, 14.0f, 0, 15, 10, hr % 2 ? 3 : 0); });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zon en wolken, droog, rond 14\xF8." });
+    // Only the last two hours cloudy: too short to mention
+    n = reportDay(h, 8, 24, [](int hr) { return rh(hr, 14.0f, 0, 15, 10, hr >= 20 ? 3 : 0); });
+    weatherReport(h, n, REPORT_LANG_NL, r);
+    assertReport(r, { "Vandaag zonnig, droog, rond 14\xF8." });
+
     // Frost tonight before a mild tomorrow; rain all day
     n = reportDay(h, 21, 30, [](int hr) {
         if (hr >= 22 || hr < 7) return rh(hr, -2, 0, 10, 0, 0);
