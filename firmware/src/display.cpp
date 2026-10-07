@@ -1096,6 +1096,109 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light
     }
 }
 
+// ---- The time-lapse of a column ---------------------------------------------------------------------
+
+// A filled circle cut off outside x xmin..xmax
+static void fillCircleClipped(Adafruit_SSD1306 &d, int cx, int cy, int r, uint16_t color, int xmin, int xmax) {
+    for (int dy = -r; dy <= r; dy++) {
+        int half = (int)sqrtf((float)(r * r - dy * dy) + 0.5f);
+        int x0 = cx - half, x1 = cx + half;
+        if (x0 < xmin) x0 = xmin;
+        if (x1 > xmax) x1 = xmax;
+        if (x1 >= x0) d.drawFastHLine(x0, cy + dy, x1 - x0 + 1, color);
+    }
+}
+
+// drawSmallCloud cut off outside x xmin..xmax (a cloud gliding past the edge of its column)
+static void drawSmallCloudClipped(Adafruit_SSD1306 &d, int cx, int oy, int grow, uint16_t color, int xmin, int xmax) {
+    int ox = cx - 14;
+    fillCircleClipped(d, ox + 7, oy + 11, 5 + grow, color, xmin, xmax);
+    fillCircleClipped(d, ox + 14, oy + 7, 7 + grow, color, xmin, xmax);
+    fillCircleClipped(d, ox + 21, oy + 11, 5 + grow, color, xmin, xmax);
+    int x0 = ox + 7 - grow, x1 = ox + 7 - grow + 15 + 2 * grow - 1;
+    if (x0 < xmin) x0 = xmin;
+    if (x1 > xmax) x1 = xmax;
+    if (x1 >= x0) d.fillRect(x0, oy + 11, x1 - x0 + 1, 6 + grow, color);
+}
+
+// How much of the sky a picture covers: 0 open sky, 1 a small cloud, 2 the big cloud (cloudy, rain, snow, storm);
+// -1 the wind picture, which does not glide
+static int skyCover(int weather) {
+    switch (weather) {
+    case KIDS_WEATHER_CLEAR:  return 0;
+    case KIDS_WEATHER_PARTLY: return 1;
+    case KIDS_WEATHER_WIND:   return -1;
+    default:                  return 2;
+    }
+}
+
+// Where a picture's cloud rests (centre x offset, top, grow)
+static void restingCloud(int weather, int &dx, int &oy, int &grow) {
+    const int y = 17;
+    if (weather == KIDS_WEATHER_PARTLY) { dx = 3; oy = y + 8; grow = 0; }
+    else if (weather == KIDS_WEATHER_CLOUDY) { dx = 0; oy = y + 4; grow = 1; }
+    else { dx = 0; oy = y - 1; grow = 0; }
+}
+
+// One column of the weather screen at a moment of its time-lapse: the picture of the hour it is at, and in the
+// last moments of an hour the change to the next one (wrapping round from the last hour to the first, so the
+// loop has no seam). A cloud glides in from the right as it clouds over and out to the left as it clears.
+static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsigned long elapsedMs,
+                          unsigned long loopMs, int numLeft, int numRight) {
+    unsigned long frame = elapsedMs / RAIN_FRAME_INTERVAL;
+    unsigned n = c.hours;
+    unsigned long hourMs = loopMs / n;
+    if (hourMs < KIDS_TIMELAPSE_MIN_HOUR_MS) hourMs = KIDS_TIMELAPSE_MIN_HOUR_MS;
+    unsigned long phase = elapsedMs % (hourMs * n);
+    unsigned idx = (unsigned)(phase / hourMs);
+    unsigned long within = phase % hourMs;
+    int cur = c.hourWeather[idx], next = c.hourWeather[(idx + 1) % n];
+    unsigned long glideMs = hourMs / 2 < 900 ? hourMs / 2 : 900;
+    int from = skyCover(cur), to = skyCover(next);
+    bool gliding = within + glideMs >= hourMs && from >= 0 && to >= 0 && from != to;
+    if (!gliding) {
+        drawSmallWeather(d, cx, cur, c.light, c.hourPrecip[idx], frame, numLeft, numRight);
+        return;
+    }
+    int p = (int)((within + glideMs - hourMs) * 100 / glideMs);   // 0..100 through the glide
+    int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
+    int dx, oy, grow;
+    if (to > from) {                       // clouding over: the next hour's cloud glides in over this hour's sky
+        drawSmallWeather(d, cx, cur, c.light, 0, frame, numLeft, numRight);
+        restingCloud(next, dx, oy, grow);
+        int x = cx + dx + (100 - p) * 32 / 100;
+        drawSmallCloudClipped(d, x, oy, grow + 1, SSD1306_BLACK, xmin, xmax);
+        drawSmallCloudClipped(d, x, oy, grow, SSD1306_WHITE, xmin, xmax);
+    } else {                               // clearing: this hour's cloud glides away from the next hour's sky
+        drawSmallWeather(d, cx, next, c.light, 0, frame, numLeft, numRight);
+        restingCloud(cur, dx, oy, grow);
+        int x = cx + dx - p * 32 / 100;
+        drawSmallCloudClipped(d, x, oy, grow + 1, SSD1306_BLACK, xmin, xmax);
+        drawSmallCloudClipped(d, x, oy, grow, SSD1306_WHITE, xmin, xmax);
+    }
+}
+
+bool kidsColumnAnimates(const KidsColumn &c) {
+    if (!c.valid) return false;
+    for (unsigned i = 0; i < c.hours; i++) {
+        int w = c.hourWeather[i];
+        if (w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW) return true;
+        if (w != c.hourWeather[0]) return true;
+    }
+    return false;
+}
+
+// Small open umbrella, about 9x10, its top centre at (x, y)
+static void drawUmbrella(Adafruit_SSD1306 &d, int x, int y) {
+    d.fillCircle(x, y + 4, 4, SSD1306_WHITE);
+    d.fillRect(x - 4, y + 5, 9, 4, SSD1306_BLACK);              // the canopy: the top half
+    d.drawPixel(x - 2, y + 4, SSD1306_BLACK);                    // scalloped edge
+    d.drawPixel(x + 2, y + 4, SSD1306_BLACK);
+    d.drawFastVLine(x, y + 4, 6, SSD1306_WHITE);                 // shaft...
+    d.drawPixel(x - 1, y + 9, SSD1306_WHITE);                    // ...and the hooked handle
+    d.drawPixel(x - 2, y + 8, SSD1306_WHITE);
+}
+
 // ---- Symbols and the strip ------------------------------------------------------------------------
 
 static void drawBed(Adafruit_SSD1306 &d, int bx, int by);
@@ -1171,7 +1274,8 @@ static void drawNightDivider(Adafruit_SSD1306 &d, int column) {
 }
 
 void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t count, int nowColumn,
-                        int nightBefore, bool weather, unsigned long frame) {
+                        int nightBefore, bool weather, unsigned long elapsedMs, unsigned long loopMs) {
+    unsigned long frame = elapsedMs / RAIN_FRAME_INTERVAL;
     d.clearDisplay();
     d.setTextColor(SSD1306_WHITE);
     d.setTextWrap(false);
@@ -1187,7 +1291,8 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
             char num[8];
             snprintf(num, sizeof(num), "%d", c.temp);
             int w = (int)strlen(num) * 12 - 2;
-            drawSmallWeather(d, cx, c.weather, c.light, c.precip, frame, cx - w / 2, cx - w / 2 + w - 1);
+            if (c.hours > 0 && loopMs > 0) drawTimelapse(d, cx, c, elapsedMs, loopMs, cx - w / 2, cx - w / 2 + w - 1);
+            else drawSmallWeather(d, cx, c.weather, c.light, c.precip, frame, cx - w / 2, cx - w / 2 + w - 1);
             d.setTextSize(2);
             d.setCursor(cx - w / 2, 45);
             d.print(num);
@@ -1196,6 +1301,8 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
         } else {
             ScaledCanvas art{ d, 0.66f, cx - 18, 17 };   // the 56x64 outfits at 37x42
             drawOutfit(art, 0, c.outfit);
+            // Beside the part-of-day symbol, on the side away from the bed of a night divider
+            if (c.umbrella) drawUmbrella(d, nightBefore == (int)i + 1 ? cx - 15 : cx + 15, 2);
         }
         if ((int)i == nowColumn) {
             for (int j = -1; j <= 1; j++) d.fillRect(cx + j * 5 - 1, 62, 2, 2, SSD1306_WHITE);   // "now"
@@ -1397,7 +1504,10 @@ void renderKidsVillageView(Adafruit_SSD1306 &d, const KidsColumn &now, bool hasO
                            int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow) {
     d.clearDisplay();
     if (hasOutfit && now.part == KIDS_PART_NIGHT) drawSleeping(d, 32, true);   // bedtime: nothing to wear
-    else if (hasOutfit && now.valid) drawOutfit(d, 4, now.outfit);   // the outfits are 56x64: the whole left half
+    else if (hasOutfit && now.valid) {
+        drawOutfit(d, 4, now.outfit);   // the outfits are 56x64: the whole left half
+        if (now.umbrella) drawUmbrella(d, 55, 1);
+    }
     d.drawLine(64, 0, 64, 63, SSD1306_WHITE);
     renderSkylineCard(d, isNight, weatherCondition, intensity, windSpeed, tempStr, trendArrow);
     // On the street, right of the lamp: the part of the day it is now (the night: a bed)

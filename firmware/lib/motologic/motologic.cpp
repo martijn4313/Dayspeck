@@ -140,9 +140,18 @@ static int wetRank(int weather) {
     return weather == KIDS_WEATHER_STORM ? 3 : weather == KIDS_WEATHER_SNOW ? 2 : weather == KIDS_WEATHER_RAIN ? 1 : 0;
 }
 
+// The outfit for a temperature and the weather of a stretch: rain for most of it gives the rain coat, less
+// rain the dry outfit with an umbrella; the winter outfits beat the rain coat and get the umbrella instead
+static void kidsDress(KidsOutlook& o, float tempC, const KidsLimits& l) {
+    bool rainy = o.weather == KIDS_WEATHER_RAIN || o.weather == KIDS_WEATHER_STORM;
+    bool wet = rainy && o.wetHours * 100 >= o.hours * KIDS_RAIN_COAT_PCT;
+    o.outfit = outfitFor(tempC, rainy && !wet ? o.sky : o.weather, o.night, l);
+    o.umbrella = rainy && (!wet || o.outfit == OUTFIT_COLD || o.outfit == OUTFIT_FREEZING);
+}
+
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l) {
     KidsOutlook o = { false, OUTFIT_MILD, KIDS_WEATHER_CLEAR, false, 0, 0, (int)from, KIDS_LIGHT_DAY,
-                      KIDS_PRECIP_DRIZZLE };
+                      KIDS_PRECIP_DRIZZLE, false, 0, 0, KIDS_WEATHER_CLEAR };
     float tempSum = 0, tempMax = -1000, wetMm = 0;
     int n = 0, nights = 0, wettest = KIDS_WEATHER_CLEAR;
     int skyCount[7] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -153,6 +162,7 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
         if (isWet(h, w)) {
             if (wetRank(w) > wetRank(wettest)) wettest = w;
             if (h.rainMm > wetMm) wetMm = h.rainMm;
+            o.wetHours++;
         } else if (wetRank(w) == 0) {
             skyCount[w]++;
         } else {
@@ -166,31 +176,38 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
     if (n == 0) return o;
 
     o.valid = true;
+    o.hours = n;
     o.night = nights * 2 > n;
     o.light = o.night ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
+    static const int sky[4] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_WIND };
+    for (int w : sky) {
+        if (skyCount[w] > skyCount[o.sky] || (w == KIDS_WEATHER_WIND && skyCount[w] > 0)) o.sky = w;
+    }
+    if (o.wetHours == n) o.sky = KIDS_WEATHER_CLOUDY;   // no dry hour: the clouds of the rain
     if (wetRank(wettest) > 0) {
         o.weather = wettest;
         o.precip = kidsPrecipLevel(wetMm);
     } else {
-        static const int sky[4] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_WIND };
-        int best = KIDS_WEATHER_CLEAR;
-        for (int w : sky) {
-            if (skyCount[w] > skyCount[best] || (w == KIDS_WEATHER_WIND && skyCount[w] > 0)) best = w;
-        }
-        o.weather = best;
+        o.weather = o.sky;
     }
     float avg = tempSum / n;
     o.tempC = (int)lroundf(avg);
     o.maxTempC = (int)lroundf(tempMax);
-    o.outfit = outfitFor(avg, o.weather, o.night, l);
+    kidsDress(o, avg, l);
     o.hour = (int)(from + (to - from - 1) / 2);
     return o;
 }
 
+// The hours whose weather a part shows: dinner goes by dinner time and the hour after, not rain at 21:00
+static size_t kidsPartWeatherEnd(const KidsPart& part) {
+    if (part.part == KIDS_PART_DINNER && part.to > part.from + KIDS_DINNER_WEATHER_HR) {
+        return part.from + KIDS_DINNER_WEATHER_HR;
+    }
+    return part.to;
+}
+
 KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const KidsLimits& l) {
-    // Dinner goes by dinner time: its weather is that of dinner time and the hour after, not rain at 21:00
-    size_t to = part.to;
-    if (part.part == KIDS_PART_DINNER && to > part.from + KIDS_DINNER_WEATHER_HR) to = part.from + KIDS_DINNER_WEATHER_HR;
+    size_t to = kidsPartWeatherEnd(part);
     KidsOutlook o = kidsWindowOutlook(hours, part.from, to, l);
     if (!o.valid) return o;
     float t = NAN;
@@ -218,8 +235,26 @@ KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const K
         o.light = KIDS_LIGHT_DARK;
     }
     o.tempC = (int)lroundf(t);
-    o.outfit = outfitFor(t, o.weather, o.night, l);
+    kidsDress(o, t, l);
     return o;
+}
+
+int kidsHourPicture(const KidsHour& h, const KidsLimits& l) {
+    int w = kidsHourWeather(h, l);
+    if (wetRank(w) > 0 && !isWet(h, w)) return KIDS_WEATHER_CLOUDY;   // a trace of rain or snow: just clouds
+    return w;
+}
+
+size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsLimits& l, uint8_t* weather,
+                        uint8_t* precip, size_t max) {
+    size_t n = 0, to = kidsPartWeatherEnd(part);
+    for (size_t i = part.from; i < to && n < max; i++) {
+        if (!hours[i].valid) continue;
+        weather[n] = (uint8_t)kidsHourPicture(hours[i], l);
+        precip[n] = (uint8_t)kidsPrecipLevel(hours[i].rainMm);
+        n++;
+    }
+    return n;
 }
 
 KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits& l) {
@@ -231,7 +266,7 @@ KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits
     o.night = hours[0].night;
     o.light = hours[0].light;
     o.tempC = (int)lroundf(hours[0].tempC);
-    o.outfit = outfitFor(hours[0].tempC, o.weather, o.night, l);
+    kidsDress(o, hours[0].tempC, l);
     return o;
 }
 

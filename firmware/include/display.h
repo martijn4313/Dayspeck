@@ -156,13 +156,24 @@ struct KidsColumn {
     int  light;     // KIDS_LIGHT_*: sun, setting sun or moon
     int  temp;      // the part's temperature, as shown (weather screen): see kidsPartOutlook
     int  precip;    // KIDS_PRECIP_*: how hard it rains or snows (the falling drops or flakes)
+    bool umbrella;  // some rain: an umbrella with the outfit (clothes screen, village)
+    // The weather screen's time-lapse: the picture (KIDS_WEATHER_*) and rain or snow (KIDS_PRECIP_*) of each hour
+    uint8_t hours;
+    uint8_t hourWeather[KIDS_MAX_PART_HOURS];
+    uint8_t hourPrecip[KIDS_MAX_PART_HOURS];
 };
+// The time-lapse plays a column's hours in `loopMs` (the time the screen is shown), each hour at least this long
+#define KIDS_TIMELAPSE_MIN_HOUR_MS  1500UL
+#define KIDS_TIMELAPSE_DEFAULT_MS  12000UL   // a screen that stays: it loops in this time
 // Kids variant: the next parts of the day in up to three columns, outfits (weather = false) or weather
 // pictures with the part's temperature (the night column: a bed instead of an outfit). nowColumn gets dots
 // underneath (-1 = none); nightBefore is the column a night lies before (a dotted line with a bed; -1 or 0 =
-// none). Rain and snow fall from their clouds onto the numbers, moved on by `frame` (15 per second).
+// none). The weather screen plays each column's hours as a seamless time-lapse in loopMs, elapsedMs after the
+// screen appeared: clouds glide in and out, rain and snow fall from their clouds onto the numbers.
 void renderKidsDayStrip(Adafruit_SSD1306 &display, const KidsColumn* cols, size_t count, int nowColumn,
-                        int nightBefore, bool weather, unsigned long frame);
+                        int nightBefore, bool weather, unsigned long elapsedMs, unsigned long loopMs);
+// Whether a column's weather picture moves (rain, snow, or weather that changes during its hours)
+bool kidsColumnAnimates(const KidsColumn &c);
 // Kids variant: the countdown screen. The picture of the event (a cake with a candle per year and the initial,
 // a pumpkin, Sinterklaas' mitre and staff, a Christmas tree), the number of sleeps and, up to ten, as many
 // beds to count. On the day itself the picture with falling confetti (timeMs moves it).

@@ -139,7 +139,14 @@ struct KidsOutlook {
     int  hour;       // index of the middle hour
     int  light;      // KIDS_LIGHT_*: sun, setting sun or moon for a clear sky
     int  precip;     // KIDS_PRECIP_*: how hard it rains or snows (wettest hour), for the animated picture
+    bool umbrella;   // some rain, but not a wet part (or too cold for the rain coat): an umbrella with the outfit
+    int  wetHours;   // hours with rain, a storm or snow
+    int  hours;      // hours with a forecast
+    int  sky;        // KIDS_WEATHER_* of the dry hours (the most common sky)
 };
+
+// Rain for most of a part (this share of its hours or more) gives the rain coat; less rain an umbrella
+#define KIDS_RAIN_COAT_PCT 70
 
 // How hard it rains or snows in an hour (mm): the number and speed of the drops or flakes on the weather screen
 #define KIDS_PRECIP_DRIZZLE   0   // under 0.5 mm
@@ -149,7 +156,9 @@ struct KidsOutlook {
 int kidsPrecipLevel(float mm);
 
 // Summary of hours [from, to): the most severe precipitation if there is any (at least 0.2 mm in an
-// hour, or a storm), otherwise the most common sky; outfit from the average temperature.
+// hour, or a storm), otherwise the most common sky; outfit from the average temperature. Rain or a storm in at
+// least KIDS_RAIN_COAT_PCT of the hours gives the rain coat, less rain the dry outfit with an umbrella (and the
+// winter outfits get the umbrella whenever it rains).
 KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, const KidsLimits& l);
 
 // Parts of the day on the kids screens, by local hour: morning 07-12, afternoon 12 to dinner time, dinner
@@ -204,6 +213,14 @@ KidsOutlook kidsPartOutlook(const KidsHour* hours, const KidsPart& part, const K
 // its way already gives the rain coat. Not valid without the current hour.
 #define KIDS_NOW_HOURS 3
 KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits& l);
+
+// The weather screen plays the hours of a part as a time-lapse: the picture of every hour, in order
+// (KIDS_WEATHER_*: rain or snow only from 0.2 mm, less is a cloud) and how hard it rains or snows
+// (KIDS_PRECIP_*). Hours without a forecast are left out. Returns how many (at most max).
+#define KIDS_MAX_PART_HOURS 12
+int kidsHourPicture(const KidsHour& h, const KidsLimits& l);
+size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsLimits& l, uint8_t* weather,
+                        uint8_t* precip, size_t max);
 
 // Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)
 #define KIDS_EVENT_BIRTHDAY     0

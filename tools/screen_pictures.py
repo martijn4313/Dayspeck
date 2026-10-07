@@ -76,12 +76,13 @@ def main():
     screens = {name: [device_image(f) for f in frames] for name, frames in pictures.items()
                if not name.endswith("-wind")}
     layout = {"kids-clothes": 3, "kids-weather": 2, "kids-dinner": 3, "kids-night": 2, "kids-sunset": 2,
+              "kids-umbrella": 1,
               "kids-countdown": 2,
               "kids-village": 3, "report": 2}
     for name, columns in layout.items():
         grid(screens[name], columns).save(out / f"{name}.png", optimize=True)
         print("wrote", out / f"{name}.png")
-    for name in ("kids-wind", "report-wind", "kids-rain", "kids-snow"):
+    for name in ("kids-wind", "report-wind", "kids-rain", "kids-snow", "kids-timelapse"):
         save_gif([device_image(f, scale=3) for f in pictures[name]], out / f"{name}.gif")
         print("wrote", out / f"{name}.gif")
 
