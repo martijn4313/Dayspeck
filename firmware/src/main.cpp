@@ -287,7 +287,7 @@ bool initDisplay() {
     if (display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR)) {
         display.setRotation(2);  // Flip display 180 degrees since screen is mounted upside down
         display.clearDisplay();
-        display.display();
+        showFrame(display);
         return true;
     }
     return false;
@@ -898,7 +898,7 @@ void render() {
         } else {
             state.displayDirty = false;   // the next frame comes with the frame tick
         }
-        display.display();
+        showFrame(display);
         return;
     } else if (!demo.active && !state.wifiConnected && state.apModeStarted && !state.weatherValid) {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
@@ -939,7 +939,7 @@ void render() {
         display.setCursor(0, 0);
         display.print("UPD");
     }
-    display.display();
+    showFrame(display);
     state.displayDirty = false;
 }
 
@@ -1150,7 +1150,7 @@ void handleWeatherFetch() {
     // The fetch blocks for up to a few seconds: show a dot in the corner while it runs
     if (state.weatherValid) {
         display.fillRect(124, 60, 3, 3, SSD1306_WHITE);
-        display.display();
+        showFrame(display);
     }
 
     unsigned long serverInterval = fetchWeather(configLat, configLon);
@@ -1199,7 +1199,7 @@ void drawOtaProgress(int percent) {
     char line[8];
     snprintf(line, sizeof(line), "%d%%", percent);
     renderLoadingView(display, "Updating", line, millis());
-    display.display();
+    showFrame(display);
 }
 
 
@@ -1217,7 +1217,7 @@ void setup() {
 
     initDisplay();
     renderLoadingView(display, "Dayspeck", "Booting...", 0);
-    display.display();
+    showFrame(display);
 
     if (displayTouchEnabled) touch_init();
     initRainAnimation();

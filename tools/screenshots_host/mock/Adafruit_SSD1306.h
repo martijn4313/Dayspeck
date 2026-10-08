@@ -22,6 +22,7 @@ public:
     }
     void clearDisplay() { memset(px, 0, sizeof(px)); }
     void display() {}
+    uint8_t *getBuffer() { return &px[0][0]; }   // showFrame() fingerprints it
     void ssd1306_command(uint8_t) {}
 };
 
