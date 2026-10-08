@@ -1,3 +1,7 @@
+---
+description: "A weather report in a few short sentences, in English or Dutch, written on an ESP8266 weather display by fixed rules."
+---
+
 # Weather report
 
 The `report` screen sums up the day in a few short sentences, in English or Dutch (*Language* under

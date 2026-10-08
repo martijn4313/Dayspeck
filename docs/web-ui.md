@@ -1,3 +1,7 @@
+---
+description: "The Dayspeck web UI: location, WiFi, screens, display, ride limits, clothing, countdowns and firmware updates of the ESP8266 weather display."
+---
+
 # Web UI
 
 Everything about the device is set in its web page: location, WiFi, which screens it shows, the display

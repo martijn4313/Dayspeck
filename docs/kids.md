@@ -1,3 +1,7 @@
+---
+description: "What do I wear today? Picture screens for children on an ESP8266 OLED weather display: outfits, weather pictures with rain and snow, a time-lapse of the day and birthday countdowns."
+---
+
 # Picture screens: what do I wear today?
 
 Four screens without words: what to wear and what the weather is like, with pictures and numbers, and the

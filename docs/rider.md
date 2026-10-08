@@ -1,3 +1,7 @@
+---
+description: "Ride screens for motorcyclists and cyclists: can I ride today, the week ahead and the best time to leave, on a small ESP8266 OLED weather display."
+---
+
 # Ride screens
 
 For motorcyclists and cyclists: **can I ride today?** at a glance, the week ahead and the best time to leave.

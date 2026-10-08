@@ -1,3 +1,7 @@
+---
+description: "Hardware for Dayspeck: an ESP-01 (ESP8266), a 0.96-inch SSD1306 128x64 I2C OLED and an optional TTP223 touch sensor, with the wiring."
+---
+
 # Hardware
 
 Designed for a bare ESP-01 and a 0.96" SSD1306 module, wired as below. Cheap "mini weather clock" DIY

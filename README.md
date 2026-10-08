@@ -2,8 +2,8 @@
 
 <p align="center"><img src="docs/images/hero.png" alt="Four Dayspeck screens: the ride rating with its animated village, the outfit for now next to the village, the weather of the day in pictures, and the weather report in words" width="640"></p>
 
-A small weather display for a bedside table, a hallway or a kitchen wall, on an ESP8266 with a 0.96"
-128×64 SSD1306 OLED. You put it together like building blocks: pick from ten screens, put them in the order
+An open-source weather display for a bedside table, a hallway or a kitchen wall, on an ESP8266 (ESP-01)
+with a 0.96" 128×64 SSD1306 I²C OLED and the free Open-Meteo forecast. You put it together like building blocks: pick from ten screens, put them in the order
 you like and choose what a tap or a long press shows, all in the device's web page. One firmware, no
 rebuilding.
 
@@ -21,7 +21,7 @@ rebuilding.
 - **Clock.**
 
 The village comes alive with the weather: rain, snow, gusts, autumn leaves. A demo in the web page shows
-every screen and animation in a minute.
+every screen and animation in a minute and a half.
 
 ## Hardware
 

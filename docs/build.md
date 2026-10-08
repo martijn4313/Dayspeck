@@ -1,3 +1,7 @@
+---
+description: "Build and flash the Dayspeck ESP8266 weather display firmware with PlatformIO."
+---
+
 # Build and flash
 
 Requires [PlatformIO](https://platformio.org).

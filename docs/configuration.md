@@ -1,3 +1,7 @@
+---
+description: "Reference of config.json, the settings file of the Dayspeck ESP8266 weather display."
+---
+
 # Configuration reference (`config.json`)
 
 The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys are kept.
