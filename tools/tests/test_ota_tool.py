@@ -34,6 +34,16 @@ def test_signed_image_uses_the_core_layout(key):
     assert ota_tool.signed_part(out) == body
 
 
+@pytest.mark.parametrize("extra", range(8))
+def test_signed_part_is_a_multiple_of_4_bytes(key, extra):
+    # The device's Updater cannot hash a signed part of any other length (a short last flash read)
+    image = b"\xe9" + os.urandom(1000 + extra)
+    body = ota_tool.signed_part(ota_tool.signed_image(key, image))
+    assert len(body) % 4 == 0
+    assert gzip.decompress(body) == image
+    assert struct.unpack("<I", body[-4:])[0] == len(image)
+
+
 def test_signed_image_is_reproducible(key):
     image = b"\xe9" + b"abc" * 100
     a = ota_tool.signed_image(key, image)
