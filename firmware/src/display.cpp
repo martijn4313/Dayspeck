@@ -1176,16 +1176,27 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     if (next == KIDS_WEATHER_WIND) p = -1;
     int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
 
-    // The sun or moon: the big one of a clear sky, the small one of a partly cloudy sky; behind a big cloud the
-    // one of the column's own dry hours (none when it never clears up)
-    bool clear = false, partly = false;
-    for (unsigned i = 0; i < n; i++) {
-        clear |= c.hourWeather[i] == KIDS_WEATHER_CLEAR;
-        partly |= c.hourWeather[i] == KIDS_WEATHER_PARTLY;
+    // The sun or moon: the big one of a clear sky, the small one of a partly cloudy sky. Behind a big cloud it
+    // stays the one of the last dry hour before (or, from the start, the first one after), so it never jumps;
+    // when the next hour has the other one, it grows or shrinks to it during the change. None when the column
+    // never clears up.
+    auto bodyOf = [&](unsigned i) -> int {
+        for (unsigned k = 0; k < n; k++) {             // back from hour i, round the loop
+            int w = c.hourWeather[(i + n - k) % n];
+            if (w == KIDS_WEATHER_CLEAR) return 2;
+            if (w == KIDS_WEATHER_PARTLY) return 1;
+        }
+        return 0;
+    };
+    int body = bodyOf(idx), bodyNext = bodyOf(nextIdx);
+    if (body > 0) {
+        int t = (p >= 0 && bodyNext > 0 && bodyNext != body) ? p : 0;   // 0..100 of the way to the next one
+        int fromX = body == 2 ? cx : cx - 6, fromY = body == 2 ? y + 13 : y + 7, fromR = body == 2 ? 7 : 4;
+        int toX = bodyNext == 2 ? cx : cx - 6, toY = bodyNext == 2 ? y + 13 : y + 7, toR = bodyNext == 2 ? 7 : 4;
+        if (t == 0) { toX = fromX; toY = fromY; toR = fromR; }
+        drawSmallSky(d, fromX + (toX - fromX) * t / 100, fromY + (toY - fromY) * t / 100,
+                     fromR + ((toR - fromR) * t + (toR > fromR ? 50 : -50)) / 100, c.light);
     }
-    int body = cur == KIDS_WEATHER_CLEAR ? 2 : cur == KIDS_WEATHER_PARTLY ? 1 : clear ? 2 : partly ? 1 : 0;
-    if (body == 2) drawSmallSky(d, cx, y + 13, 7, c.light);
-    else if (body == 1) drawSmallSky(d, cx - 6, y + 7, 4, c.light);
 
     // Partly cloudy turning cloudy (or the other way round): its own cloud moves up over the sun (or back down),
     // instead of a second cloud gliding in over it. Rain starts once it is there, and stops before it moves.
