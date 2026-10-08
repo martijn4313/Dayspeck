@@ -1057,6 +1057,8 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
         return snow ? (level >= KIDS_PRECIP_HEAVY ? f : f / 2) : f * DROP_SPEED[level];
     };
     unsigned long steps = stepsAt(frame);
+    // Against what is behind: white on the night sky, black over the moon or the sun
+    auto dot = [&](int x, int y) { d.drawPixel(x, y, d.getPixel(x, y) ? SSD1306_BLACK : SSD1306_WHITE); };
     for (unsigned k = 0; k < n; k++) {
         unsigned long t = steps + k * fall * 7 / n;        // every drop on its own cycle
         unsigned cycle = (unsigned)(t / fall), pos = (unsigned)(t % fall);
@@ -1069,20 +1071,23 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
         if (snow) {
             if (y < top + 1 || y > ground - 1) continue;   // still in the cloud, or melted into the number
             int fx = x + (int)((cycle + pos / 3) % 2);     // drifting a little
-            d.drawFastHLine(fx - 1, y, 3, SSD1306_WHITE);
-            d.drawFastVLine(fx, y - 1, 3, SSD1306_WHITE);
+            dot(fx - 1, y);
+            dot(fx, y);
+            dot(fx + 1, y);
+            dot(fx, y - 1);
+            dot(fx, y + 1);
             continue;
         }
         if (pos + DROP_SPEED[level] >= fall) {             // landing
             if (x >= numLeft && x <= numRight) {
-                d.drawPixel(x - 1, ground - 1, SSD1306_WHITE);
-                d.drawPixel(x + 1, ground - 1, SSD1306_WHITE);
-                d.drawPixel(x - 2, ground, SSD1306_WHITE);
-                d.drawPixel(x + 2, ground, SSD1306_WHITE);
+                dot(x - 1, ground - 1);
+                dot(x + 1, ground - 1);
+                dot(x - 2, ground);
+                dot(x + 2, ground);
             }
             continue;
         }
-        for (int j = 0; j < DROP_LEN[level] && y - j >= top; j++) d.drawPixel(x, y - j, SSD1306_WHITE);
+        for (int j = 0; j < DROP_LEN[level] && y - j >= top; j++) dot(x, y - j);
     }
 }
 
