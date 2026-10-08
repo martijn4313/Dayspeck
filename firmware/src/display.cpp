@@ -1194,8 +1194,9 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     for (unsigned i = 0; i < n; i++) {
         if (c.hourSky[i] == KIDS_WEATHER_CLEAR || c.hourSky[i] == KIDS_WEATHER_PARTLY) body = true;
     }
-    // The small cloud of a partly cloudy sky sits in front of the lower right of the sun or moon
-    const int partlyX = cx + 8, partlyTop = y + 10;
+    // The small cloud of a partly cloudy sky: at the height of the big cloud, over the upper right of the sun or
+    // moon, so every cloud moves only sideways
+    const int partlyX = cx + 8, partlyTop = y - 1;
     int moonX = 0, moonY = 0, moonR = 0;                // the moon, when it is up
     // A cloud in front of the moon: the moon shines through it, as a dotted crescent in the cloud
     auto cloud = [&](int x, int top) {
@@ -1218,13 +1219,13 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
         if (c.light == KIDS_LIGHT_DARK) { moonX = cx; moonY = y + 13; moonR = 7 + 7 / 2; }
     }
 
-    // Partly cloudy turning cloudy (or the other way round): its own cloud moves up over the sun (or back down),
+    // Partly cloudy turning cloudy (or the other way round): its own cloud slides left over the sun (or back),
     // instead of a second cloud gliding in over it. Rain starts once it is there, and stops before it moves.
     bool coverUp = p >= 0 && cur == KIDS_WEATHER_PARTLY && isBigCloud(next);
     bool coverDown = p >= 0 && isBigCloud(cur) && next == KIDS_WEATHER_PARTLY;
     if (coverUp || coverDown) {
         int q = coverUp ? p : 100 - p;                  // 0: where partly cloudy has it, 100: over the sun
-        int x = partlyX + (cx - partlyX) * q / 100, top = partlyTop + (y - 1 - partlyTop) * q / 100;
+        int x = partlyX + (cx - partlyX) * q / 100, top = partlyTop;
         cloud(x, top);
         return;
     }
