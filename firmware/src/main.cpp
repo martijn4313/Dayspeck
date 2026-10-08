@@ -745,8 +745,11 @@ static void switchScreen(ScreenNav nav) {
     // area are never drawn in the other.
     const WindArea *next = windAreaFor(screenAt(nav, screensTap, screensHold));
     if (state.windAnimationActive && next && next != windAnimationArea) stopWindAnimation();
+    // The same screen again (the cycle or a tap with only one screen): it stays, and its time-lapse plays on
+    // instead of starting over just before the end of its loop
+    bool same = nav.list == state.screen.list && nav.slot == state.screen.slot;
     state.screen = nav;
-    state.screenEnteredMs = millis();
+    if (!same) state.screenEnteredMs = millis();
     state.displayDirty = true;
 }
 
