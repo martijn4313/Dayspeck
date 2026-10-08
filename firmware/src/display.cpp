@@ -1188,19 +1188,14 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     int p = within + glideMs >= hourMs ? (int)((within + glideMs - hourMs) * 100 / glideMs) : -1;   // 0..100
     int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
 
-    // The sun or moon: the big one of a clear sky, the small one of a partly cloudy sky. Behind a big cloud it
-    // stays the one of the last dry hour before (or, from the start, the first one after), so it never jumps;
-    // when the next hour has the other one, it grows or shrinks to it during the change. None when the column
-    // never clears up.
-    auto bodyOf = [&](unsigned i) -> int {
-        for (unsigned k = 0; k < n; k++) {             // back from hour i, round the loop
-            int w = c.hourSky[(i + n - k) % n];
-            if (w == KIDS_WEATHER_CLEAR) return 2;
-            if (w == KIDS_WEATHER_PARTLY) return 1;
-        }
-        return 0;
-    };
-    int body = bodyOf(idx), bodyNext = bodyOf(nextIdx);
+    // The sun or moon, always the big one (unlike the still partly cloudy picture): clouds pass in front of it
+    // and it never changes size. None when the column never clears up.
+    bool body = false;
+    for (unsigned i = 0; i < n; i++) {
+        if (c.hourSky[i] == KIDS_WEATHER_CLEAR || c.hourSky[i] == KIDS_WEATHER_PARTLY) body = true;
+    }
+    // The small cloud of a partly cloudy sky sits in front of the lower right of the sun or moon
+    const int partlyX = cx + 8, partlyTop = y + 10;
     int moonX = 0, moonY = 0, moonR = 0;                // the moon, when it is up
     // A cloud in front of the moon: the moon shines through it, as a dotted crescent in the cloud
     auto cloud = [&](int x, int top) {
@@ -1218,15 +1213,9 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
             }
         }
     };
-    if (body > 0) {
-        int t = (p >= 0 && bodyNext > 0 && bodyNext != body) ? p : 0;   // 0..100 of the way to the next one
-        int fromX = body == 2 ? cx : cx - 6, fromY = body == 2 ? y + 13 : y + 7, fromR = body == 2 ? 7 : 4;
-        int toX = bodyNext == 2 ? cx : cx - 6, toY = bodyNext == 2 ? y + 13 : y + 7, toR = bodyNext == 2 ? 7 : 4;
-        if (t == 0) { toX = fromX; toY = fromY; toR = fromR; }
-        int sx = fromX + (toX - fromX) * t / 100, sy = fromY + (toY - fromY) * t / 100;
-        int sr = fromR + ((toR - fromR) * t + (toR > fromR ? 50 : -50)) / 100;
-        drawSmallSky(d, sx, sy, sr, c.light);
-        if (c.light == KIDS_LIGHT_DARK) { moonX = sx; moonY = sy; moonR = sr + sr / 2; }
+    if (body) {
+        drawSmallSky(d, cx, y + 13, 7, c.light);
+        if (c.light == KIDS_LIGHT_DARK) { moonX = cx; moonY = y + 13; moonR = 7 + 7 / 2; }
     }
 
     // Partly cloudy turning cloudy (or the other way round): its own cloud moves up over the sun (or back down),
@@ -1235,22 +1224,22 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     bool coverDown = p >= 0 && isBigCloud(cur) && next == KIDS_WEATHER_PARTLY;
     if (coverUp || coverDown) {
         int q = coverUp ? p : 100 - p;                  // 0: where partly cloudy has it, 100: over the sun
-        int x = cx + 3 - 3 * q / 100, top = y + 8 - 9 * q / 100;
+        int x = partlyX + (cx - partlyX) * q / 100, top = partlyTop + (y - 1 - partlyTop) * q / 100;
         cloud(x, top);
         return;
     }
 
     // The small cloud of a partly cloudy sky
-    int smallX = cx + 3;
+    int smallX = partlyX;
     bool small = cur == KIDS_WEATHER_PARTLY;
     if (p >= 0 && cur != KIDS_WEATHER_PARTLY && next == KIDS_WEATHER_PARTLY && !isBigCloud(cur)) {
         small = true;                                   // gliding in
-        smallX += (100 - p) * 32 / 100;
+        smallX += (100 - p) * 42 / 100;
     } else if (p >= 0 && cur == KIDS_WEATHER_PARTLY && next == KIDS_WEATHER_CLEAR) {
-        smallX -= p * 32 / 100;                         // gliding out
+        smallX -= p * 42 / 100;                         // gliding out
     }
     if (small) {
-        cloud(smallX, y + 8);
+        cloud(smallX, partlyTop);
     }
 
     // The big cloud, with the rain, snow or lightning of the hour it belongs to
