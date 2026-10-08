@@ -13,6 +13,7 @@
         Gzip-compresses the image (the 1 MB ESP-01 only has room for a compressed update; the
         bootloader unpacks it) and appends the signature in the ESP8266 core's format:
         gzip image | RSA PKCS#1 v1.5 signature of SHA-256(gzip image) | uint32 LE signature length.
+        The gzip image is padded to a multiple of 4 bytes (see gzip_aligned).
 
     python tools/ota_tool.py manifest --key KEY --version X.Y.Z --out ota-manifest.txt \\
             --variant dayspeck=dayspeck.bin.gz [--notes TEXT]
@@ -66,9 +67,24 @@ def sign_bytes(key, data):
     return key.sign(data, padding.PKCS1v15(), hashes.SHA256())
 
 
+def gzip_aligned(image):
+    """gzip, padded to a multiple of 4 bytes with an empty file name in the header.
+
+    The core's Updater hashes the image from flash in 128-byte reads, and a last read whose length is
+    not a multiple of 4 fails without notice (Esp.cpp flashRead): the hash, and so the signature
+    check, would then be wrong. The bootloader takes the unpacked size from the last 4 bytes, so the
+    padding cannot go at the end; it skips a file name in the header (uzlib tinfgzip.c)."""
+    gz = gzip.compress(image, compresslevel=9, mtime=0)
+    pad = -len(gz) % 4
+    if pad == 0:
+        return gz
+    flags = gz[3] | 0x08                                               # FNAME
+    return gz[:3] + bytes([flags]) + gz[4:10] + b"0" * (pad - 1) + b"\0" + gz[10:]
+
+
 def signed_image(key, image, compress=True):
     if compress:
-        image = gzip.compress(image, compresslevel=9, mtime=0)
+        image = gzip_aligned(image)
     signature = sign_bytes(key, image)
     return image + signature + struct.pack("<I", len(signature))
 
@@ -143,7 +159,7 @@ def cmd_check_size(args):
     if args.ldscript not in SKETCH_AREA:
         raise SystemExit(f"unknown linker script {args.ldscript!r}: add it to SKETCH_AREA")
     image = Path(args.input).read_bytes()
-    update = len(gzip.compress(image, compresslevel=9, mtime=0)) + 256 + 4
+    update = len(gzip_aligned(image)) + 256 + 4
     free = free_update_space(len(image), args.ldscript)
     print(f"{args.input}: {len(image)} bytes, signed update {update} bytes, free for an update {free} bytes")
     if update > free:
