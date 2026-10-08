@@ -246,11 +246,16 @@ int kidsHourPicture(const KidsHour& h, const KidsLimits& l) {
 }
 
 size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsLimits& l, uint8_t* weather,
-                        uint8_t* precip, size_t max) {
+                        uint8_t* precip, size_t max, uint8_t* sky) {
     size_t n = 0, to = kidsPartWeatherEnd(part);
     for (size_t i = part.from; i < to && n < max; i++) {
         if (!hours[i].valid) continue;
         weather[n] = (uint8_t)kidsHourPicture(hours[i], l);
+        if (sky) {
+            KidsHour calm = hours[i];
+            calm.gustKmh = NAN;                                        // the same hour without the wind
+            sky[n] = weather[n] == KIDS_WEATHER_WIND ? (uint8_t)kidsHourPicture(calm, l) : weather[n];
+        }
         precip[n] = (uint8_t)kidsPrecipLevel(hours[i].rainMm);
         n++;
     }

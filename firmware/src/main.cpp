@@ -520,7 +520,8 @@ static size_t kidsColumns(KidsColumn* cols, KidsPart* parts, size_t max, bool ni
         c.temp = kidsShownTemp((float)o.tempC);
         c.precip = o.precip;
         c.umbrella = o.umbrella && kidsUmbrella;
-        c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], kidsLimits, c.hourWeather, c.hourPrecip, KIDS_MAX_PART_HOURS);
+        c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], kidsLimits, c.hourWeather, c.hourPrecip,
+                                            KIDS_MAX_PART_HOURS, c.hourSky);
     }
     return np;
 }

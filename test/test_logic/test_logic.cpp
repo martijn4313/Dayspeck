@@ -539,6 +539,16 @@ void test_kids_timeline() {
     // Dinner: dinner time and the hour after only; and never more than max
     TEST_ASSERT_EQUAL(2, kidsPartTimeline(h, KidsPart{ KIDS_PART_DINNER, 0, 6, false, false }, K, w, p, 12));
     TEST_ASSERT_EQUAL(3, kidsPartTimeline(h, KidsPart{ KIDS_PART_AFTERNOON, 0, 6, false, false }, K, w, p, 3));
+
+    // A windy hour: the wind picture, and under it its own sky
+    KidsHour g[2] = { hr(15, 0, 3), hr(15, 0, 2) };
+    g[0].gustKmh = 70;
+    g[1].gustKmh = 70;
+    uint8_t s[KIDS_MAX_PART_HOURS];
+    TEST_ASSERT_EQUAL(2, kidsPartTimeline(g, KidsPart{ KIDS_PART_AFTERNOON, 0, 2, false, false }, K, w, p, 12, s));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_WIND, w[0]);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, s[0]);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_PARTLY, s[1]);
 }
 
 void test_part_of_day() {

@@ -79,7 +79,8 @@ static size_t columns(const Day& day, KidsColumn* cols, KidsPart* parts, size_t 
         c.temp = o.tempC;
         c.precip = o.precip;
         c.umbrella = o.umbrella;
-        c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], LIMITS, c.hourWeather, c.hourPrecip, KIDS_MAX_PART_HOURS);
+        c.hours = (uint8_t)kidsPartTimeline(hours, parts[i], LIMITS, c.hourWeather, c.hourPrecip,
+                                            KIDS_MAX_PART_HOURS, c.hourSky);
     }
     return np;
 }
