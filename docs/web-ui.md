@@ -97,7 +97,7 @@ only matter when a ride screen is in use.
 | Sleep at night after (min) | switch the panel off after this many idle minutes at night; 0 = never |
 | Always sleep | the screen stays off; a touch wakes it for 30 s (needs the touch sensor) |
 | Touch sensor | the sensor on GPIO3 is read. Switch it off when none is connected; switching it on takes effect at once |
-| Language | `en` or `nl`: the language of the [weather report](report.md) |
+| Language | `en` or `nl`: the language of the [weather report](report.md), and the day and month names of the clock and the week grid |
 | Screen off from / until (hour) | quiet hours, for example 23 and 6. Set both, or both to -1 for none |
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
