@@ -67,9 +67,10 @@ String weatherApiUrl = DEFAULT_WEATHER_API_URL;
 String weatherUnits = DEFAULT_WEATHER_UNITS;
 bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 
-#define WIFI_AP_DELAY_FIRST_MS    30000UL    // never connected: start the setup AP after 30 s
+#define WIFI_AP_DELAY_FIRST_MS    30000UL    // no network saved yet: start the setup AP after 30 s
+#define WIFI_AP_DELAY_SAVED_MS    90000UL    // a saved network at power-on: give it 90 s
 #define WIFI_AP_DELAY_OUTAGE_MS   300000UL   // lost a working connection: AP only after 5 min
-#define WIFI_STA_RETRY_INTERVAL_MS 120000UL  // AP up: retry the saved network this often (if nobody is connected to the AP)
+#define WIFI_STA_RETRY_INTERVAL_MS 30000UL   // AP up: retry the saved network this often (if nobody is connected to the AP)
 #define WIFI_STA_RETRY_WINDOW_MS   15000UL   // ...for this long
 #define AP_SSID                   "Dayspeck"
 #define MIN_VALID_EPOCH           1600000000L // anything earlier means NTP has not synced
@@ -1108,8 +1109,13 @@ void manageWifi() {
         state.disconnectedSinceMs = now | 1;   // never 0 once set
     }
 
-    unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS : WIFI_AP_DELAY_FIRST_MS;
+    unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS
+                          : wifiSsid.length() > 0 ? WIFI_AP_DELAY_SAVED_MS : WIFI_AP_DELAY_FIRST_MS;
     if (!state.apModeStarted && (now - state.disconnectedSinceMs) > delayMs) {
+        char msg[80];
+        snprintf(msg, sizeof(msg), "WiFi: no connection to \"%.32s\" (status %d), setup network on",
+                 wifiSsid.c_str(), (int)WiFi.status());
+        logMessage(msg);
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, effectivePassword().c_str());
         // A station endlessly searching for an absent network hops channels, which starves the
@@ -1208,10 +1214,32 @@ void drawOtaProgress(int percent) {
 
 
 /**
+ * Mount LittleFS without formatting it on a failed mount: right after power-on a mount can fail once, and the
+ * core's default (format on failure) would then wipe the settings. Only a filesystem that keeps failing is
+ * formatted, so a new device still gets one.
+ */
+static void mountFilesystem() {
+    LittleFSConfig cfg;
+    cfg.setAutoFormat(false);
+    LittleFS.setConfig(cfg);
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        if (LittleFS.begin()) {
+            if (attempt > 1) logMessage(("LittleFS mounted at attempt " + String(attempt)).c_str());
+            return;
+        }
+        delay(100);
+    }
+    logMessage("LittleFS: no filesystem, formatting");
+    cfg.setAutoFormat(true);
+    LittleFS.setConfig(cfg);
+    LittleFS.begin();
+}
+
+/**
  * Setup function - boot sequence, NO BLOCKING
  */
 void setup() {
-    LittleFS.begin();
+    mountFilesystem();
     logMessage(("Boot: " + ESP.getResetReason()).c_str());
     loadConfig();
 
@@ -1229,16 +1257,18 @@ void setup() {
 
     // Start WiFi connection in background - NO WAITING
     WiFi.persistent(false);          // don't wear the flash with credential writes
-    WiFi.mode(WIFI_OFF);             // after a restart the radio can still hold the previous session: start clean
+    // After a restart the radio can still hold the previous session: start it clean. A power-on or the reset
+    // pin starts with a fresh radio already.
+    uint32_t resetReason = ESP.getResetInfoPtr()->reason;
+    bool restarted = resetReason != REASON_DEFAULT_RST && resetReason != REASON_EXT_SYS_RST;
+    if (restarted) WiFi.mode(WIFI_OFF);
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_STA);
     if (wifiSsid.length() > 0) {
         WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
         // A restart (after an update, a new password or a crash) comes from a device that was set up and
         // running: give the network as long as after an outage before the setup AP takes over
-        if (ESP.getResetInfoPtr()->reason != REASON_DEFAULT_RST && ESP.getResetInfoPtr()->reason != REASON_EXT_SYS_RST) {
-            state.everConnected = true;
-        }
+        if (restarted) state.everConnected = true;
     }
 
     initWebServer();
