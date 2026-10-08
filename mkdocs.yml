@@ -1,11 +1,12 @@
 site_name: Dayspeck
-site_description: A small ESP8266 weather display you put together from screens like building blocks
+site_description: An open-source ESP8266 / ESP-01 weather display with a small SSD1306 OLED, put together from screens like building blocks
 site_url: https://martijn4313.github.io/Dayspeck/
 repo_url: https://github.com/martijn4313/Dayspeck
 edit_uri: edit/main/docs/
 
 theme:
   name: material
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default

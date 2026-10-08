@@ -1,3 +1,7 @@
+---
+description: "Contributing to Dayspeck: project layout, tests, the host build of the drawing code and the docs."
+---
+
 # Contributing
 
 ## Project layout

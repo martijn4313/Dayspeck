@@ -1,3 +1,8 @@
+---
+title: "ESP8266 OLED weather display (ESP-01, SSD1306)"
+description: "Open-source ESP8266 / ESP-01 weather display with a 0.96-inch SSD1306 OLED: ride rating, what to wear for kids, a weather report in words and a clock, set up in a web page, with over-the-air updates."
+---
+
 # Dayspeck
 
 A small weather display for a bedside table, a hallway or a kitchen wall: an ESP8266 with a 0.96" OLED

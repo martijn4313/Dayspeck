@@ -1,3 +1,7 @@
+---
+description: "How Dayspeck rates a ride window from the hourly forecast: rain, gusts, temperature and the chance of rain, worst hour first."
+---
+
 # How the ride rating works
 
 For each day the forecast is split into a morning (AM) and an evening (PM) ride window. A window is

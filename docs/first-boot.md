@@ -1,3 +1,7 @@
+---
+description: "First boot of the Dayspeck ESP8266 weather display: the setup WiFi network, connecting to your network and setting the location."
+---
+
 # First boot
 
 1. If there are no (working) WiFi credentials the device starts its own network after about 30 s.

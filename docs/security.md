@@ -1,3 +1,7 @@
+---
+description: "Security notes for the Dayspeck ESP8266 weather display: passwords, the web UI, signed updates."
+---
+
 # Security notes
 
 - The web UI, the API and OTA all need the admin password (HTTP Basic). Basic auth is **not

@@ -1,3 +1,7 @@
+---
+description: "Signed over-the-air firmware updates for the Dayspeck ESP8266 weather display, and how releases are published."
+---
+
 # Updating the firmware over the air
 
 The device checks the latest GitHub Release once a day. When a newer version is out, the main screen

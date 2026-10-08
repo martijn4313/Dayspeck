@@ -1,3 +1,7 @@
+---
+description: "Choose which of Dayspeck's ten weather screens your ESP8266 OLED display shows, in which order, and what a tap or long press does."
+---
+
 # Your own display
 
 Dayspeck has ten screens. Which of them your device shows, in which order, and what a tap or a long press
