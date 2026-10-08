@@ -216,11 +216,12 @@ KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits
 
 // The weather screen plays the hours of a part as a time-lapse: the picture of every hour, in order
 // (KIDS_WEATHER_*: rain or snow only from 0.2 mm, less is a cloud) and how hard it rains or snows
-// (KIDS_PRECIP_*). Hours without a forecast are left out. Returns how many (at most max).
+// (KIDS_PRECIP_*). Hours without a forecast are left out. Returns how many (at most max). sky (optional) gets
+// the picture under the wind: for a windy hour its sky (clear, partly cloudy or cloudy), else the same as weather.
 #define KIDS_MAX_PART_HOURS 12
 int kidsHourPicture(const KidsHour& h, const KidsLimits& l);
 size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsLimits& l, uint8_t* weather,
-                        uint8_t* precip, size_t max);
+                        uint8_t* precip, size_t max, uint8_t* sky = nullptr);
 
 // Kids variant: countdowns to a birthday or a holiday, counted in sleeps (nights until the day)
 #define KIDS_EVENT_BIRTHDAY     0

@@ -1178,16 +1178,9 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     unsigned long phase = elapsedMs % (hourMs * n);
     unsigned idx = (unsigned)(phase / hourMs), nextIdx = (idx + 1) % n;
     unsigned long within = phase % hourMs;
-    int cur = c.hourWeather[idx], next = c.hourWeather[nextIdx];
-
-    // The wind picture does not glide: it simply comes and goes with its hours
-    if (cur == KIDS_WEATHER_WIND) {
-        drawSmallWeather(d, cx, cur, c.light, 0, frame, numLeft, numRight);
-        return;
-    }
+    int cur = c.hourSky[idx], next = c.hourSky[nextIdx];   // windy hours: their sky, the gusts come on top
     unsigned long glideMs = hourMs / 2 < 900 ? hourMs / 2 : 900;
     int p = within + glideMs >= hourMs ? (int)((within + glideMs - hourMs) * 100 / glideMs) : -1;   // 0..100
-    if (next == KIDS_WEATHER_WIND) p = -1;
     int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
 
     // The sun or moon: the big one of a clear sky, the small one of a partly cloudy sky. Behind a big cloud it
@@ -1196,7 +1189,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     // never clears up.
     auto bodyOf = [&](unsigned i) -> int {
         for (unsigned k = 0; k < n; k++) {             // back from hour i, round the loop
-            int w = c.hourWeather[(i + n - k) % n];
+            int w = c.hourSky[(i + n - k) % n];
             if (w == KIDS_WEATHER_CLEAR) return 2;
             if (w == KIDS_WEATHER_PARTLY) return 1;
         }
@@ -1265,7 +1258,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
         bigX += (100 - p) * 32 / 100;
     }
     if (owner < 0) return;
-    int w = c.hourWeather[owner];
+    int w = c.hourSky[owner];
     cloud(bigX, y - 1);
     if (w == KIDS_WEATHER_STORM && bigX == cx) {
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
@@ -1275,7 +1268,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     // it stops the drops on their way still fall down
     long hourFrame = (long)((elapsedMs - within) / RAIN_FRAME_INTERVAL);
     unsigned prevIdx = (idx + n - 1) % n;
-    int prev = c.hourWeather[prevIdx];
+    int prev = c.hourSky[prevIdx];
     bool wet = w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW;
     bool prevWet = prev == KIDS_WEATHER_RAIN || prev == KIDS_WEATHER_STORM || prev == KIDS_WEATHER_SNOW;
     bool stayed = owner == (int)idx && (isBigCloud(prev) || prev == KIDS_WEATHER_PARTLY);   // the cloud was here
@@ -1290,11 +1283,54 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     }
 }
 
+// The gusts of the windy hours in a column's time-lapse, blowing from left to right across its sky. A gust
+// that set off in a windy hour blows on to the edge, so the wind comes in and dies down instead of switching.
+static void drawTimelapseWind(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsigned long elapsedMs,
+                              unsigned long loopMs) {
+    unsigned n = c.hours;
+    unsigned long hourMs = loopMs / n;
+    if (hourMs < KIDS_TIMELAPSE_MIN_HOUR_MS) hourMs = KIDS_TIMELAPSE_MIN_HOUR_MS;
+    const long periodMs = 1600, travelMs = 1400;           // a gust per lane every 1.6 s, across in 1.4 s
+    static const uint8_t LANE_Y[3] = { 22, 29, 36 }, LANE_LEN[3] = { 14, 18, 11 };
+    static const uint16_t LANE_OFFSET[3] = { 0, 1050, 520 };
+    static const int8_t CURL[6][2] = { {0, -4}, {1, -4}, {2, -3}, {2, -2}, {2, -1}, {1, 0} };   // up and back
+    int xmin = cx - KIDS_COL_W / 2, xmax = cx + KIDS_COL_W / 2 - 1;
+    for (int k = 0; k < 3; k++) {
+        long t = (long)elapsedMs - LANE_OFFSET[k];
+        if (t < 0) continue;
+        long launch = t - t % periodMs;                    // when this lane's latest gust set off
+        if (t - launch >= travelMs) continue;              // between two gusts
+        unsigned hourAtLaunch = (unsigned)(((unsigned long)(launch + LANE_OFFSET[k]) % (hourMs * n)) / hourMs);
+        if (c.hourWeather[hourAtLaunch] != KIDS_WEATHER_WIND) continue;
+        int len = LANE_LEN[k], y = LANE_Y[k];
+        int end = xmin - 3 + (int)((t - launch) * (KIDS_COL_W + len + 6) / travelMs);   // the head, curl and all
+        // A thin black edge first, so the gust shows over a cloud or the sun too
+        for (int pass = 0; pass < 2; pass++) {
+            uint16_t col = pass == 0 ? SSD1306_BLACK : SSD1306_WHITE;
+            auto dot = [&](int x, int yy) {
+                if (x < xmin || x > xmax) return;
+                if (pass == 0) {
+                    d.drawPixel(x, yy - 1, col);
+                    d.drawPixel(x, yy + 1, col);
+                    if (x - 1 >= xmin) d.drawPixel(x - 1, yy, col);
+                    if (x + 1 <= xmax) d.drawPixel(x + 1, yy, col);
+                } else {
+                    d.drawPixel(x, yy, col);
+                }
+            };
+            for (int x = end - len; x <= end; x++) dot(x, y);
+            for (int i = 0; i < 6; i++) dot(end + CURL[i][0], y + CURL[i][1]);
+        }
+    }
+}
+
 bool kidsColumnAnimates(const KidsColumn &c) {
     if (!c.valid) return false;
     for (unsigned i = 0; i < c.hours; i++) {
         int w = c.hourWeather[i];
-        if (w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW) return true;
+        if (w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW || w == KIDS_WEATHER_WIND) {
+            return true;                                   // falling, or blowing
+        }
         if (w != c.hourWeather[0]) return true;
     }
     return false;
@@ -1403,7 +1439,10 @@ void renderKidsDayStrip(Adafruit_SSD1306 &d, const KidsColumn* cols, size_t coun
             char num[8];
             snprintf(num, sizeof(num), "%d", c.temp);
             int w = (int)strlen(num) * 12 - 2;
-            if (c.hours > 0 && loopMs > 0) drawTimelapse(d, cx, c, elapsedMs, loopMs, cx - w / 2, cx - w / 2 + w - 1);
+            if (c.hours > 0 && loopMs > 0) {
+                drawTimelapse(d, cx, c, elapsedMs, loopMs, cx - w / 2, cx - w / 2 + w - 1);
+                drawTimelapseWind(d, cx, c, elapsedMs, loopMs);
+            }
             else drawSmallWeather(d, cx, c.weather, c.light, c.precip, frame, cx - w / 2, cx - w / 2 + w - 1);
             d.setTextSize(2);
             d.setCursor(cx - w / 2, 45);

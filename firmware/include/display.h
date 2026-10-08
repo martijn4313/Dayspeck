@@ -162,6 +162,7 @@ struct KidsColumn {
     uint8_t hours;
     uint8_t hourWeather[KIDS_MAX_PART_HOURS];
     uint8_t hourPrecip[KIDS_MAX_PART_HOURS];
+    uint8_t hourSky[KIDS_MAX_PART_HOURS];   // under the wind: a windy hour's sky (see kidsPartTimeline)
 };
 // The time-lapse plays a column's hours in `loopMs` (the time the screen is shown), each hour at least this long
 #define KIDS_TIMELAPSE_MIN_HOUR_MS  1500UL
