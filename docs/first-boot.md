@@ -4,7 +4,8 @@ description: "First boot of the Dayspeck ESP8266 weather display: the setup WiFi
 
 # First boot
 
-1. If there are no (working) WiFi credentials the device starts its own network after about 30 s.
+1. If there are no (working) WiFi credentials the device starts its own network after about 30 s
+   (after a restart, such as a firmware update, or when a working network drops: after 5 minutes).
    The OLED shows the network name (**Dayspeck**), its password and `192.168.4.1`.
 2. Join that network and open `http://192.168.4.1`. Sign in with user **`admin`** and the password
    from the display. The default password is `moto` plus six hex digits derived from the chip ID.

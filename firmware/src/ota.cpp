@@ -279,6 +279,7 @@ static void runInstall() {
         logMessage(("OTA: version " + otaStatus.latestVersion + " installed, restarting").c_str());
         if (otaProgressHook) otaProgressHook(100);
         delay(500);
+        WiFi.disconnect();   // leave the network cleanly, so it lets us back in at once
         ESP.restart();
     }
     setError("install failed: " + ESPhttpUpdate.getLastErrorString());
