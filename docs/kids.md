@@ -86,7 +86,8 @@ rain, thunderstorm, snow, wind) and its temperature: a number to read, without a
 time the screen is shown: with the screens cycling every 12 s, a 6-hour afternoon gives each hour 2 s, so a
 shower at 15:00 rains for 2 s between sun before and after, and a wet afternoon rains for most of the 12 s. When
 the weather changes a cloud glides in from the right (it clouds over) or out to the left (it clears up), taking
-its rain or snow along, while the sun or moon stays at the back; also from the last hour back to the first, so the
+its rain or snow along, while the sun or moon stays at the back at full size (in a partly cloudy hour a small
+cloud passes in front of it); also from the last hour back to the first, so the
 loop has no seam. In windy hours gusts blow across the sky of that hour (sun or clouds), and the wind picks up
 and dies down instead of switching. All columns play at once, each through its own hours;
 every hour gets at least 1.5 s. A screen you tap to plays in the time until it goes back home, and one that stays
