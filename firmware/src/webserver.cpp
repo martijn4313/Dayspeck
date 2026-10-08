@@ -1549,6 +1549,7 @@ void initWebServer() {
 void handleWebServer() {
     server.handleClient();
     if (rebootAtMs != 0 && (long)(millis() - rebootAtMs) >= 0) {
+        WiFi.disconnect();   // leave the network cleanly, so it lets us back in at once
         ESP.restart();
     }
 }

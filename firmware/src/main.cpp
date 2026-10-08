@@ -1225,10 +1225,16 @@ void setup() {
 
     // Start WiFi connection in background - NO WAITING
     WiFi.persistent(false);          // don't wear the flash with credential writes
+    WiFi.mode(WIFI_OFF);             // after a restart the radio can still hold the previous session: start clean
     WiFi.setAutoReconnect(true);
     WiFi.mode(WIFI_STA);
     if (wifiSsid.length() > 0) {
         WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+        // A restart (after an update, a new password or a crash) comes from a device that was set up and
+        // running: give the network as long as after an outage before the setup AP takes over
+        if (ESP.getResetInfoPtr()->reason != REASON_DEFAULT_RST && ESP.getResetInfoPtr()->reason != REASON_EXT_SYS_RST) {
+            state.everConnected = true;
+        }
     }
 
     initWebServer();
