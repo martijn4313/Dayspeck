@@ -642,7 +642,7 @@ void renderClock() {
         gmtime_r(&local, &t);
     }
     renderClockView(display, valid, t.tm_hour, t.tm_min, (t.tm_sec % 2) == 0,
-                    t.tm_wday, t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+                    t.tm_wday, t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, displayLanguage == "nl");
 }
 
 
@@ -919,7 +919,8 @@ void render() {
         case SCREEN_WEATHER:   renderKids(true); break;
         case SCREEN_CLOTHES:   renderKids(false); break;
         case SCREEN_COUNTDOWN: renderKidsCountdown(display, countdown, millis()); break;
-        case SCREEN_WEEK:      renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay); break;
+        case SCREEN_WEEK:      renderWeeklyMatrix(display, weekAM, weekPM, weekStartDow, weekBestDay,
+                                                           displayLanguage == "nl"); break;
         case SCREEN_HOURS:     renderHourly(); break;
         case SCREEN_REPORT:    renderReport(); break;
         case SCREEN_VILLAGE:   renderKidsVillage(); break;

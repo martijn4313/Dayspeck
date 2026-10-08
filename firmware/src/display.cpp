@@ -599,8 +599,11 @@ static void drawRatingGlyph(Adafruit_SSD1306 &display, int cx, int cy, char rati
 }
 
 // Render weekly matrix — full-screen 7-column AM/PM grid, first column is today
-void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay) {
-    static const char dayLetters[7] = { 'S', 'M', 'T', 'W', 'T', 'F', 'S' };   // Sunday first
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay,
+                        bool nl) {
+    static const char LETTERS_EN[7] = { 'S', 'M', 'T', 'W', 'T', 'F', 'S' };   // Sunday first
+    static const char LETTERS_NL[7] = { 'Z', 'M', 'D', 'W', 'D', 'V', 'Z' };   // zondag, maandag, ...
+    const char *dayLetters = nl ? LETTERS_NL : LETTERS_EN;
     const int labelW = 16, colW = 16;
 
     display.clearDisplay();
@@ -1595,19 +1598,24 @@ void renderKidsCountdown(Adafruit_SSD1306 &d, const KidsCountdown &c, unsigned l
 
 // Clock screen: HH:MM in large type, weekday and date below, year at the bottom
 void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
-                     int weekday, int day, int month, int year) {
-    static const char* const DAYS[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-    static const char* const MONTHS[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+                     int weekday, int day, int month, int year, bool nl) {
+    static const char* const DAYS_EN[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static const char* const DAYS_NL[7] = { "zo", "ma", "di", "wo", "do", "vr", "za" };
+    static const char* const MONTHS_EN[12] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    static const char* const MONTHS_NL[12] = { "jan", "feb", "mrt", "apr", "mei", "jun",
+                                               "jul", "aug", "sep", "okt", "nov", "dec" };
+    const char* const *DAYS = nl ? DAYS_NL : DAYS_EN;
+    const char* const *MONTHS = nl ? MONTHS_NL : MONTHS_EN;
     display.clearDisplay();
     display.setTextColor(SSD1306_WHITE);
 
     if (!timeValid) {
         display.setTextSize(1);
-        display.setCursor(22, 22);
-        display.print("Time not set yet");
-        display.setCursor(10, 36);
-        display.print("waiting for WiFi...");
+        display.setCursor(nl ? 14 : 22, 22);
+        display.print(nl ? "Tijd nog onbekend" : "Time not set yet");
+        display.setCursor(nl ? 17 : 10, 36);
+        display.print(nl ? "wacht op WiFi..." : "waiting for WiFi...");
         return;
     }
 

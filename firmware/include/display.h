@@ -136,7 +136,8 @@ void drawProceduralSnow(Adafruit_SSD1306 &display, int intensity);
 void renderSkylineCard(Adafruit_SSD1306 &display, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow);
 void renderBottomCard(Adafruit_SSD1306 &display, int weatherCondition, int windSpeed, float precipMm, bool isNight);
 // bestDay: column to highlight (inverse header), -1 for none
-void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay);
+void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay,
+                        bool nl = false);   // nl: Dutch day letters
 // Next hours (up to 6 columns): hour, temperature, rain bar (mm) with chance-of-rain tick, gusts (km/h).
 // firstHour = local hour of hours[0]. Footer: best time to leave and the time of the last update (-1 = unknown).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
@@ -144,7 +145,7 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
 // Clock screen: time (blinking colon) and date, centred. timeValid false shows a waiting message.
 // weekday 0 = Sunday, month 1-12.
 void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,
-                     int weekday, int day, int month, int year);
+                     int weekday, int day, int month, int year, bool nl = false);   // nl: Dutch names
 // Small status marks on the primary view: "TMRW" tag and WiFi signal bars (bars 0-4, -1 = not connected)
 void renderStatusMarks(Adafruit_SSD1306 &display, bool showTomorrow, int wifiBars);
 void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, int weatherCondition, int intensity, int windSpeed, const char *tempStr, char trendArrow, float precipMm);
