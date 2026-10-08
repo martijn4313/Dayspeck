@@ -40,7 +40,7 @@ LEAF_SPAWN_X = WIND_AREA_X_START   # leaves enter at the left edge of the area
 LEAF_SPAWN_Y = 12       # a new leaf starts at y = 12 .. 35
 LEAF_SPAWN_SPAN = 24
 LEAF_MIN_WIND_KMH = 20  # in autumn leaves blow from this wind speed on, even when it is not a "windy" day
-LEAF_MAX_Y = 38         # a leaf whose base line passes this has landed
+LEAF_MAX_Y = 38         # a leaf sinks no lower than this base line; it leaves at the right edge
 
 # The kids screens have no gusts; their leaves blow across the whole screen (WIND_AREA_KIDS in display.cpp)
 KIDS_WIND_AREA_X_START = 0

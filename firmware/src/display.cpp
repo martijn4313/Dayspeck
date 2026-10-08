@@ -433,8 +433,8 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
         if (f.active) {
             f.age++;
             f.x += f.speed;
-            if (f.age % 3 == 0) f.yBase++;                             // sinks slowly
-            if (f.x > windArea->xEnd || f.yBase > windArea->leafMaxY) {
+            if (f.age % 3 == 0 && f.yBase < windArea->leafMaxY) f.yBase++;   // sinks slowly, down to leafMaxY
+            if (f.x > windArea->xEnd) {                                // and always blows off the right edge
                 f.active = false;
                 f.delay = random(21);
             }
@@ -451,6 +451,12 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
             }
         }
     }
+}
+
+bool windAnimationBusy() {
+    for (int i = 0; i < MAX_GUSTS; i++) if (gusts[i].active) return true;
+    for (int i = 0; i < MAX_LEAVES; i++) if (leaves[i].active) return true;
+    return false;
 }
 
 void drawWindAnimation(Adafruit_SSD1306 &display) {
@@ -1144,6 +1150,14 @@ static void drawSmallCloudClipped(Adafruit_SSD1306 &d, int cx, int oy, int grow,
     if (x1 >= x0) d.fillRect(x0, oy + 11, x1 - x0 + 1, 6 + grow, color);
 }
 
+// Whether (px, py) lies inside drawSmallCloudClipped(cx, oy)'s cloud, at least a pixel in from its edge
+static bool cloudCovers(int cx, int oy, int px, int py) {
+    int ox = cx - 14;
+    auto in = [&](int x, int y, int r) { return (px - x) * (px - x) + (py - y) * (py - y) <= (r - 1) * (r - 1); };
+    return in(ox + 7, oy + 11, 5) || in(ox + 14, oy + 7, 7) || in(ox + 21, oy + 11, 5) ||
+           (px >= ox + 7 && px <= ox + 21 && py >= oy + 11 && py <= oy + 15);
+}
+
 static bool isBigCloud(int weather) {
     return weather == KIDS_WEATHER_CLOUDY || weather == KIDS_WEATHER_RAIN || weather == KIDS_WEATHER_STORM ||
            weather == KIDS_WEATHER_SNOW;
@@ -1189,13 +1203,32 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
         return 0;
     };
     int body = bodyOf(idx), bodyNext = bodyOf(nextIdx);
+    int moonX = 0, moonY = 0, moonR = 0;                // the moon, when it is up
+    // A cloud in front of the moon: the moon shines through it, as a dotted crescent in the cloud
+    auto cloud = [&](int x, int top) {
+        drawSmallCloudClipped(d, x, top, 1, SSD1306_BLACK, xmin, xmax);
+        drawSmallCloudClipped(d, x, top, 0, SSD1306_WHITE, xmin, xmax);
+        if (moonR == 0) return;
+        int br = moonR * 5 / 6, bx = moonR * 2 / 5, by = -moonR / 4;
+        for (int dy = -moonR; dy <= moonR; dy++) {
+            for (int dx = -moonR; dx <= moonR; dx++) {
+                if (dx * dx + dy * dy > moonR * moonR) continue;
+                if ((dx - bx) * (dx - bx) + (dy - by) * (dy - by) <= br * br) continue;   // the bite (as drawSmallMoon)
+                int px = moonX + dx, py = moonY + dy;
+                if (px < xmin || px > xmax || ((px + py) & 1)) continue;
+                if (d.getPixel(px, py) && cloudCovers(x, top, px, py)) d.drawPixel(px, py, SSD1306_BLACK);
+            }
+        }
+    };
     if (body > 0) {
         int t = (p >= 0 && bodyNext > 0 && bodyNext != body) ? p : 0;   // 0..100 of the way to the next one
         int fromX = body == 2 ? cx : cx - 6, fromY = body == 2 ? y + 13 : y + 7, fromR = body == 2 ? 7 : 4;
         int toX = bodyNext == 2 ? cx : cx - 6, toY = bodyNext == 2 ? y + 13 : y + 7, toR = bodyNext == 2 ? 7 : 4;
         if (t == 0) { toX = fromX; toY = fromY; toR = fromR; }
-        drawSmallSky(d, fromX + (toX - fromX) * t / 100, fromY + (toY - fromY) * t / 100,
-                     fromR + ((toR - fromR) * t + (toR > fromR ? 50 : -50)) / 100, c.light);
+        int sx = fromX + (toX - fromX) * t / 100, sy = fromY + (toY - fromY) * t / 100;
+        int sr = fromR + ((toR - fromR) * t + (toR > fromR ? 50 : -50)) / 100;
+        drawSmallSky(d, sx, sy, sr, c.light);
+        if (c.light == KIDS_LIGHT_DARK) { moonX = sx; moonY = sy; moonR = sr + sr / 2; }
     }
 
     // Partly cloudy turning cloudy (or the other way round): its own cloud moves up over the sun (or back down),
@@ -1205,8 +1238,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     if (coverUp || coverDown) {
         int q = coverUp ? p : 100 - p;                  // 0: where partly cloudy has it, 100: over the sun
         int x = cx + 3 - 3 * q / 100, top = y + 8 - 9 * q / 100;
-        drawSmallCloudClipped(d, x, top, 1, SSD1306_BLACK, xmin, xmax);
-        drawSmallCloudClipped(d, x, top, 0, SSD1306_WHITE, xmin, xmax);
+        cloud(x, top);
         return;
     }
 
@@ -1220,8 +1252,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
         smallX -= p * 32 / 100;                         // gliding out
     }
     if (small) {
-        drawSmallCloudClipped(d, smallX, y + 8, 1, SSD1306_BLACK, xmin, xmax);
-        drawSmallCloudClipped(d, smallX, y + 8, 0, SSD1306_WHITE, xmin, xmax);
+        cloud(smallX, y + 8);
     }
 
     // The big cloud, with the rain, snow or lightning of the hour it belongs to
@@ -1235,8 +1266,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     }
     if (owner < 0) return;
     int w = c.hourWeather[owner];
-    drawSmallCloudClipped(d, bigX, y - 1, 1, SSD1306_BLACK, xmin, xmax);
-    drawSmallCloudClipped(d, bigX, y - 1, 0, SSD1306_WHITE, xmin, xmax);
+    cloud(bigX, y - 1);
     if (w == KIDS_WEATHER_STORM && bigX == cx) {
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
         d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);

@@ -20,6 +20,7 @@ public:
         if (color == SSD1306_INVERSE) px[y][x] ^= 1;
         else px[y][x] = color ? 1 : 0;
     }
+    bool getPixel(int16_t x, int16_t y) { return x >= 0 && x < 128 && y >= 0 && y < 64 && px[y][x]; }
     void clearDisplay() { memset(px, 0, sizeof(px)); }
     void display() {}
     uint8_t *getBuffer() { return &px[0][0]; }   // showFrame() fingerprints it
