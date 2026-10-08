@@ -56,7 +56,7 @@ struct WindArea {
     int16_t gustYTop, gustYSpan;   // gust lanes
     int16_t leafX0;                // a new leaf enters here
     int16_t leafY0, leafYSpan;     // ... at y = leafY0 .. leafY0 + leafYSpan - 1
-    int16_t leafMaxY;              // a leaf that sinks past this base line has landed
+    int16_t leafMaxY;              // a leaf sinks no lower than this base line (it leaves at the right edge)
     bool    inverseLeaves;         // drawn inverted (over filled pictures) instead of with a black outline
 };
 // The ride screen: the right half, right of the divider at x=64 (the ride badge is never touched)
@@ -118,6 +118,7 @@ struct Leaf {
 void initWindAnimation(const WindArea &area = WIND_AREA_RIDE);   // also picks where it blows
 void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn);
 void drawWindAnimation(Adafruit_SSD1306 &display);
+bool windAnimationBusy();   // a gust or leaf is still on its way across
 
 // Rain animation functions
 void initRainAnimation();

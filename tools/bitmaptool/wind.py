@@ -99,9 +99,9 @@ class WindAnimation:
             if f.active:
                 f.age += 1
                 f.x += f.speed
-                if f.age % 3 == 0:
-                    f.y_base += 1                                      # sinks slowly
-                if f.x > area.x_end or f.y_base > area.leaf_max_y:
+                if f.age % 3 == 0 and f.y_base < area.leaf_max_y:
+                    f.y_base += 1                                      # sinks slowly, down to leaf_max_y
+                if f.x > area.x_end:                                   # and always blows off the right edge
                     f.active = False
                     f.delay = rng.randrange(21)
             elif i < want_leaves:

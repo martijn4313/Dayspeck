@@ -1357,6 +1357,9 @@ void loop() {
                 startWindAnimation(WIND_AREA_KIDS);
                 updateWindAnimation((int)w.gustKmh, false, true);
                 state.displayDirty = true;
+            } else if (state.windAnimationActive && windAnimationBusy()) {
+                updateWindAnimation((int)w.gustKmh, false, false);   // the wind dropped: the leaves on their way blow off
+                state.displayDirty = true;
             } else if (state.windAnimationActive) {
                 stopWindAnimation();
             }

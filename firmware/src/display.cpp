@@ -433,8 +433,8 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
         if (f.active) {
             f.age++;
             f.x += f.speed;
-            if (f.age % 3 == 0) f.yBase++;                             // sinks slowly
-            if (f.x > windArea->xEnd || f.yBase > windArea->leafMaxY) {
+            if (f.age % 3 == 0 && f.yBase < windArea->leafMaxY) f.yBase++;   // sinks slowly, down to leafMaxY
+            if (f.x > windArea->xEnd) {                                // and always blows off the right edge
                 f.active = false;
                 f.delay = random(21);
             }
@@ -451,6 +451,12 @@ void updateWindAnimation(int windKmh, bool gustsOn, bool leavesOn) {
             }
         }
     }
+}
+
+bool windAnimationBusy() {
+    for (int i = 0; i < MAX_GUSTS; i++) if (gusts[i].active) return true;
+    for (int i = 0; i < MAX_LEAVES; i++) if (leaves[i].active) return true;
+    return false;
 }
 
 void drawWindAnimation(Adafruit_SSD1306 &display) {
@@ -1007,9 +1013,11 @@ static void drawSmallSun(Adafruit_SSD1306 &d, int cx, int cy, int r) {
     }
 }
 
-static void drawSmallMoon(Adafruit_SSD1306 &d, int cx, int cy, int r) {
+// A crescent. biteDown: the bite is taken from the lower right, so the moon's bright edge is its upper left, the
+// side that stays out of the clouds of the weather pictures (they sit at its lower right, and rise over it)
+static void drawSmallMoon(Adafruit_SSD1306 &d, int cx, int cy, int r, bool biteDown = false) {
     d.fillCircle(cx, cy, r, SSD1306_WHITE);
-    d.fillCircle(cx + r * 2 / 5, cy - r / 4, r * 5 / 6, SSD1306_BLACK);   // bite out of it: a crescent
+    d.fillCircle(cx + r * 2 / 5, biteDown ? cy + r / 4 : cy - r / 4, r * 5 / 6, SSD1306_BLACK);   // bite: a crescent
 }
 
 // Sun half under the horizon, centred on cx with the horizon at hy: the sun setting
@@ -1028,7 +1036,7 @@ static void drawSettingSun(Adafruit_SSD1306 &d, int cx, int hy, int r, int horiz
 
 // The sky light of a clear picture: sun, setting sun or moon
 static void drawSmallSky(Adafruit_SSD1306 &d, int cx, int cy, int r, int light) {
-    if (light == KIDS_LIGHT_DARK) drawSmallMoon(d, cx, cy, r + r / 2);
+    if (light == KIDS_LIGHT_DARK) drawSmallMoon(d, cx, cy, r + r / 2, true);
     else if (light == KIDS_LIGHT_DUSK) drawSettingSun(d, cx, cy + r, r + 1, r + 6);
     else drawSmallSun(d, cx, cy, r);
 }
