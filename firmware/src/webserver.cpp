@@ -724,9 +724,12 @@ static void sendMessage(int code, const String& message) {
 // Basic auth with a failure lockout. Sends the 401/429 response itself when it returns false.
 static bool authorized() {
     unsigned long now = millis();
-    if (authLockUntilMs != 0 && (long)(now - authLockUntilMs) < 0) {
-        sendMessage(429, "Too many failed attempts, try again in a minute");
-        return false;
+    if (authLockUntilMs != 0) {
+        if ((long)(now - authLockUntilMs) < 0) {
+            sendMessage(429, "Too many failed attempts, try again in a minute");
+            return false;
+        }
+        authLockUntilMs = 0;   // expired: forget it, or ~25 days on it would look like a future deadline again
     }
     if (server.authenticate(ADMIN_USER, effectivePassword().c_str())) {
         authFailures = 0;
@@ -1303,7 +1306,7 @@ static void handleApiWifiConfig() {
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
     if (state.apModeStarted) {
         unsigned long now = millis();
-        state.staRetryStartMs = now ? now : 1;   // give this attempt a full window, then go idle again
+        state.staRetryStartMs = now ? now : now - 1;   // give this attempt a full window, then go idle again
     }
 
     sendMessage(200, "WiFi settings saved, connecting...");
