@@ -60,8 +60,10 @@ struct HourSlice {
 };
 
 // Start index of the best `windowLen`-hour window with start in [from, to), by score. Windows that
-// contain an invalid hour are skipped; -1 when there is none. Ties go to the earliest start.
-int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to);
+// contain an invalid hour are skipped, and with thresholds `t` also windows rated "don't ride"; -1 when
+// there is none. Ties go to the earliest start.
+int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to,
+                  const RideThresholds* t = nullptr);
 
 // Kids variant: which weather picture to show (day or night is chosen when drawing)
 #define KIDS_WEATHER_CLEAR   0

@@ -116,6 +116,14 @@ void test_best_start_hour() {
     TEST_ASSERT_EQUAL(6, bestStartHour(h, 8, 2, 0, 7));      // window 0-1 is skipped, 1-2 and 2-3 are wet, 6-7 is dry
     for (int i = 0; i < 8; i++) h[i].valid = false;
     TEST_ASSERT_EQUAL(-1, bestStartHour(h, 8, 2, 0, 7));
+
+    // With thresholds, windows rated "don't ride" are skipped: none left means -1 instead of the least bad
+    for (int i = 0; i < 8; i++) h[i] = HourSlice{ 20, 30, 10, 0, true };   // 3 mm every hour
+    TEST_ASSERT_EQUAL(0, bestStartHour(h, 8, 2, 0, 7));
+    TEST_ASSERT_EQUAL(-1, bestStartHour(h, 8, 2, 0, 7, &T));
+    h[5].rainTenthMm = 5;                                                   // 5-6: 0.5 mm, only "caution"
+    h[6].rainTenthMm = 0;                                                   // (4-5 and 6-7 stay above 2 mm)
+    TEST_ASSERT_EQUAL(5, bestStartHour(h, 8, 2, 0, 7, &T));
 }
 
 void test_weather_codes() {

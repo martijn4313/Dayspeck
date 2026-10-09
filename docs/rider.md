@@ -44,6 +44,8 @@ share the village.
 - **Next hours (`hours`):** six columns, with a label on the left naming each row: `h` the hour, `°C` the
   temperature, `mm` a bar for the rain amount (taller = more), `%` a dotted line for the chance of rain
   (higher = likelier) and `kmh` the strongest gust. The bottom line shows the best time to leave in the
-  next 12 hours (a 2 hour daytime ride) and when the data was last updated.
+  next 12 hours (a 2 hour daytime ride, between 06:00 and 22:00) and when the data was last updated:
+  *Leave now*, *Best 14:00*, or *No good ride* when every 2 hour window ahead is rated "don't ride"
+  (in Dutch *Vertrek nu*, *Beste 14:00*, *Niet rijden*).
 
 The third screen in the picture is the [clock](screens.md#the-clock).

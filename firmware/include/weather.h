@@ -70,9 +70,13 @@ extern int8_t  weekBestDay;     // index into the week arrays, -1 = none
 // current hour and `firstEpoch` is its start (unix time, UTC).
 size_t getUpcomingHours(const HourSlice*& first, time_t& firstEpoch);
 
-// Best time to leave within the next 12 hours (a 2 hour ride, daytime only).
-// Returns false when there is no usable forecast. `hourLocal` is the local start hour.
-bool getBestLeave(int& hourLocal, bool& startNow);
+// Best time to leave within the next 12 hours (a 2 hour ride, daytime only, never one rated "don't ride").
+// LEAVE_AT sets `hourLocal`, the local start hour.
+#define LEAVE_NONE     0   // no usable forecast (or no daytime window left)
+#define LEAVE_NOW      1   // the best ride starts this hour
+#define LEAVE_AT       2   // the best ride starts at hourLocal
+#define LEAVE_NO_RIDE  3   // every daytime window is rated "don't ride"
+int getBestLeave(int& hourLocal);
 
 // Unix time of the last successful update, 0 if none (needs NTP, or the API's own clock)
 extern time_t lastUpdateEpoch;

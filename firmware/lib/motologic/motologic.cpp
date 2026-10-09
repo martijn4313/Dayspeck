@@ -67,11 +67,12 @@ int bestDay(const int* scores, size_t count) {
     return best;
 }
 
-int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to) {
+int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t from, size_t to,
+                  const RideThresholds* t) {
     if (windowLen == 0 || windowLen > 24) return -1;
     int best = -1, bestScore = -1;
     for (size_t start = from; start < to && start + windowLen <= count; start++) {
-        float temp[24], rain[24], gust[24];
+        float temp[24], rain[24], gust[24], prob[24];
         bool complete = true;
         for (size_t i = 0; i < windowLen; i++) {
             const HourSlice& h = hours[start + i];
@@ -79,8 +80,10 @@ int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t
             temp[i] = h.tempC;
             rain[i] = h.rainTenthMm / 10.0f;
             gust[i] = h.gustKmh;
+            prob[i] = h.rainProb == 255 ? NAN : h.rainProb;
         }
         if (!complete) continue;
+        if (t && rateWindow(*t, temp, rain, gust, prob, windowLen) == RIDE_DONT) continue;
         int score = scoreWindowHours(temp, rain, gust, windowLen);
         if (score > bestScore) { bestScore = score; best = (int)start; }
     }
