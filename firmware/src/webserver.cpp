@@ -724,9 +724,12 @@ static void sendMessage(int code, const String& message) {
 // Basic auth with a failure lockout. Sends the 401/429 response itself when it returns false.
 static bool authorized() {
     unsigned long now = millis();
-    if (authLockUntilMs != 0 && (long)(now - authLockUntilMs) < 0) {
-        sendMessage(429, "Too many failed attempts, try again in a minute");
-        return false;
+    if (authLockUntilMs != 0) {
+        if ((long)(now - authLockUntilMs) < 0) {
+            sendMessage(429, "Too many failed attempts, try again in a minute");
+            return false;
+        }
+        authLockUntilMs = 0;   // expired: forget it, or ~25 days on it would look like a future deadline again
     }
     if (server.authenticate(ADMIN_USER, effectivePassword().c_str())) {
         authFailures = 0;
@@ -735,7 +738,7 @@ static bool authorized() {
     }
     if (++authFailures >= AUTH_MAX_FAILURES) {
         authFailures = 0;
-        authLockUntilMs = now | 1;
+        authLockUntilMs = (now + AUTH_LOCKOUT_MS) | 1;   // | 1: never 0, which means unlocked
         logMessage("Web UI locked for 60 s after repeated failed logins");
     }
     server.requestAuthentication(BASIC_AUTH, "Dayspeck");
@@ -1302,7 +1305,8 @@ static void handleApiWifiConfig() {
     WiFi.disconnect();
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
     if (state.apModeStarted) {
-        state.staRetryStartMs = millis() | 1;   // give this attempt a full window, then go idle again
+        unsigned long now = millis();
+        state.staRetryStartMs = now ? now : now - 1;   // give this attempt a full window, then go idle again
     }
 
     sendMessage(200, "WiFi settings saved, connecting...");

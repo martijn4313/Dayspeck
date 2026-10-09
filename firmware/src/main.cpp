@@ -1107,7 +1107,7 @@ void manageWifi() {
     }
 
     if (state.disconnectedSinceMs == 0) {
-        state.disconnectedSinceMs = now | 1;   // never 0 once set
+        state.disconnectedSinceMs = now ? now : now - 1;   // never 0 once set, and never ahead of now
     }
 
     unsigned long delayMs = state.everConnected ? WIFI_AP_DELAY_OUTAGE_MS
@@ -1133,7 +1133,7 @@ void manageWifi() {
         if (state.staRetryStartMs == 0) {
             if ((now - state.lastStaRetryMs) > WIFI_STA_RETRY_INTERVAL_MS && WiFi.softAPgetStationNum() == 0) {
                 WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
-                state.staRetryStartMs = now | 1;
+                state.staRetryStartMs = now ? now : now - 1;
             }
         } else if ((now - state.staRetryStartMs) > WIFI_STA_RETRY_WINDOW_MS ||
                    WiFi.softAPgetStationNum() > 0) {
