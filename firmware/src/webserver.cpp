@@ -735,7 +735,7 @@ static bool authorized() {
     }
     if (++authFailures >= AUTH_MAX_FAILURES) {
         authFailures = 0;
-        authLockUntilMs = now | 1;
+        authLockUntilMs = (now + AUTH_LOCKOUT_MS) | 1;   // | 1: never 0, which means unlocked
         logMessage("Web UI locked for 60 s after repeated failed logins");
     }
     server.requestAuthentication(BASIC_AUTH, "Dayspeck");
@@ -1302,7 +1302,8 @@ static void handleApiWifiConfig() {
     WiFi.disconnect();
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
     if (state.apModeStarted) {
-        state.staRetryStartMs = millis() | 1;   // give this attempt a full window, then go idle again
+        unsigned long now = millis();
+        state.staRetryStartMs = now ? now : 1;   // give this attempt a full window, then go idle again
     }
 
     sendMessage(200, "WiFi settings saved, connecting...");
