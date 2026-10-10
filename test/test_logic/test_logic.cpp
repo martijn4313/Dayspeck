@@ -156,6 +156,8 @@ void test_screen_names() {
     for (int i = 0; i < SCREEN_COUNT; i++) TEST_ASSERT_EQUAL(i, screenFromName(screenName(i)));
     TEST_ASSERT_EQUAL(-1, screenFromName("nope"));
     TEST_ASSERT_EQUAL(SCREEN_VILLAGE, screenFromName("village"));
+    TEST_ASSERT_EQUAL(SCREEN_RIDE_HOURS, screenFromName("rideHours"));
+    TEST_ASSERT_EQUAL(SCREEN_CAT, screenFromName("cat"));
     TEST_ASSERT_TRUE(screenAlwaysAvailable(SCREEN_VILLAGE));   // it can be the home screen
     TEST_ASSERT_EQUAL(-1, screenFromName(nullptr));
 }

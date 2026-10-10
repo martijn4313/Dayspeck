@@ -142,6 +142,12 @@ void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const c
 // firstHour = local hour of hours[0]. Footer: best time to leave and the time of the last update (-1 = unknown).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
                       int leave, int leaveHour, int updHour, int updMinute, bool nl = false);   // leave: LEAVE_*
+// Ride rating of the next hours (up to 8, ratings RIDE_*), the best 2 hour ride and when to go (LEAVE_*)
+void renderRideHoursView(Adafruit_SSD1306 &display, const char* ratings, size_t count, int firstHour, int bestStart,
+                         int leave, int leaveHour, bool nl = false);
+// The lucky cat (maneki-neko) beckoning with its paw, and the temperature beside it (hasTemp false: none);
+// frame: 15 per second
+void renderLuckyCatView(Adafruit_SSD1306 &display, unsigned long frame, int temp, bool hasTemp);
 // Clock screen: time (blinking colon) and date, centred. timeValid false shows a waiting message.
 // weekday 0 = Sunday, month 1-12.
 void renderClockView(Adafruit_SSD1306 &display, bool timeValid, int hour, int minute, bool colon,

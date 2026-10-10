@@ -74,6 +74,9 @@ size_t getUpcomingHours(const HourSlice*& first, time_t& firstEpoch);
 // LEAVE_* (motologic.h). LEAVE_AT sets `hourLocal`, the local start hour.
 int getBestLeave(int& hourLocal);
 
+// Ride rating (RIDE_*) of a single forecast hour, by the ride thresholds
+char getHourRating(const HourSlice& h);
+
 // Unix time of the last successful update, 0 if none (needs NTP, or the API's own clock)
 extern time_t lastUpdateEpoch;
 
