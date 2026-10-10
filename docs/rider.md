@@ -49,3 +49,13 @@ share the village.
   (in Dutch *Vertrek nu*, *Beste 14:00*, *Niet rijden*).
 
 The third screen in the picture is the [clock](screens.md#the-clock).
+
+## Ride hours
+
+![Ride hours: a dry afternoon, a wet morning that clears up at noon, and a day of rain](images/ride-hours.png){ .center }
+
+The screen `rideHours` answers *when can I ride?* at a glance. Its columns are the next eight hours, the
+current one underlined, each with its own [rating](ride-rating.md): ✓ good, ! caution, ✗ don't ride. A bar
+marks the best 2 hour ride, the same one as on the next hours screen, and the bottom line says in large type
+when to go: *Go now*, *Go 12:00*, or *No ride* when every 2 hour window ahead is rated "don't ride" (in Dutch
+*Ga nu*, *Ga 12:00*, *Geen rit*).

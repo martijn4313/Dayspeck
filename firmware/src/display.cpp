@@ -598,6 +598,170 @@ static void drawRatingGlyph(Adafruit_SSD1306 &display, int cx, int cy, char rati
     }
 }
 
+// Ride rating of the next hours: up to 8 columns, each an hour with its rating glyph; a bar under the best
+// 2 hour ride (bestStart, -1 = none) and below it in large type when to go (leave: LEAVE_*)
+void renderRideHoursView(Adafruit_SSD1306 &display, const char* ratings, size_t count, int firstHour, int bestStart,
+                         int leave, int leaveHour, bool nl) {
+    const int colW = 16;
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(1);
+    if (count > 8) count = 8;
+    if (count == 0) {
+        display.setCursor(nl ? 22 : 16, 28);
+        display.print(nl ? "Geen verwachting" : "No hourly data");
+        return;
+    }
+    char buf[16];
+    for (size_t i = 0; i < count; i++) {
+        int x = (int)i * colW;
+        snprintf(buf, sizeof(buf), "%d", (firstHour + (int)i) % 24);
+        display.setCursor(x + (colW - ((int)strlen(buf) * 6 - 1)) / 2, 1);
+        display.print(buf);
+        drawRatingGlyph(display, x + colW / 2, 23, ratings[i]);
+    }
+    display.drawFastHLine(2, 10, colW - 4, SSD1306_WHITE);              // underline: now
+    if (bestStart >= 0 && bestStart + 1 < (int)count) {
+        display.fillRect(bestStart * colW + 2, 34, 2 * colW - 4, 3, SSD1306_WHITE);   // the best 2 hour ride
+    }
+    display.drawFastHLine(0, 40, 128, SSD1306_WHITE);
+
+    const char* text = nullptr;
+    if (leave == LEAVE_NOW) {
+        text = nl ? "Ga nu" : "Go now";
+    } else if (leave == LEAVE_AT) {
+        snprintf(buf, sizeof(buf), nl ? "Ga %02d:00" : "Go %02d:00", leaveHour % 24);
+        text = buf;
+    } else if (leave == LEAVE_NO_RIDE) {
+        text = nl ? "Geen rit" : "No ride";
+    }
+    if (text) {
+        display.setTextSize(2);
+        int w = (int)strlen(text) * 12 - 2;
+        if (w > 128) {                                                   // too long for large type
+            display.setTextSize(1);
+            w = (int)strlen(text) * 6 - 1;
+            display.setCursor((128 - w) / 2, 49);
+        } else {
+            display.setCursor((128 - w) / 2, 45);
+        }
+        display.print(text);
+    }
+}
+
+// ---- The lucky cat (maneki-neko) -------------------------------------------------------------------
+
+// A thick, rounded stroke from (x0, y0) to (x1, y1): discs of radius r along the line
+static void drawThickLine(Adafruit_SSD1306 &d, int x0, int y0, int x1, int y1, int r, uint16_t color) {
+    int steps = max(abs(x1 - x0), abs(y1 - y0));
+    for (int i = 0; i <= steps; i++) {
+        int x = x0 + (steps ? (x1 - x0) * i / steps : 0), y = y0 + (steps ? (y1 - y0) * i / steps : 0);
+        d.fillCircle(x, y, r, color);
+    }
+}
+
+// The beckoning cat: sitting, eyes closed in a smile, a coin in one paw and the other paw beckoning; the
+// temperature on the right. frame: 15 per second; the paw beckons about once a second.
+void renderLuckyCatView(Adafruit_SSD1306 &d, unsigned long frame, int temp, bool hasTemp) {
+    d.clearDisplay();
+    const int cx = 52;
+
+    // Body and collar with its bell
+    d.fillRoundRect(cx - 18, 32, 36, 32, 10, SSD1306_WHITE);
+    d.fillRect(cx - 15, 36, 30, 3, SSD1306_BLACK);
+    d.fillCircle(cx, 41, 3, SSD1306_WHITE);
+    d.drawCircle(cx, 41, 3, SSD1306_BLACK);
+    d.drawPixel(cx, 42, SSD1306_BLACK);
+
+    // Head with ears
+    d.fillTriangle(cx - 14, 12, cx - 15, 1, cx - 4, 8, SSD1306_WHITE);
+    d.fillTriangle(cx + 14, 12, cx + 15, 1, cx + 4, 8, SSD1306_WHITE);
+    d.fillTriangle(cx - 12, 9, cx - 13, 4, cx - 8, 8, SSD1306_BLACK);    // inside of the ears
+    d.fillTriangle(cx + 12, 9, cx + 13, 4, cx + 8, 8, SSD1306_BLACK);
+    d.fillCircle(cx, 20, 15, SSD1306_WHITE);
+    d.drawFastHLine(cx - 13, 35, 27, SSD1306_BLACK);                    // chin over the collar
+
+    // Face: eyes closed in a smile, nose, mouth and whiskers (black on the face, white beside it)
+    d.drawCircleHelper(cx - 6, 21, 3, 1 | 2, SSD1306_BLACK);
+    d.drawCircleHelper(cx + 6, 21, 3, 1 | 2, SSD1306_BLACK);
+    d.fillTriangle(cx - 2, 24, cx + 2, 24, cx, 26, SSD1306_BLACK);
+    d.drawPixel(cx - 2, 28, SSD1306_BLACK);
+    d.drawPixel(cx - 1, 29, SSD1306_BLACK);
+    d.drawPixel(cx, 28, SSD1306_BLACK);
+    d.drawPixel(cx + 1, 29, SSD1306_BLACK);
+    d.drawPixel(cx + 2, 28, SSD1306_BLACK);
+    for (int s = -1; s <= 1; s += 2) {
+        for (int k = 0; k < 2; k++) {
+            int y0 = 25 + k * 3, y1 = 23 + k * 6;
+            d.drawLine(cx + s * 9, y0, cx + s * 21, y1, SSD1306_INVERSE);
+        }
+    }
+
+    // The coin (koban) in the lower paw
+    d.fillRoundRect(cx + 5, 44, 11, 17, 5, SSD1306_BLACK);
+    d.drawRoundRect(cx + 6, 45, 9, 15, 4, SSD1306_WHITE);
+    for (int y = 49; y <= 55; y += 3) d.drawFastHLine(cx + 8, y, 5, SSD1306_WHITE);
+    d.fillCircle(cx + 7, 56, 4, SSD1306_WHITE);
+    d.drawCircle(cx + 7, 56, 4, SSD1306_BLACK);
+
+    // The raised paw beckons: it tips towards you and back up, and sways a little towards the face as it
+    // comes. Seen from the front the forearm then looks shorter and the paw comes down and a little larger
+    // (nearer), turning its pads to you.
+    static const uint8_t TIP[16] = { 0, 4, 14, 28, 42, 54, 62, 66, 64, 56, 44, 30, 18, 8, 2, 0 };   // degrees
+    float tip = (float)TIP[frame % 16] * 0.0174533f;
+    float sway = sinf(tip) * 0.17f;                                       // up to ~10 degrees sideways
+    const int ex = cx - 23, ey = 42, len = 23;                            // the elbow, beside the body
+    float reach = cosf(tip) * len;                                        // the forearm as seen from the front
+    int px = ex + (int)lroundf(sinf(sway) * reach), py = ey - (int)lroundf(cosf(sway) * reach);
+    int pr = 6 + (int)lroundf(sinf(tip) * 2);                             // nearer: larger
+    drawThickLine(d, cx - 18, 46, ex, ey, 3, SSD1306_WHITE);              // upper arm against the body
+    drawThickLine(d, ex, ey, px, py, 5, SSD1306_BLACK);                   // a black edge where it crosses the head
+    drawThickLine(d, ex, ey, px, py, 4, SSD1306_WHITE);
+    d.fillCircle(px, py, pr + 1, SSD1306_BLACK);
+    d.fillCircle(px, py, pr, SSD1306_WHITE);
+    // The paw turns gradually: the toe lines on its back shrink away as the pads come into view and grow
+    float turn = sinf(tip);                                               // 0 upright .. ~0.9 tipped forward
+    int back = (int)lroundf(3.0f * (1.0f - turn / 0.45f));                // toe lines: 3 px .. gone
+    for (int t = -1; t <= 1 && back > 0; t += 2) d.drawFastVLine(px + t * 2, py - pr + 1, back, SSD1306_BLACK);
+    if (turn > 0.3f) {
+        int bean = turn > 0.75f ? 2 : (turn > 0.55f ? 1 : 0);             // the big pad grows...
+        if (bean == 2) d.fillCircle(px, py + 2, 2, SSD1306_BLACK);
+        else if (bean == 1) d.fillRect(px - 1, py + 1, 3, 2, SSD1306_BLACK);
+        else d.drawPixel(px, py + 2, SSD1306_BLACK);
+        if (bean == 2) d.drawFastHLine(px - 3, py + 3, 7, SSD1306_BLACK);
+        int toe = turn > 0.6f ? 2 : 1;                                    // ...and the toe beans with it
+        for (int t = -1; t <= 1; t++) {
+            int tx = px + t * 3, ty = py - 2 - (t == 0 ? 1 : 0);
+            d.fillRect(tx, ty, toe, toe, SSD1306_BLACK);
+        }
+    }
+
+    // Sparkles beside the paw, twinkling
+    static const int8_t SPARK[3][2] = { { -40, 6 }, { -46, 22 }, { -38, 36 } };   // from cx
+    for (int i = 0; i < 3; i++) {
+        if (((frame / 4) + i) % 3 == 0) continue;
+        int sx = cx + SPARK[i][0], sy = SPARK[i][1], r = ((frame / 4) + i) % 3 == 1 ? 2 : 3;
+        d.drawFastHLine(sx - r, sy, 2 * r + 1, SSD1306_WHITE);
+        d.drawFastVLine(sx, sy - r, 2 * r + 1, SSD1306_WHITE);
+    }
+
+    // The temperature, large, in the free right part (x 78-127)
+    if (hasTemp) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%d", temp);
+        int size = strlen(buf) <= 2 ? 3 : 2;                              // -12 or 100 need the smaller type
+        int w = (int)strlen(buf) * 6 * size - size + 2 + 2 * size;        // digits, a gap and the degree sign
+        int x = 78 + (50 - w) / 2, y = 32 - 4 * size;
+        d.setTextColor(SSD1306_WHITE);
+        d.setTextSize(size);
+        d.setCursor(x, y);
+        d.print(buf);
+        int dx = x + (int)strlen(buf) * 6 * size - size + 2 + size;       // the degree sign: a small ring
+        d.drawCircle(dx, y + size, size, SSD1306_WHITE);
+        if (size == 3) d.drawCircle(dx, y + size, size - 1, SSD1306_WHITE);
+    }
+}
+
 // Render weekly matrix — full-screen 7-column AM/PM grid, first column is today
 void renderWeeklyMatrix(Adafruit_SSD1306 &display, const char weekAM[7], const char weekPM[7], uint8_t startDow, int bestDay,
                         bool nl) {

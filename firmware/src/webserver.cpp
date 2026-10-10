@@ -481,8 +481,9 @@ static const char index_html[] PROGMEM = R"HTML(
         // Screens: two lists of slots, each a drop-down with move and remove buttons
         const SCREENS = [
             ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
-            ['hours', 'Next hours'], ['clock', 'Clock'], ['village', 'Village with outfit'],
-            ['weather', 'Weather in pictures'], ['clothes', 'Clothes'], ['countdown', 'Countdown'], ['report', 'Weather report']
+            ['hours', 'Next hours'], ['rideHours', 'Ride hours'], ['clock', 'Clock'], ['village', 'Village with outfit'],
+            ['weather', 'Weather in pictures'], ['clothes', 'Clothes'], ['countdown', 'Countdown'], ['report', 'Weather report'],
+            ['cat', 'Lucky cat']
         ];
         const PRESETS = {
             rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },

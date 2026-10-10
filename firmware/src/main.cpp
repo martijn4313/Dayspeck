@@ -329,6 +329,8 @@ static const DemoScene DEMO_SCENES[] = {
     { SCREEN_COUNTDOWN,  5, RIDE_GOOD,    11, 10, 15,  0, WEATHER_CLEAR,  1, false, 2, false },   // confetti
     { SCREEN_REPORT,     5, RIDE_GOOD,    11, 30, 65,  0, WEATHER_WIND,   2, false, 0, true  },   // blows away
     { SCREEN_HOURS,      4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
+    { SCREEN_RIDE_HOURS, 4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
+    { SCREEN_CAT,        5, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
     { SCREEN_WEEK,       4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
     { SCREEN_CLOCK,      4, RIDE_GOOD,    11, 20, 30,  0, WEATHER_CLEAR,  2, false, 0, false },
 };
@@ -647,6 +649,31 @@ void renderClock() {
 
 
 /**
+ * Ride rating of the next hours: each hour rated on its own, the best 2 hour ride marked, and when to go
+ */
+void renderRideHours() {
+    const HourSlice* hours = nullptr;
+    time_t firstEpoch = 0;
+    size_t count = getUpcomingHours(hours, firstEpoch);
+    if (count > 8) count = 8;
+    char ratings[8];
+    for (size_t i = 0; i < count; i++) ratings[i] = getHourRating(hours[i]);
+    int leaveHour = 0;
+    int leave = state.timeSynced ? getBestLeave(leaveHour) : LEAVE_NONE;
+    int firstHour = localHourOf(firstEpoch);
+    int bestStart = leave == LEAVE_NOW ? 0 : leave == LEAVE_AT ? (leaveHour - firstHour + 24) % 24 : -1;
+    renderRideHoursView(display, ratings, count, firstHour, bestStart, leave, leaveHour, displayLanguage == "nl");
+}
+
+/**
+ * The lucky cat, with the current temperature
+ */
+void renderLuckyCat() {
+    WeatherData w = getCurrentWeather();
+    renderLuckyCatView(display, millis() / RAIN_FRAME_INTERVAL, kidsShownTemp(w.tempC), !isnan(w.tempC));
+}
+
+/**
  * Draw the hourly view from the stored forecast
  */
 void renderHourly() {
@@ -924,6 +951,8 @@ void render() {
         case SCREEN_HOURS:     renderHourly(); break;
         case SCREEN_REPORT:    renderReport(); break;
         case SCREEN_VILLAGE:   renderKidsVillage(); break;
+        case SCREEN_RIDE_HOURS: renderRideHours(); break;
+        case SCREEN_CAT:       renderLuckyCat(); break;
         default:
             renderDisplay();
             renderStatusMarks(display, rideShowsTomorrow(), wifiBars());
@@ -931,7 +960,8 @@ void render() {
     }
 
     // Status marks in the free top-left corner of the rider screens (the kids screens have no room for them)
-    bool riderScreen = screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_WEEK || screen == SCREEN_HOURS;
+    bool riderScreen = screen == SCREEN_RIDE || screen == SCREEN_RIDE_OTHER || screen == SCREEN_WEEK || screen == SCREEN_HOURS ||
+                       screen == SCREEN_RIDE_HOURS;
     if (riderScreen && state.weatherValid && state.weatherStale && !demo.active) {
         // Data is old (offline or the API keeps failing)
         display.setTextSize(1);
@@ -1405,6 +1435,8 @@ void loop() {
                 stopWindAnimation();
             }
             if (screen == SCREEN_WEATHER && kidsWeatherMoving) state.displayDirty = true;   // the time-lapse plays
+        } else if (screen == SCREEN_CAT) {
+            state.displayDirty = true;   // the paw beckons
         } else if (screen == SCREEN_COUNTDOWN) {
             KidsCountdown countdown = kidsCountdownNow();
             if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself

@@ -370,6 +370,11 @@ int getBestLeave(int& hourLocal) {
     return best == 0 ? LEAVE_NOW : LEAVE_AT;
 }
 
+char getHourRating(const HourSlice& h) {
+    if (!h.valid) return RIDE_UNKNOWN;
+    return rateRide(thresholds(), h.rainTenthMm / 10.0f, h.gustKmh, h.tempC, h.rainProb == 255 ? NAN : h.rainProb);
+}
+
 // Get current weather accessor
 WeatherData getCurrentWeather() {
     if (weatherDemo) return weatherDemo->current;

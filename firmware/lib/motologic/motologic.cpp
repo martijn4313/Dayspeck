@@ -680,7 +680,8 @@ size_t fitReport(const WeatherReport& r, char (*lines)[REPORT_COLS + 1], size_t 
 }
 
 static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
-    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report", "village"
+    "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report", "village",
+    "rideHours", "cat"
 };
 
 const char* screenName(int id) {

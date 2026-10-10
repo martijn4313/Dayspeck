@@ -321,7 +321,24 @@ static void reports() {
     for (int i = 0; i < 12; i++) frame("report-wind", f++);
 }
 
+// The ride hours: a dry afternoon (go now), a wet morning that clears up (go at 12:00), a day of rain
+static void rideHours() {
+    const char now[8] = { RIDE_GOOD, RIDE_GOOD, RIDE_GOOD, RIDE_CAUTION, RIDE_DONT, RIDE_DONT, RIDE_CAUTION, RIDE_GOOD };
+    const char later[8] = { RIDE_DONT, RIDE_DONT, RIDE_CAUTION, RIDE_GOOD, RIDE_GOOD, RIDE_GOOD, RIDE_CAUTION, RIDE_CAUTION };
+    const char none[8] = { RIDE_DONT, RIDE_DONT, RIDE_DONT, RIDE_DONT, RIDE_DONT, RIDE_CAUTION, RIDE_DONT, RIDE_DONT };
+    renderRideHoursView(d, now, 8, 13, 0, LEAVE_NOW, 13);        frame("ride-hours", 0);
+    renderRideHoursView(d, later, 8, 9, 3, LEAVE_AT, 12);        frame("ride-hours", 1);
+    renderRideHoursView(d, none, 8, 15, -1, LEAVE_NO_RIDE, 0);   frame("ride-hours", 2);
+}
+
+// The lucky cat: one beckon of the paw (16 frames), with 11 degrees
+static void luckyCat() {
+    for (int f = 0; f < 16; f++) { renderLuckyCatView(d, f, 11, true); frame("lucky-cat", f); }
+}
+
 int main() {
+    rideHours();
+    luckyCat();
     kidsScreens();
     countdowns();
     villages();

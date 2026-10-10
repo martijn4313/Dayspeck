@@ -18,12 +18,14 @@ rebuilt or reflashed.
 | `rideOther` | The ride rating of the other day |
 | `week` | The [7-day ride grid](rider.md#the-week-and-the-next-hours), morning and evening |
 | `hours` | The [next hours](rider.md#the-week-and-the-next-hours): temperature, rain, gusts, the best time to leave |
+| `rideHours` | The [ride rating of the next hours](rider.md#ride-hours) and when to go |
 | `village` | [What to wear now](kids.md#village), big, next to the animated village |
 | `weather` | [The weather in pictures](kids.md) for the next three parts of the day |
 | `clothes` | [What to wear](kids.md) for the next three parts of the day |
 | `countdown` | [The sleeps](kids.md#countdown) to a birthday or holiday (skipped while none is near) |
 | `report` | [The weather report](report.md): the day in a few short sentences |
 | `clock` | [The clock](#the-clock) (skipped until the time is known) |
+| `cat` | [The lucky cat](#the-lucky-cat), beckoning, with the temperature |
 
 The screens with the village (`ride`, `rideOther` and `village`) have the rain, snow, gusts and autumn
 leaves; the leaves also blow across `weather` and `clothes`.
@@ -96,12 +98,20 @@ it.
 
 ![The week grid with the best day highlighted, the next hours and the clock](images/rider-views.png){ .center }
 
+## The lucky cat
+
+A maneki-neko, the beckoning cat of good fortune, with a gold coin in one paw. The other paw beckons about
+once a second: it tips towards you, turning its toe beans to you, and back up, while little sparkles
+twinkle. The temperature stands beside it.
+
+![The lucky cat beckoning, with the temperature](images/lucky-cat.gif){ .center }
+
 ## Demo
 
 *Play demo* in the web UI (under *Display*) shows about a minute and a half of every screen and animation with
 made-up weather: the ride screen in sun, rain, a windless downpour, driving rain in a gale, snow and a stormy
 autumn night; the village in drizzle, in slanting rain and with leaves; the weather and clothes screens; a birthday countdown and Christmas day with confetti; the weather report blowing away;
-then the next hours, the week grid and the clock. With *Repeat* it starts over until you press *Stop demo*
+then the next hours, the ride hours, the lucky cat, the week grid and the clock. With *Repeat* it starts over until you press *Stop demo*
 or touch the sensor (any touch stops it).
 
 The demo does not change your settings or the real forecast, and afterwards the device goes back to its home
