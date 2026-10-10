@@ -733,7 +733,7 @@ static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const 
 // Render the next hours as a strip of columns. A label column on the left names the rows:
 // h (hour), degree C, mm (rain amount, solid bar), % (chance of rain, dotted line), kmh (gusts).
 void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t count, int firstHour,
-                      bool hasLeave, int leaveHour, bool leaveNow, int updHour, int updMinute) {
+                      int leave, int leaveHour, int updHour, int updMinute, bool nl) {
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -799,13 +799,13 @@ void renderHourlyView(Adafruit_SSD1306 &display, const HourSlice* hours, size_t 
 
     // Footer: best time to leave, time of the last update
     display.setCursor(0, 57);
-    if (hasLeave) {
-        if (leaveNow) {
-            display.print("Leave now");
-        } else {
-            snprintf(buf, sizeof(buf), "Best %02d:00", leaveHour % 24);
-            display.print(buf);
-        }
+    if (leave == LEAVE_NOW) {
+        display.print(nl ? "Vertrek nu" : "Leave now");
+    } else if (leave == LEAVE_AT) {
+        snprintf(buf, sizeof(buf), nl ? "Beste %02d:00" : "Best %02d:00", leaveHour % 24);
+        display.print(buf);
+    } else if (leave == LEAVE_NO_RIDE) {
+        display.print(nl ? "Niet rijden" : "No good ride");   // every window ahead is "don't ride"
     }
     if (updHour >= 0) {
         snprintf(buf, sizeof(buf), "upd %02d:%02d", updHour % 24, updMinute % 60);

@@ -348,12 +348,12 @@ size_t getUpcomingHours(const HourSlice*& first, time_t& firstEpoch) {
     return hourlyCount - offset;
 }
 
-bool getBestLeave(int& hourLocal, bool& startNow) {
+int getBestLeave(int& hourLocal) {
     const HourSlice* first;
     time_t firstEpoch;
     size_t n = getUpcomingHours(first, firstEpoch);
     const size_t rideHours = 2;
-    if (n < rideHours) return false;
+    if (n < rideHours) return LEAVE_NONE;
 
     // Only daytime starts (06:00-20:00 local): hide the hours outside by marking them invalid
     HourSlice local[HOURLY_KEEP];
@@ -362,11 +362,12 @@ bool getBestLeave(int& hourLocal, bool& startNow) {
         int h = localHourOf(firstEpoch + (time_t)i * 3600);
         if (h < 6 || h + (int)rideHours > 22) local[i].valid = false;
     }
-    int best = bestStartHour(local, n, rideHours, 0, n < 12 ? n : 12);
-    if (best < 0) return false;
+    size_t to = n < 12 ? n : 12;
+    RideThresholds t = thresholds();
+    int best = bestStartHour(local, n, rideHours, 0, to, &t);
+    if (best < 0) return bestStartHour(local, n, rideHours, 0, to) >= 0 ? LEAVE_NO_RIDE : LEAVE_NONE;
     hourLocal = localHourOf(firstEpoch + (time_t)best * 3600);
-    startNow = (best == 0);
-    return true;
+    return best == 0 ? LEAVE_NOW : LEAVE_AT;
 }
 
 // Get current weather accessor

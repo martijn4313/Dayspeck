@@ -656,8 +656,7 @@ void renderHourly() {
     if (count > 6) count = 6;
 
     int leaveHour = 0;
-    bool leaveNow = false;
-    bool hasLeave = state.timeSynced && getBestLeave(leaveHour, leaveNow);
+    int leave = state.timeSynced ? getBestLeave(leaveHour) : LEAVE_NONE;
 
     int updHour = -1, updMin = 0;
     if (lastUpdateEpoch > 0) {
@@ -665,7 +664,8 @@ void renderHourly() {
         updHour = (int)((local / 3600) % 24);
         updMin = (int)((local / 60) % 60);
     }
-    renderHourlyView(display, hours, count, localHourOf(firstEpoch), hasLeave, leaveHour, leaveNow, updHour, updMin);
+    renderHourlyView(display, hours, count, localHourOf(firstEpoch), leave, leaveHour, updHour, updMin,
+                     displayLanguage == "nl");
 }
 
 
