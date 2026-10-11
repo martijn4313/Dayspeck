@@ -48,6 +48,10 @@ about a minute and a half. See the [ride screens](https://martijn4313.github.io/
 [picture screens](https://martijn4313.github.io/Dayspeck/kids/) and
 [weather report](https://martijn4313.github.io/Dayspeck/report/) in the manual.
 
+The weather report is generated on the device in English or Dutch. For example:
+
+![English weather report: cloudy with rain until 15:00](docs/images/report.png)
+
 ## Hardware
 
 An ESP-01 (ESP8266, 1 MB flash), an SSD1306 128×64 I²C OLED, a 3.3 V supply and, optionally, a TTP223 touch
