@@ -32,16 +32,17 @@ extra_css:
 
 nav:
   - Home: index.md
+  - Getting started:
+      - Hardware: hardware.md
+      - Build and flash: build.md
+      - First boot: first-boot.md
   - Using it:
       - Your own display: screens.md
       - Ride screens: rider.md
       - How the ride rating works: ride-rating.md
       - Picture screens: kids.md
       - Weather report: report.md
-  - Setting up:
-      - Hardware: hardware.md
-      - Build and flash: build.md
-      - First boot: first-boot.md
+  - Reference:
       - Web UI: web-ui.md
       - Configuration: configuration.md
   - Maintaining:
