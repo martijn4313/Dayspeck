@@ -44,7 +44,7 @@ animation in a minute.
 
 ## Where to start
 
-1. Check the [hardware](hardware.md) and wire it up.
+1. Pick your [hardware](hardware.md) (a bare ESP-01 or a ready-made weather clock kit) and wire it up.
 2. [Build and flash](build.md) the firmware.
 3. Follow the [first boot](first-boot.md) steps to connect it to your WiFi.
 4. Pick your screens under [Your own display](screens.md) and tune the rest in the [web UI](web-ui.md).

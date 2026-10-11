@@ -26,8 +26,9 @@ every screen and animation in a minute and a half.
 ## Hardware
 
 An ESP-01 (ESP8266, 1 MB flash), an SSD1306 128×64 I²C OLED, a 3.3 V supply and, optionally, a TTP223 touch
-module or a push button. Without a button the screens can cycle by themselves. Wiring and other boards:
-[hardware](https://martijn4313.github.io/Dayspeck/hardware/).
+module or a push button. Without a button the screens can cycle by themselves. The HU-061 weather clock kit
+already has a switch on the RX pin; a kit without a switch can get a touch sensor. Details, wiring and
+other boards: [hardware](https://martijn4313.github.io/Dayspeck/hardware/).
 
 ## Quick start
 
