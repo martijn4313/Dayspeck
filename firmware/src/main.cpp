@@ -1092,10 +1092,14 @@ void onWifiConnected() {
     }
 
     if (!state.mdnsStarted) {
-        MDNS.begin(deviceName.c_str());   // http://<deviceName>.local
-        logMessage(("mDNS started: " + deviceName + ".local").c_str());
-        MDNS.addService("http", "tcp", 80);
-        state.mdnsStarted = true;
+        // http://<deviceName>.local; on failure it is tried again with the next connection
+        if (MDNS.begin(deviceName.c_str())) {
+            MDNS.addService("http", "tcp", 80);
+            state.mdnsStarted = true;
+            logMessage(("mDNS started: " + deviceName + ".local").c_str());
+        } else {
+            logMessage(("mDNS failed to start for " + deviceName + ".local").c_str());
+        }
     }
 
     // Pick the location for this network

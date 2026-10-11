@@ -109,7 +109,7 @@ static const char index_html[] PROGMEM = R"HTML(
         <span class="label">Signal Strength:</span> <span id="wifiSignal"></span><br>
         <span class="label">Address:</span> <a id="hostLink" href="#"></a><br>
         <form id="hostnameForm">
-            <span class="label">Device name:</span> <input name="hostname" type="text" maxlength="24" pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" required> <small>.local; restarts</small><br>
+            <label class="label" for="hostnameInput">Device name:</label> <input id="hostnameInput" name="hostname" type="text" maxlength="24" pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" required> <small>.local; restarts</small><br>
             <button type="submit">Rename</button>
         </form>
         <button id="scanBtn">Scan Networks</button>
