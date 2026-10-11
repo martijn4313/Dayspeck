@@ -2,26 +2,55 @@
 
 <p align="center"><img src="docs/images/hero.png" alt="Four Dayspeck screens: the ride rating with its animated village, the outfit for now next to the village, the weather of the day in pictures, and the weather report in words" width="640"></p>
 
-An open-source weather display for a bedside table, a hallway or a kitchen wall, on an ESP8266 (ESP-01)
-with a 0.96" 128×64 SSD1306 I²C OLED and the free Open-Meteo forecast. You put it together like building blocks: pick from ten screens, put them in the order
-you like and choose what a tap or a long press shows, all in the device's web page. One firmware, no
-rebuilding.
+An open-source weather display for a bedside table, a hallway or a kitchen wall, built for an ESP8266 (ESP-01)
+with a 0.96" 128×64 SSD1306 I²C OLED and the free Open-Meteo forecast. Dayspeck is not a fixed-purpose
+weather clock: one firmware combines practical weather tools, playful picture screens and lively animations,
+and you choose the mix that suits your home.
+
+Make the display your own in its web page: choose up to six screens for taps and six for long presses, arrange
+them in any order, and put your favourite in the home slot. Set a screen to return home after a while, or cycle
+through your choices automatically—even without a button. Change the setup whenever you like; no rebuilding
+or reflashing.
 
 **📖 Manual: <https://martijn4313.github.io/Dayspeck/>**
 
-## What it can show
+## One display, your combination
 
-- **Ride rating:** *can I ride today?* A check mark, exclamation mark or cross next to an animated village,
-  for today or tomorrow, plus a 7-day grid and the next hours with the best time to leave.
-- **Picture screens:** *what do I wear today?* Outfits, weather pictures and one temperature for the
-  morning, afternoon and dinner time, and a countdown in sleeps to birthdays and holidays. No words, so young
-  children can use them.
-- **Weather report:** the day in a few short sentences, in English or Dutch, written on the device by fixed
-  rules.
-- **Clock.**
+| Screen | At a glance |
+|--------|-------------|
+| **Ride rating** | *Can I ride today?* A ✓ / ! / ✗ rating with an animated village, today or tomorrow, a 7-day ride grid, and the best time to leave |
+| **Next hours and ride hours** | See rain, temperature and gusts coming up, compare the next hours, and find a good time to ride |
+| **Picture screens** | Weather and what to wear for the day, shown in pictures and temperatures—no reading needed. Includes an animated village, a time-lapse of the day's weather, and countdowns to birthdays and holidays |
+| **Weather report** | A few concise sentences in English or Dutch, composed on the device from forecast rules, with warnings for frost, strong gusts and heavy rain |
+| **Clock and lucky cat** | The time and date, or a beckoning cat with the temperature |
 
-The village comes alive with the weather: rain, snow, gusts, autumn leaves. A demo in the web page shows
-every screen and animation in a minute and a half.
+Mix screens for the people and place:
+
+- **Rider's bedside:** ride rating at home; a tap switches between today and tomorrow, and a long press opens the week, next hours and clock.
+- **Family hallway:** what to wear now at home; tap through the weather and clothes, with a long press for the grown-ups' weather report.
+- **Button-free wall display:** automatically cycle through the weather report, next hours and clock.
+
+The screen lists, tap and long-press behavior, return-to-home timer and automatic cycling are all configurable in the [web UI](https://martijn4313.github.io/Dayspeck/web-ui/). Start from a preset or make your own combination. See [Your own display](https://martijn4313.github.io/Dayspeck/screens/) for details.
+
+## Weather that moves
+
+The animations respond to the forecast, not just a timer: rain falls and splashes, snow drifts, gusts sweep
+through the village, and autumn leaves blow across the scenes. The picture screen plays a seamless time-lapse
+of changing hourly weather; on windy days the report blows away letter by letter. A beckoning lucky cat is
+animated too.
+
+| Ride screen in wind | Rain in the forecast | Weather time-lapse |
+|---------------------|----------------------|--------------------|
+| ![Animated ride screen as gusts and autumn leaves blow across the village](docs/images/rider-wind.gif) | ![Rain falling and splashing on the animated weather screen](docs/images/kids-rain.gif) | ![Weather pictures changing through the hours in a time-lapse](docs/images/kids-timelapse.gif) |
+
+Want to see more? *Play demo* in the web UI runs through every screen and animation with made-up weather in
+about a minute and a half. See the [ride screens](https://martijn4313.github.io/Dayspeck/rider/),
+[picture screens](https://martijn4313.github.io/Dayspeck/kids/) and
+[weather report](https://martijn4313.github.io/Dayspeck/report/) in the manual.
+
+The weather report is generated on the device in English or Dutch. For example:
+
+![English weather report: cloudy with rain until 15:00](docs/images/report.png)
 
 ## Hardware
 
