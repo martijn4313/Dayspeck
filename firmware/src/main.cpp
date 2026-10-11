@@ -57,6 +57,7 @@ ScreenList screensHold = { { SCREEN_WEEK, SCREEN_HOURS, SCREEN_CLOCK }, 3 };
 int  screensReturnSeconds = DEFAULT_SCREENS_RETURN_SEC;
 String displayLanguage = "en";
 String locationName;
+String deviceName;   // set in setup(): from config.json, or a new dayspeck-xxxx
 
 // WiFi configuration (loaded from config.json)
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
@@ -145,6 +146,11 @@ void loadConfig() {
     }
     if (doc["manualLocation"].is<bool>()) manualLocation = doc["manualLocation"];
     if (doc["locationName"].is<String>()) locationName = doc["locationName"].as<String>();
+    if (doc["hostname"].is<String>()) {
+        String name = doc["hostname"].as<String>();
+        name.toLowerCase();
+        if (hostnameValid(name.c_str())) deviceName = name;
+    }
 
     // Config schema version (see CONFIG_VERSION in config.h)
     int version = doc["version"] | 0;
@@ -1086,7 +1092,8 @@ void onWifiConnected() {
     }
 
     if (!state.mdnsStarted) {
-        MDNS.begin("dayspeck");
+        MDNS.begin(deviceName.c_str());   // http://<deviceName>.local
+        logMessage(("mDNS started: " + deviceName + ".local").c_str());
         MDNS.addService("http", "tcp", 80);
         state.mdnsStarted = true;
     }
@@ -1294,6 +1301,15 @@ void setup() {
     bool restarted = resetReason != REASON_DEFAULT_RST && resetReason != REASON_EXT_SYS_RST;
     if (restarted) WiFi.mode(WIFI_OFF);
     WiFi.setAutoReconnect(true);
+    // Every device needs its own network name (with several on one network, a shared dayspeck.local would
+    // reach a random one): without one in config.json it gets dayspeck-xxxx, random and kept from then on
+    if (deviceName.length() == 0) {
+        char name[16];
+        snprintf(name, sizeof(name), "dayspeck-%04x", (unsigned int)((ESP.random() ^ micros()) & 0xFFFF));
+        deviceName = name;
+        saveHostname(deviceName);
+    }
+    WiFi.hostname(deviceName);       // the name the router lists
     WiFi.mode(WIFI_STA);
     if (wifiSsid.length() > 0) {
         WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());

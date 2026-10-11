@@ -88,6 +88,7 @@ extern ScreenList screensTap;     // config.json display.screens.tap: a tap step
 extern ScreenList screensHold;    // display.screens.hold: a long press steps through these (may be empty)
 extern int  screensReturnSeconds; // display.screens.returnSeconds: back to the home screen after; 0 = never
 extern String locationName;       // name of the manually chosen place (web UI search), may be empty
+extern String deviceName;         // network name (DHCP, mDNS: http://<deviceName>.local), see hostnameValid
 extern String displayLanguage;    // "en" (default) or "nl"
 
 // Demo mode: about a minute and a half of all screens and animations with made-up weather (once, or until a touch or

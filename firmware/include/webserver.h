@@ -10,6 +10,8 @@ void initWebServer();
 // Path of the OTA upload endpoint (contains the per-boot token); valid after initWebServer()
 String webOtaPath();
 void handleWebServer();
+// Store the device's network name in config.json (key "hostname"); false when it could not be saved
+bool saveHostname(const String& name);
 
 extern ESP8266WebServer server;
 

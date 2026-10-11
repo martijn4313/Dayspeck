@@ -848,6 +848,17 @@ bool intervalElapsed(uint32_t now, uint32_t last, uint32_t interval) {
     return (now - last) >= interval;   // unsigned subtraction is correct across the 49 day rollover
 }
 
+bool hostnameValid(const char* name) {
+    if (!name) return false;
+    size_t len = strlen(name);
+    if (len == 0 || len > HOSTNAME_MAX_LEN || name[0] == '-' || name[len - 1] == '-') return false;
+    for (size_t i = 0; i < len; i++) {
+        char c = name[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) return false;
+    }
+    return true;
+}
+
 bool parseVersion(const char* text, uint16_t out[3]) {
     if (text == nullptr) return false;
     if (*text == 'v') text++;

@@ -770,6 +770,21 @@ void test_kids_weather() {
     TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(61, 50, 40));   // but not rain
 }
 
+void test_hostname_valid() {
+    TEST_ASSERT_TRUE(hostnameValid("dayspeck-3f2a"));
+    TEST_ASSERT_TRUE(hostnameValid("kitchen"));
+    TEST_ASSERT_TRUE(hostnameValid("a"));
+    TEST_ASSERT_TRUE(hostnameValid("abcdefghijklmnopqrstuvwx"));     // 24
+    TEST_ASSERT_FALSE(hostnameValid("abcdefghijklmnopqrstuvwxy"));   // 25
+    TEST_ASSERT_FALSE(hostnameValid(""));
+    TEST_ASSERT_FALSE(hostnameValid(nullptr));
+    TEST_ASSERT_FALSE(hostnameValid("-kitchen"));
+    TEST_ASSERT_FALSE(hostnameValid("kitchen-"));
+    TEST_ASSERT_FALSE(hostnameValid("Kitchen"));                    // upper case: the caller lowers it first
+    TEST_ASSERT_FALSE(hostnameValid("my kitchen"));
+    TEST_ASSERT_FALSE(hostnameValid("dayspeck.local"));
+}
+
 void test_parse_version() {
     uint16_t v[3];
     TEST_ASSERT_TRUE(parseVersion("0.2.0", v));
@@ -1136,6 +1151,7 @@ int main(int, char**) {
     RUN_TEST(test_night_detection_rolls_forward_by_days);
     RUN_TEST(test_day_of_week);
     RUN_TEST(test_interval_elapsed);
+    RUN_TEST(test_hostname_valid);
     RUN_TEST(test_parse_version);
     RUN_TEST(test_newer_version);
     RUN_TEST(test_hex_to_bytes);
