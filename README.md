@@ -3,9 +3,10 @@
 <p align="center"><img src="docs/images/hero.png" alt="Four Dayspeck screens: the ride rating with its animated village, the outfit for now next to the village, the weather of the day in pictures, and the weather report in words" width="640"></p>
 
 An open-source weather display for a bedside table, a hallway or a kitchen wall, on an ESP8266 (ESP-01)
-with a 0.96" 128×64 SSD1306 I²C OLED and the free Open-Meteo forecast. You put it together like building blocks: pick from ten screens, put them in the order
-you like and choose what a tap or a long press shows, all in the device's web page. One firmware, no
-rebuilding.
+with a 0.96" 128×64 SSD1306 I²C OLED and the free Open-Meteo forecast. Unlike a display with a fixed set of
+views, Dayspeck lets you combine screens in your own slots: choose up to six for taps and six for long
+presses, put them in the order you like, and make the first tap slot your home screen. Set it all in the
+device's web page. One firmware, no rebuilding.
 
 **📖 Manual: <https://martijn4313.github.io/Dayspeck/>**
 
@@ -22,6 +23,13 @@ rebuilding.
 
 The village comes alive with the weather: rain, snow, gusts, autumn leaves. A demo in the web page shows
 every screen and animation in a minute and a half.
+
+## Weather report in English or Dutch
+
+The report turns the forecast into a few short sentences, written on the device by fixed rules. Here is an
+English example from the [manual](https://martijn4313.github.io/Dayspeck/report/):
+
+![English weather report: cloudy with rain until 15:00](docs/images/report.png)
 
 ## Hardware
 
