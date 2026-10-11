@@ -13,6 +13,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `locationName` | name of the place chosen in the web UI (display only) |
 | `manualLocation` | `true` once a location was set in the web UI (then network locations are ignored) |
 | `wifi.ssid`, `wifi.password` | WiFi credentials (the password is never sent back to the browser) |
+| `hostname` | the device's network name, `http://<hostname>.local` (1-24 lower-case letters, digits, hyphens); missing: a new `dayspeck-xxxx` |
 | `auth.password` | admin and setup-network password, 8–63 characters (set it in the web UI) |
 | `thresholds.maxRainMm` | rain over a ride window above which you should not ride |
 | `thresholds.maxWindKmh` | gust speed above which you should not ride |

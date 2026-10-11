@@ -43,7 +43,8 @@ STATUS = {
                 "screens": {"tap": ["village", "weather", "clothes", "countdown"], "hold": ["ride", "week", "report"],
                             "returnSeconds": 30}},
     "current": {"tempC": 14.2, "windKmh": 18.0, "precipMm": 0.0},
-    "wifi": {"connected": True, "signalStrength": -58, "ssid": "HomeNet", "passwordSet": True},
+    "wifi": {"connected": True, "signalStrength": -58, "ssid": "HomeNet", "passwordSet": True,
+             "hostname": "dayspeck-3f2a"},
     "weatherApi": {"url": "http://api.open-meteo.com/v1/forecast", "units": "metric", "debug": False},
     "ssidLocations": [{"ssid": "OfficeWiFi", "lat": 51.9244, "lon": 4.4777}],
     "debug": {"weatherValid": True, "weatherAge": 12, "mdnsStarted": True},
@@ -51,7 +52,7 @@ STATUS = {
 SCAN = {"networks": [{"ssid": "HomeNet", "signalStrength": -58}, {"ssid": "OfficeWiFi", "signalStrength": -71},
                      {"ssid": "Neighbour-2G", "signalStrength": -84}]}
 LOGS = {"logs": ["[00:00:03] WiFi connected to HomeNet, 192.168.1.42",
-                 "[00:00:04] mDNS started: dayspeck.local",
+                 "[00:00:04] mDNS started: dayspeck-3f2a.local",
                  "[00:00:06] Time synced (NTP)",
                  "[00:00:09] Weather updated: 14.2 C, wind 18 km/h",
                  "[00:15:00] Weather updated: 14.5 C, wind 17 km/h"]}

@@ -107,6 +107,11 @@ static const char index_html[] PROGMEM = R"HTML(
         <h3>WiFi Status</h3>
         <span class="label">Connected:</span> <span id="wifiConnected"></span><br>
         <span class="label">Signal Strength:</span> <span id="wifiSignal"></span><br>
+        <span class="label">Address:</span> <a id="hostLink" href="#"></a><br>
+        <form id="hostnameForm">
+            <label class="label" for="hostnameInput">Device name:</label> <input id="hostnameInput" name="hostname" type="text" maxlength="24" pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?" required> <small>.local; restarts</small><br>
+            <button type="submit">Rename</button>
+        </form>
         <button id="scanBtn">Scan Networks</button>
         <div id="networksList"></div>
     </div>
@@ -438,6 +443,10 @@ static const char index_html[] PROGMEM = R"HTML(
 
                     document.getElementById('wifiConnected').textContent = s.wifi.connected ? 'Yes' : 'No';
                     document.getElementById('wifiSignal').textContent = s.wifi.signalStrength + ' dBm';
+                    const host = document.getElementById('hostLink');
+                    host.textContent = 'http://' + s.wifi.hostname + '.local';
+                    host.href = host.textContent;
+                    document.forms.hostnameForm.hostname.value = s.wifi.hostname;
                     document.forms.wifiForm.ssid.value = s.wifi.ssid;
                     document.forms.wifiForm.password.placeholder = s.wifi.passwordSet ? '(unchanged)' : '(none)';
 
@@ -546,6 +555,7 @@ static const char index_html[] PROGMEM = R"HTML(
         submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
         submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
         submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
+        submitForm('hostnameForm', '/api/hostname', 'Renamed');
         submitForm('locationForm', '/api/location', 'Location set', () => loadStatus(false));
         submitForm('ssidLocationForm', '/api/ssidlocation', 'Location added', () => {
             document.getElementById('ssidLocationForm').reset();
@@ -920,6 +930,7 @@ static void handleApiStatus() {
     doc["wifi"]["signalStrength"] = state.wifiSignal;
     doc["wifi"]["ssid"] = wifiSsid;
     doc["wifi"]["passwordSet"] = wifiPassword.length() > 0;   // the password itself is never sent
+    doc["wifi"]["hostname"] = deviceName;
 
     doc["weatherApi"]["url"] = weatherApiUrl;
     doc["weatherApi"]["units"] = weatherUnits;
@@ -1310,7 +1321,7 @@ static void handleApiWifiConfig() {
         state.staRetryStartMs = now ? now : now - 1;   // give this attempt a full window, then go idle again
     }
 
-    sendMessage(200, "WiFi settings saved, connecting...");
+    sendMessage(200, ("WiFi settings saved, connecting... Then open http://" + deviceName + ".local").c_str());
 }
 
 static void handleApiWeatherConfig() {
@@ -1432,6 +1443,29 @@ static void handleApiPassword() {
     sendMessage(200, "Password changed. The device restarts now; sign in again with the new password.");
 }
 
+bool saveHostname(const String& name) {
+    return updateConfig([&](JsonDocument& doc) { doc["hostname"] = name; });
+}
+
+// Rename the device on the network; it restarts to announce the new name
+static void handleApiHostname() {
+    String name = server.arg("hostname");
+    name.trim();
+    name.toLowerCase();
+    if (name.endsWith(".local")) name.remove(name.length() - 6);
+    if (!hostnameValid(name.c_str())) {
+        sendMessage(400, "A device name is 1-24 letters, digits or hyphens (not at the start or end)");
+        return;
+    }
+    if (!saveHostname(name)) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    deviceName = name;
+    rebootAtMs = (millis() + 1500) | 1;
+    sendMessage(200, ("Renamed. The device restarts now; then open http://" + name + ".local").c_str());
+}
+
 // Pull update status for the Firmware Update card
 static void handleApiOta() {
     JsonDocument doc;
@@ -1543,6 +1577,7 @@ void initWebServer() {
     server.on("/api/ssidlocation", guardedPost(handleApiSsidLocation));
     server.on("/api/ssidlocation/delete", guardedPost(handleApiSsidLocationDelete));
     server.on("/api/password", guardedPost(handleApiPassword));
+    server.on("/api/hostname", guardedPost(handleApiHostname));
     server.on("/api/ota/check", guardedPost(handleApiOtaCheck));
     server.on("/api/ota/install", guardedPost(handleApiOtaInstall));
     server.on("/api/ota/settings", guardedPost(handleApiOtaSettings));

@@ -392,6 +392,11 @@ bool intervalElapsed(uint32_t now, uint32_t last, uint32_t interval);
 // Anything else, including a suffix such as "-rc1", is rejected.
 bool parseVersion(const char* text, uint16_t out[3]);
 
+// The device's network name (DHCP and mDNS: http://<name>.local): 1-24 characters, lower-case letters,
+// digits and hyphens, not starting or ending with a hyphen
+#define HOSTNAME_MAX_LEN 24
+bool hostnameValid(const char* name);
+
 // True when `candidate` is a strictly newer version than `current`; false if either is invalid
 bool isNewerVersion(const char* candidate, const char* current);
 

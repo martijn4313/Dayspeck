@@ -5,7 +5,8 @@ description: "The Dayspeck web UI: location, WiFi, screens, display, ride limits
 # Web UI
 
 Everything about the device is set in its web page: location, WiFi, which screens it shows, the display
-options, the limits behind the ride rating and the outfits, and firmware updates. Open `http://dayspeck.local` (or the device's IP address) in a browser
+options, the limits behind the ride rating and the outfits, and firmware updates. Open
+`http://dayspeck-xxxx.local` (the device's own name, see *WiFi Status* below) or its IP address in a browser
 on the same network.
 
 The page asks for a login: user **`admin`** and your admin password. Until you set your own, the
@@ -45,8 +46,11 @@ it worked. The settings are stored in [`config.json`](configuration.md) on the d
 ![WiFi status with a scanned network list, the WiFi configuration form and the SSID location settings](images/webui-wifi.png){ .center }
 
 - **WiFi Status** shows whether the device is connected and the signal strength in dBm (closer to 0 is
-  better; around -70 or lower is weak). *Scan Networks* lists the networks in range. Pressing one fills
-  in the network name below.
+  better; around -70 or lower is weak), and its address on your network, `http://<device name>.local`.
+  Every device has its own name, so several can share one network: `dayspeck-` and four random characters
+  (made once and kept), or a name of your own (*Rename*: 1-24 lower-case letters, digits or hyphens, such
+  as `kitchen`; the device restarts to announce it). The router's device list shows the same name.
+  *Scan Networks* lists the networks in range. Pressing one fills in the network name below.
 - **WiFi Configuration**: the network name (1-32 characters) and its password (8-63 characters, or empty
   for an open network). The saved password is never sent back to the browser, so the field shows
   `(unchanged)`; leave it empty to keep the current one. *Save WiFi Settings* makes the device connect
@@ -149,7 +153,7 @@ you sign in again with the new password.
 ![Debug info with the verbose log open, and the firmware update card offering version 0.3.0](images/webui-update.png){ .center }
 
 - **Debug Info** shows the firmware version, whether the weather data is valid, how old it is and
-  whether mDNS (the `dayspeck.local` name) started. *Show Verbose Logs* prints the device log in
+  whether mDNS (the `.local` name) started. *Show Verbose Logs* prints the device log in
   the page. The device has no serial output because the touch sensor uses the RX pin, so this is
   where to look when something does not work.
 - **Firmware Update**: *Check now* asks the update server for the latest release. When a newer one is
