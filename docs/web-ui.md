@@ -68,6 +68,8 @@ set with *Set Location* takes precedence.
 
 ## Ride thresholds, screens, display, clothing and countdowns
 
+Every setting here is stored in `config.json`; the [configuration reference](configuration.md) lists the exact keys.
+
 ![The ride thresholds, screens, display, clothing and countdown cards](images/webui-settings.png){ .center }
 
 **Ride Thresholds** are the limits behind the [ride rating](ride-rating.md). All values are metric. They
@@ -91,7 +93,7 @@ only matter when a ride screen is in use.
 | Back to home after (s) | other screens go back to the home screen after this many seconds; 0 = never |
 | Cycle screens every (s) | the device steps through the tap list by itself, this many seconds each; 0 = off (see [without a touch sensor](screens.md#without-a-touch-sensor)) |
 
-**Display** (see also [screen power](screens.md#screen-power)):
+**Display** (see also [screen power](#screen-power)):
 
 | Field | Meaning |
 |-------|---------|
@@ -106,8 +108,7 @@ only matter when a ride screen is in use.
 
 Dimming and sleeping need the clock to be synced, which happens after the first weather update.
 
-**Demo**: *Play demo* shows about a minute and a half of every screen and animation with made-up weather; with
-*Repeat* it starts over until *Stop demo* or a touch. See [Demo](screens.md#demo).
+**Demo**: see [Demo](#demo) below.
 
 **Clothing**: the limits of the outfits on the [picture screens](kids.md), in °C, and the wind limit
 for the wind picture and the [weather report](report.md#blown-away). The card shows while the village,
@@ -141,6 +142,26 @@ to cold. A child who feels the cold sooner can get the winter coat from 8 °C in
 **Weather API Config**: the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
 imperial only changes the temperature on the display) and *Verbose Debug*, which logs extra detail.
 The address must start with `http://`, as the device cannot do TLS.
+
+## Screen power
+
+The panel can be dimmed at night (to *Night brightness*, 10 % by default; a touch gives full brightness for
+30 s), switched off after some idle minutes at night, and switched off during fixed quiet hours (for example
+23 to 6). A touch wakes it: the first touch only wakes it, and it then stays on for 30 s, even in quiet
+hours. *Always sleep* keeps it off until a touch. All of this is under *Display* in the web UI and needs the
+clock to be synced, which happens after the first weather update.
+
+## Demo
+
+*Play demo* in the web UI (under *Display*) shows about a minute and a half of every screen and animation with
+made-up weather: the ride screen in sun, rain, a windless downpour, driving rain in a gale, snow and a stormy
+autumn night; the village in drizzle, in slanting rain and with leaves; the weather and clothes screens; a birthday countdown and Christmas day with confetti; the weather report blowing away;
+then the next hours, the ride hours, the lucky cat, the week grid and the clock. With *Repeat* it starts over until you press *Stop demo*
+or touch the sensor (any touch stops it).
+
+The demo does not change your settings or the real forecast, and afterwards the device goes back to its home
+screen. While it plays the screen stays on at full brightness, even during quiet hours. The week grid and the
+clock show the real data.
 
 ## Admin password
 

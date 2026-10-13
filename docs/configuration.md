@@ -51,3 +51,20 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `ota.autoCheck` | check for a new release once a day (default `true`) |
 
 Thresholds are always metric (mm, km/h, °C).
+
+## Screens
+
+```json
+"display": {
+  "screens": {
+    "tap": ["village", "weather", "clothes", "countdown"],
+    "hold": ["report"],
+    "returnSeconds": 30
+  },
+  "cycleSeconds": 0
+}
+```
+
+Without a `display.screens` block (or with an invalid one) the device uses the Rider preset. A device that
+ran the earlier separate kids firmware (its `config.json` has a `kids` block but no screens) starts with
+the weather, clothes and countdown screens on a tap, as before, and the weather report on a long press.

@@ -38,6 +38,7 @@ nav:
       - First boot: first-boot.md
   - Using it:
       - Your own display: screens.md
+      - Clock and lucky cat: clock-and-cat.md
       - Ride screens: rider.md
       - How the ride rating works: ride-rating.md
       - Picture screens: kids.md

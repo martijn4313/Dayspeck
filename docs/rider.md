@@ -48,7 +48,7 @@ share the village.
   *Leave now*, *Best 14:00*, or *No good ride* when every 2 hour window ahead is rated "don't ride"
   (in Dutch *Vertrek nu*, *Beste 14:00*, *Niet rijden*).
 
-The third screen in the picture is the [clock](screens.md#the-clock).
+The third screen in the picture is the [clock](clock-and-cat.md#the-clock-clock).
 
 ## Ride hours
 
