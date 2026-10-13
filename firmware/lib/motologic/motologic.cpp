@@ -805,6 +805,11 @@ int daysUntilNext(int year, int month, int day, int onMonth, int onDay, int& occ
     }
 }
 
+int sinterklaasArrivalDay(int year) {
+    int dow = (int)((daysFromCivil(year, 11, 12) % 7 + 7 + 4) % 7);   // of 12 November; 1970-01-01 was a Thursday
+    return 12 + (6 - dow + 7) % 7;                                    // the Saturday from there
+}
+
 KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday* birthdays, size_t count,
                                 unsigned holidays, int withinDays) {
     KidsCountdown best = { false, 0, 0, 0, 0 };
@@ -827,6 +832,15 @@ KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday
         int sleeps = daysUntilNext(year, month, day, h[1], h[2], when);
         if (sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
             best = { true, h[0], sleeps, 0, 0 };
+        }
+    }
+    if (holidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) {                 // a different date every year
+        long today = daysFromCivil(year, month, day);
+        long arrival = daysFromCivil(year, 11, sinterklaasArrivalDay(year));
+        if (arrival < today) arrival = daysFromCivil(year + 1, 11, sinterklaasArrivalDay(year + 1));
+        int sleeps = (int)(arrival - today);
+        if (sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
+            best = { true, KIDS_EVENT_INTOCHT, sleeps, 0, 0 };
         }
     }
     return best;

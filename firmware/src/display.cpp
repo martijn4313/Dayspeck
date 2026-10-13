@@ -823,15 +823,16 @@ void renderPrimaryView(Adafruit_SSD1306 &display, char badgeType, bool isNight, 
 }
 
 // Render loading view — rotating badge circle and status text
-void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs) {
+void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs,
+                       const char* footer) {
     display.clearDisplay();
-    
-    // Draw rotating badge circle
-    int cx = 32, cy = 32;
+
+    // Draw rotating badge circle (smaller with a footer under it)
+    int cx = 32, cy = footer ? 26 : 32, rOuter = footer ? 22 : 28;
     // 1 full rotation per second (360 degrees / 1000 ms)
     int startAngle = (timeMs % 1000) * 360 / 1000;
     int endAngle = startAngle + 270; // 270 degree arc
-    
+
     // Sine/cosine table in 4 degree steps (x256), built once: float trig per pixel is slow
     static int16_t cosTable[90], sinTable[90];
     static bool tablesReady = false;
@@ -844,29 +845,37 @@ void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char*
         tablesReady = true;
     }
 
-    for (int r = 28; r >= 26; r--) {
+    for (int r = rOuter; r >= rOuter - 2; r--) {
         for (int angle = startAngle; angle < endAngle; angle += 4) {
             int i = (angle % 360) / 4;
             display.drawPixel(cx + ((r * cosTable[i]) >> 8), cy + ((r * sinTable[i]) >> 8), SSD1306_WHITE);
         }
     }
-    
+
     // Draw divider line
-    display.drawLine(64, 0, 64, 63, SSD1306_WHITE);
-    
+    display.drawLine(64, 0, 64, footer ? 50 : 63, SSD1306_WHITE);
+
     // Draw status text on the right
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    
+
     if (line1) {
-        display.setCursor(68, 24);
+        display.setCursor(68, footer ? 18 : 24);
         display.print(line1);
     }
     if (line2) {
-        display.setCursor(68, 36);
+        display.setCursor(68, footer ? 30 : 36);
         display.print(line2);
     }
-    
+
+    // Footer across the bottom: the device's address, centred (cut to the screen width if it is very long)
+    if (footer) {
+        char buf[22];
+        snprintf(buf, sizeof(buf), "%s", footer);
+        int w = (int)strlen(buf) * 6 - 1;
+        display.setCursor(w < 128 ? (128 - w) / 2 : 0, 55);
+        display.print(buf);
+    }
 }
 
 // Render setup AP instructions — full 128x64 text screen
@@ -1700,6 +1709,28 @@ static void drawMitre(Adafruit_SSD1306 &d, int cx) {
     d.drawCircleHelper(sx - 3, 15, 4, 4, SSD1306_WHITE);
 }
 
+// Sinterklaas' steamboat (pakjesboot) arriving: hull, cabin with portholes, a funnel with puffs of smoke, a
+// mast with a pennant and waves under the bow
+static void drawSteamboat(Adafruit_SSD1306 &d, int cx) {
+    d.fillRect(cx - 18, 44, 37, 6, SSD1306_WHITE);                   // hull, its bow and stern sloping in
+    d.fillTriangle(cx - 22, 44, cx - 18, 44, cx - 18, 52, SSD1306_WHITE);
+    d.fillTriangle(cx + 18, 44, cx + 22, 44, cx + 18, 52, SSD1306_WHITE);
+    d.fillRect(cx - 18, 50, 37, 3, SSD1306_WHITE);
+    d.drawFastHLine(cx - 18, 47, 37, SSD1306_BLACK);                 // a stripe along the hull
+    d.fillRect(cx - 11, 35, 20, 9, SSD1306_WHITE);                   // cabin
+    for (int i = 0; i < 3; i++) d.fillRect(cx - 8 + i * 6, 38, 3, 3, SSD1306_BLACK);   // portholes
+    d.fillRect(cx + 10, 22, 6, 22, SSD1306_WHITE);                   // funnel with a band
+    d.fillRect(cx + 10, 26, 6, 2, SSD1306_BLACK);
+    d.drawCircle(cx + 13, 16, 3, SSD1306_WHITE);                     // puffs of smoke
+    d.drawCircle(cx + 8, 10, 4, SSD1306_WHITE);
+    d.drawCircle(cx + 1, 5, 3, SSD1306_WHITE);
+    d.drawFastVLine(cx - 17, 24, 20, SSD1306_WHITE);                 // mast and pennant
+    d.fillTriangle(cx - 16, 24, cx - 16, 31, cx - 8, 27, SSD1306_WHITE);
+    for (int x = cx - 22; x <= cx + 22; x += 6) {                    // waves
+        d.drawCircleHelper(x, 58, 3, 1 | 2, SSD1306_WHITE);
+    }
+}
+
 // Christmas tree with a star on top and baubles
 static void drawTree(Adafruit_SSD1306 &d, int cx) {
     d.fillTriangle(cx, 11, cx - 11, 26, cx + 11, 26, SSD1306_WHITE);
@@ -1719,6 +1750,7 @@ static void drawEvent(Adafruit_SSD1306 &d, int cx, const KidsCountdown &c) {
     case KIDS_EVENT_HALLOWEEN:   drawPumpkin(d, cx); break;
     case KIDS_EVENT_SINTERKLAAS: drawMitre(d, cx); break;
     case KIDS_EVENT_CHRISTMAS:   drawTree(d, cx); break;
+    case KIDS_EVENT_INTOCHT:     drawSteamboat(d, cx); break;
     default:                     drawCake(d, cx, c.age, c.initial); break;
     }
 }

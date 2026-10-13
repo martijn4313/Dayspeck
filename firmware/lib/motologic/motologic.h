@@ -236,9 +236,10 @@ size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsL
 #define KIDS_EVENT_HALLOWEEN    1   // 31 October
 #define KIDS_EVENT_SINTERKLAAS  2   // 5 December (pakjesavond)
 #define KIDS_EVENT_CHRISTMAS    3   // 25 December
+#define KIDS_EVENT_INTOCHT      4   // Sinterklaas arrives in the Netherlands: the Saturday of 12-18 November
 #define KIDS_HOLIDAY(kind)      (1u << (kind))   // bit of a holiday in the `holidays` mask
 #define KIDS_ALL_HOLIDAYS       (KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN) | KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS) | \
-                                 KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS))
+                                 KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS) | KIDS_HOLIDAY(KIDS_EVENT_INTOCHT))
 #define KIDS_COUNTDOWN_DAYS     14  // default: a countdown shows from this many sleeps before the day
 #define KIDS_MAX_COUNTDOWN_DAYS 60
 #define KIDS_MAX_BIRTHDAYS      2
@@ -269,6 +270,10 @@ bool parseIsoDate(const char* text, int& year, int& month, int& day);
 // Days from today (year, month, day) to the next `month`/`day`, today included (0). A 29 February
 // falls on 28 February in other years. occurrenceYear gets the year it falls in.
 int daysUntilNext(int year, int month, int day, int onMonth, int onDay, int& occurrenceYear);
+
+// Day in November of the national arrival of Sinterklaas (intocht) in `year`: the Saturday of 12-18 November,
+// as in every year from 2019 to 2025
+int sinterklaasArrivalDay(int year);
 
 // The nearest birthday or enabled holiday (KIDS_HOLIDAY mask) within `withinDays` sleeps from today; a
 // birthday wins a tie. Birthdays that are not set, or lie in the future, are skipped.

@@ -210,6 +210,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Birthday 1:</span> <input name="birthday1" type="date"> <input name="initial1" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>date of birth, letter</small><br>
             <span class="label">Birthday 2:</span> <input name="birthday2" type="date"> <input name="initial2" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>no date = none</small><br>
             <span class="label">Halloween (31 Oct):</span> <input name="halloween" type="checkbox"><br>
+            <span class="label">Sinterklaas arrives:</span> <input name="intocht" type="checkbox"> <small>the intocht, a Saturday mid-November</small><br>
             <span class="label">Sinterklaas (5 Dec):</span> <input name="sinterklaas" type="checkbox"><br>
             <span class="label">Christmas (25 Dec):</span> <input name="christmas" type="checkbox"><br>
             <span class="label">Show from (sleeps before):</span> <input name="countdownDays" type="number" step="1" min="1" max="60"><br>
@@ -433,6 +434,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     });
                     c.halloween.checked = s.kids.halloween;
                     c.sinterklaas.checked = s.kids.sinterklaas;
+                    c.intocht.checked = s.kids.intocht;
                     c.christmas.checked = s.kids.christmas;
                     c.countdownDays.value = s.kids.countdownDays;
 
@@ -900,6 +902,7 @@ static void handleApiStatus() {
     }
     kids["halloween"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN)) != 0;
     kids["sinterklaas"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS)) != 0;
+    kids["intocht"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) != 0;
     kids["christmas"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
     kids["countdownDays"] = kidsCountdownDays;
 
@@ -1066,6 +1069,7 @@ static void handleApiCountdown() {
     unsigned holidays = 0;
     if (server.hasArg("halloween")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN);
     if (server.hasArg("sinterklaas")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS);
+    if (server.hasArg("intocht")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_INTOCHT);
     if (server.hasArg("christmas")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS);
 
     bool saved = updateConfig([&](JsonDocument& doc) {
@@ -1078,6 +1082,7 @@ static void handleApiCountdown() {
         }
         doc["kids"]["halloween"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN)) != 0;
         doc["kids"]["sinterklaas"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS)) != 0;
+        doc["kids"]["intocht"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) != 0;
         doc["kids"]["christmas"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
         doc["kids"]["countdownDays"] = days;
     });

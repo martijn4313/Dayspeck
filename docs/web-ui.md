@@ -133,7 +133,7 @@ countdown screen is in one of the screen lists.
 | Field | Meaning |
 |-------|---------|
 | Birthday 1, Birthday 2 | the date of birth (the cake gets a candle for every year) and one letter for the cake; leave the date empty for none |
-| Halloween, Sinterklaas, Christmas | count down to 31 October, 5 December (pakjesavond) and 25 December |
+| Halloween, Sinterklaas arrives, Sinterklaas, Christmas | count down to 31 October, Sinterklaas' arrival (the intocht, the Saturday of 12-18 November), 5 December (pakjesavond) and 25 December |
 | Show from (sleeps before) | how many sleeps before the day the countdown starts, 1-60 (default 14) |
 
 Each limit must be equal to or below the one above it; the page refuses an order that does not go from warm

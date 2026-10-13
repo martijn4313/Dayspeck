@@ -171,12 +171,13 @@ the left and the number of sleeps (nights) still to go on the right. With ten sl
 row of beds to count, one for every night, so one goes away each morning. On the day itself the picture stands
 in the middle with confetti falling around it.
 
-![Countdown screens: a birthday cake with five candles and the letter E, six sleeps to go; a pumpkin, twelve sleeps to Halloween; Sinterklaas' mitre and staff, three sleeps; Christmas day, a tree with confetti](images/kids-countdown.png){ .center }
+![Countdown screens: a birthday cake with five candles and the letter E, six sleeps to go; a pumpkin, twelve sleeps to Halloween; Sinterklaas' steamboat, nine sleeps to his arrival; his mitre and staff, three sleeps; Christmas day, a tree with confetti; the day the steamboat arrives, with confetti](images/kids-countdown.png){ .center }
 
 | Day | Picture |
 |-----|---------|
 | birthday (two can be set) | a cake with a candle for every year it turns (10 and older: the age as a number) and the child's letter on it |
 | Halloween, 31 October | a pumpkin |
+| Sinterklaas arrives (the intocht), the Saturday of 12-18 November | his steamboat |
 | Sinterklaas (pakjesavond), 5 December | the mitre and staff |
 | Christmas, 25 December | a Christmas tree |
 
@@ -195,7 +196,7 @@ shorts limit has no t-shirt step. They are saved in `config.json` (the `kids` ke
 the **night column** and the **umbrella for showers** on (both off by default).
 
 Under *Countdowns* you enter the two birthdays (the date of birth, for the number of candles, and a
-letter for the cake), switch Halloween, Sinterklaas and Christmas on or off, and set from how many sleeps
+letter for the cake), switch Halloween, Sinterklaas' arrival, Sinterklaas and Christmas on or off, and set from how many sleeps
 before the day the countdown starts.
 
 The other hours of the parts of the day (morning 7, afternoon 12, bedtime 22) are compile-time settings

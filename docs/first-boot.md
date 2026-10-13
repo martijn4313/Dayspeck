@@ -16,8 +16,9 @@ description: "First boot of the Dayspeck ESP8266 weather display: the setup WiFi
 4. Once the device is on your WiFi, open its page again and search for your town or village under
    *Set Location*. (The search needs internet; in the setup network you can type the coordinates
    instead.)
-5. Afterwards the page is at `http://dayspeck-xxxx.local`: every device has its own name, shown under
-   *WiFi Status*, where you can also rename it (to `kitchen`, say). See the [web UI](web-ui.md) for what each card does.
+5. Afterwards the page is at `http://dayspeck-xxxx.local`: every device has its own name, shown at the bottom of
+   the start-up screen and under *WiFi Status*, where you can also rename it (to `kitchen`, say). See the
+   [web UI](web-ui.md) for what each card does.
 
 If the WiFi connection is lost later, the device keeps retrying on its own and only opens the setup
 network again after 5 minutes without a connection.
