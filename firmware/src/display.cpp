@@ -1731,6 +1731,27 @@ static void drawSteamboat(Adafruit_SSD1306 &d, int cx) {
     }
 }
 
+// A television with Sinterklaas' mitre on the screen, for the first Sinterklaasjournaal
+static void drawTelevision(Adafruit_SSD1306 &d, int cx) {
+    d.drawLine(cx - 2, 15, cx - 10, 5, SSD1306_WHITE);               // antenna
+    d.drawLine(cx + 2, 15, cx + 10, 5, SSD1306_WHITE);
+    d.fillCircle(cx, 16, 2, SSD1306_WHITE);
+    d.fillRoundRect(cx - 21, 18, 43, 33, 4, SSD1306_WHITE);          // the set
+    d.fillRoundRect(cx - 17, 21, 30, 27, 3, SSD1306_BLACK);          // the screen
+    d.fillCircle(cx + 17, 26, 2, SSD1306_BLACK);                     // knobs
+    d.fillCircle(cx + 17, 33, 2, SSD1306_BLACK);
+    d.fillRect(cx + 15, 40, 5, 6, SSD1306_BLACK);                    // speaker
+    for (int y = 41; y <= 45; y += 2) d.drawFastHLine(cx + 15, y, 5, SSD1306_WHITE);
+    d.fillRect(cx - 15, 51, 4, 6, SSD1306_WHITE);                    // feet
+    d.fillRect(cx + 12, 51, 4, 6, SSD1306_WHITE);
+    int mx = cx - 2;                                                 // the mitre on the screen
+    d.fillRect(mx - 7, 34, 15, 11, SSD1306_WHITE);
+    d.fillTriangle(mx - 7, 35, mx + 7, 35, mx, 23, SSD1306_WHITE);
+    d.fillRect(mx - 1, 29, 2, 10, SSD1306_BLACK);                    // cross
+    d.fillRect(mx - 3, 31, 7, 2, SSD1306_BLACK);
+    d.drawFastHLine(mx - 7, 41, 15, SSD1306_BLACK);                  // band
+}
+
 // Christmas tree with a star on top and baubles
 static void drawTree(Adafruit_SSD1306 &d, int cx) {
     d.fillTriangle(cx, 11, cx - 11, 26, cx + 11, 26, SSD1306_WHITE);
@@ -1751,6 +1772,7 @@ static void drawEvent(Adafruit_SSD1306 &d, int cx, const KidsCountdown &c) {
     case KIDS_EVENT_SINTERKLAAS: drawMitre(d, cx); break;
     case KIDS_EVENT_CHRISTMAS:   drawTree(d, cx); break;
     case KIDS_EVENT_INTOCHT:     drawSteamboat(d, cx); break;
+    case KIDS_EVENT_JOURNAAL:    drawTelevision(d, cx); break;
     default:                     drawCake(d, cx, c.age, c.initial); break;
     }
 }

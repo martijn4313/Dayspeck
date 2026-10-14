@@ -811,7 +811,7 @@ int sinterklaasArrivalDay(int year) {
 }
 
 KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday* birthdays, size_t count,
-                                unsigned holidays, int withinDays) {
+                                unsigned holidays, int withinDays, KidsDate journaal) {
     KidsCountdown best = { false, 0, 0, 0, 0 };
     for (size_t i = 0; i < count; i++) {
         const KidsBirthday& b = birthdays[i];
@@ -832,6 +832,12 @@ KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday
         int sleeps = daysUntilNext(year, month, day, h[1], h[2], when);
         if (sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
             best = { true, h[0], sleeps, 0, 0 };
+        }
+    }
+    if (journaal.month >= 1 && journaal.month <= 12 && journaal.day >= 1) {   // a one-off date
+        long sleeps = daysFromCivil(journaal.year, journaal.month, journaal.day) - daysFromCivil(year, month, day);
+        if (sleeps >= 0 && sleeps <= withinDays && (!best.active || sleeps < best.sleeps)) {
+            best = { true, KIDS_EVENT_JOURNAAL, (int)sleeps, 0, 0 };
         }
     }
     if (holidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) {                 // a different date every year

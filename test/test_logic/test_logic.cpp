@@ -923,6 +923,23 @@ void test_sinterklaas_arrival() {
     TEST_ASSERT_EQUAL_INT(363, c.sleeps);                            // to 13 November 2027
 }
 
+void test_sinterklaasjournaal() {
+    KidsDate j = { 2026, 11, 7 };                                    // the first broadcast this year
+    KidsCountdown c = nextKidsCountdown(2026, 10, 28, nullptr, 0, 0, 14, j);
+    TEST_ASSERT_TRUE(c.active);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_JOURNAAL, c.kind);
+    TEST_ASSERT_EQUAL_INT(10, c.sleeps);
+    TEST_ASSERT_EQUAL_INT(0, nextKidsCountdown(2026, 11, 7, nullptr, 0, 0, 14, j).sleeps);
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 11, 8, nullptr, 0, 0, 365, j).active);   // once, not yearly
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 10, 1, nullptr, 0, 0, 14, j).active);    // not yet in range
+    TEST_ASSERT_FALSE(nextKidsCountdown(2026, 10, 28, nullptr, 0, 0, 14, KidsDate{ 0, 0, 0 }).active);
+    // before the arrival (14 November) the journaal comes first; after it, the arrival
+    c = nextKidsCountdown(2026, 11, 5, nullptr, 0, KIDS_ALL_HOLIDAYS, 14, j);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_JOURNAAL, c.kind);
+    c = nextKidsCountdown(2026, 11, 8, nullptr, 0, KIDS_ALL_HOLIDAYS, 14, j);
+    TEST_ASSERT_EQUAL_INT(KIDS_EVENT_INTOCHT, c.kind);
+}
+
 void test_countdown_settings() {
     KidsBirthday b[2] = { { 2020, 10, 31, 'A' }, { 0, 0, 0, 0 } };   // the second one is not set
     // a birthday wins a tie with a holiday
@@ -1157,6 +1174,7 @@ int main(int, char**) {
     RUN_TEST(test_days_until_next);
     RUN_TEST(test_countdown_picks_the_nearest_event);
     RUN_TEST(test_sinterklaas_arrival);
+    RUN_TEST(test_sinterklaasjournaal);
     RUN_TEST(test_countdown_settings);
     RUN_TEST(test_kids_weather);
     RUN_TEST(test_weather_codes);

@@ -237,6 +237,7 @@ size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsL
 #define KIDS_EVENT_SINTERKLAAS  2   // 5 December (pakjesavond)
 #define KIDS_EVENT_CHRISTMAS    3   // 25 December
 #define KIDS_EVENT_INTOCHT      4   // Sinterklaas arrives in the Netherlands: the Saturday of 12-18 November
+#define KIDS_EVENT_JOURNAAL     5   // the first Sinterklaasjournaal of the year: a date set in the web UI
 #define KIDS_HOLIDAY(kind)      (1u << (kind))   // bit of a holiday in the `holidays` mask
 #define KIDS_ALL_HOLIDAYS       (KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN) | KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS) | \
                                  KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS) | KIDS_HOLIDAY(KIDS_EVENT_INTOCHT))
@@ -275,10 +276,16 @@ int daysUntilNext(int year, int month, int day, int onMonth, int onDay, int& occ
 // as in every year from 2019 to 2025
 int sinterklaasArrivalDay(int year);
 
+// A single date (month 0 = not set)
+struct KidsDate {
+    int year, month, day;
+};
+
 // The nearest birthday or enabled holiday (KIDS_HOLIDAY mask) within `withinDays` sleeps from today; a
-// birthday wins a tie. Birthdays that are not set, or lie in the future, are skipped.
+// birthday wins a tie. Birthdays that are not set, or lie in the future, are skipped. `journaal` is the date
+// of the first Sinterklaasjournaal: it counts only once, until that day has passed.
 KidsCountdown nextKidsCountdown(int year, int month, int day, const KidsBirthday* birthdays, size_t count,
-                                unsigned holidays, int withinDays);
+                                unsigned holidays, int withinDays, KidsDate journaal = KidsDate{ 0, 0, 0 });
 
 // Map an Open-Meteo WMO weather code (plus wind) to a display condition
 int mapWeatherCode(int code, float windKmh, float warnWindKmh);

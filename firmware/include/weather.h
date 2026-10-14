@@ -47,6 +47,7 @@ extern bool kidsUmbrella;   // an umbrella with the outfit for a shower
 extern KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS];
 extern unsigned kidsHolidays;
 extern int kidsCountdownDays;
+extern KidsDate kidsJournaal;   // the first Sinterklaasjournaal (config kids.journaal), month 0 = not set
 
 // Ride windows (from config.json): weekday / weekend, morning / evening
 extern RideWindow weekdayAM, weekdayPM, weekendAM, weekendPM;

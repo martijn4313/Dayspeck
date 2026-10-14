@@ -211,6 +211,7 @@ static const char index_html[] PROGMEM = R"HTML(
             <span class="label">Birthday 2:</span> <input name="birthday2" type="date"> <input name="initial2" class="letter" maxlength="1" pattern="[A-Za-z]?" title="one letter"> <small>no date = none</small><br>
             <span class="label">Halloween (31 Oct):</span> <input name="halloween" type="checkbox"><br>
             <span class="label">Sinterklaas arrives:</span> <input name="intocht" type="checkbox"> <small>the intocht, a Saturday mid-November</small><br>
+            <label class="label" for="journaalInput">Sinterklaasjournaal:</label> <input id="journaalInput" name="journaal" type="date"> <small>first broadcast; no date = none</small><br>
             <span class="label">Sinterklaas (5 Dec):</span> <input name="sinterklaas" type="checkbox"><br>
             <span class="label">Christmas (25 Dec):</span> <input name="christmas" type="checkbox"><br>
             <span class="label">Show from (sleeps before):</span> <input name="countdownDays" type="number" step="1" min="1" max="60"><br>
@@ -435,6 +436,7 @@ static const char index_html[] PROGMEM = R"HTML(
                     c.halloween.checked = s.kids.halloween;
                     c.sinterklaas.checked = s.kids.sinterklaas;
                     c.intocht.checked = s.kids.intocht;
+                    c.journaal.value = s.kids.journaal || '';
                     c.christmas.checked = s.kids.christmas;
                     c.countdownDays.value = s.kids.countdownDays;
 
@@ -905,6 +907,13 @@ static void handleApiStatus() {
     kids["intocht"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) != 0;
     kids["christmas"] = (kidsHolidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
     kids["countdownDays"] = kidsCountdownDays;
+    if (kidsJournaal.month != 0) {
+        char date[11];
+        snprintf(date, sizeof(date), "%04d-%02d-%02d", kidsJournaal.year, kidsJournaal.month, kidsJournaal.day);
+        kids["journaal"] = date;
+    } else {
+        kids["journaal"] = "";
+    }
 
     JsonObject display = doc["display"].to<JsonObject>();
     display["previewHr"] = previewHr;
@@ -1066,6 +1075,13 @@ static void handleApiCountdown() {
         }
         b[i].initial = kidsInitial(server.arg("initial" + n).c_str());
     }
+    KidsDate journaal = {};
+    String journaalDate = server.arg("journaal");
+    journaalDate.trim();
+    if (journaalDate.length() != 0 && !parseIsoDate(journaalDate.c_str(), journaal.year, journaal.month, journaal.day)) {
+        sendMessage(400, "Invalid Sinterklaasjournaal date (YYYY-MM-DD)");
+        return;
+    }
     unsigned holidays = 0;
     if (server.hasArg("halloween")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_HALLOWEEN);
     if (server.hasArg("sinterklaas")) holidays |= KIDS_HOLIDAY(KIDS_EVENT_SINTERKLAAS);
@@ -1085,6 +1101,7 @@ static void handleApiCountdown() {
         doc["kids"]["intocht"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_INTOCHT)) != 0;
         doc["kids"]["christmas"] = (holidays & KIDS_HOLIDAY(KIDS_EVENT_CHRISTMAS)) != 0;
         doc["kids"]["countdownDays"] = days;
+        doc["kids"]["journaal"] = journaalDate;   // "" = none
     });
     if (!saved) {
         sendMessage(500, "Could not save configuration");
@@ -1093,6 +1110,7 @@ static void handleApiCountdown() {
     memcpy(kidsBirthdays, b, sizeof(kidsBirthdays));
     kidsHolidays = holidays;
     kidsCountdownDays = days;
+    kidsJournaal = journaal;
     state.displayDirty = true;
     sendMessage(200, "Countdowns saved");
 }

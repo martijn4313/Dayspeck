@@ -206,6 +206,8 @@ void loadConfig() {
             if (o[HOLIDAY_KEYS[i]]) kidsHolidays |= KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
             else kidsHolidays &= ~KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
         }
+        KidsDate j = {};
+        if (parseIsoDate(o["journaal"] | "", j.year, j.month, j.day)) kidsJournaal = j;
         if (o["countdownDays"].is<int>()) kidsCountdownDays = constrain((int)o["countdownDays"], 1, KIDS_MAX_COUNTDOWN_DAYS);
     }
 
@@ -476,7 +478,7 @@ static KidsCountdown kidsCountdownNow() {
     time_t local = time(nullptr) + utcOffsetSeconds;
     gmtime_r(&local, &t);
     return nextKidsCountdown(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, kidsBirthdays, KIDS_MAX_BIRTHDAYS,
-                             kidsHolidays, kidsCountdownDays);
+                             kidsHolidays, kidsCountdownDays, kidsJournaal);
 }
 
 /**
