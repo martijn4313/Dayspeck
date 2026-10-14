@@ -202,7 +202,9 @@ void renderKidsVillageView(Adafruit_SSD1306 &display, const KidsColumn &now, boo
 void renderReportView(Adafruit_SSD1306 &display, const char (*lines)[REPORT_COLS + 1], size_t count);
 // Setup access point instructions (full width): network name, password and IP address
 void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* password, const char* ip);
-void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs);
+// footer (optional): a line across the bottom, such as the device's address
+void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs,
+                       const char* footer = nullptr);
 // Sends the frame buffer to the panel, unless the panel already shows exactly this frame: an animation tick that
 // changes nothing visible then costs no I2C transfer (on an ESP-01S the blue LED sits on GPIO2 = SCL and flickers
 // with every transfer). Use it instead of display.display().

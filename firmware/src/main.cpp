@@ -198,13 +198,16 @@ void loadConfig() {
                 }
             }
         }
-        const char* const HOLIDAY_KEYS[] = { "halloween", "sinterklaas", "christmas" };
-        const int HOLIDAY_KINDS[] = { KIDS_EVENT_HALLOWEEN, KIDS_EVENT_SINTERKLAAS, KIDS_EVENT_CHRISTMAS };
-        for (int i = 0; i < 3; i++) {
+        const char* const HOLIDAY_KEYS[] = { "halloween", "sinterklaas", "christmas", "intocht" };
+        const int HOLIDAY_KINDS[] = { KIDS_EVENT_HALLOWEEN, KIDS_EVENT_SINTERKLAAS, KIDS_EVENT_CHRISTMAS,
+                                      KIDS_EVENT_INTOCHT };
+        for (int i = 0; i < 4; i++) {
             if (!o[HOLIDAY_KEYS[i]].is<bool>()) continue;
             if (o[HOLIDAY_KEYS[i]]) kidsHolidays |= KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
             else kidsHolidays &= ~KIDS_HOLIDAY(HOLIDAY_KINDS[i]);
         }
+        KidsDate j = {};
+        if (parseIsoDate(o["journaal"] | "", j.year, j.month, j.day)) kidsJournaal = j;
         if (o["countdownDays"].is<int>()) kidsCountdownDays = constrain((int)o["countdownDays"], 1, KIDS_MAX_COUNTDOWN_DAYS);
     }
 
@@ -475,7 +478,7 @@ static KidsCountdown kidsCountdownNow() {
     time_t local = time(nullptr) + utcOffsetSeconds;
     gmtime_r(&local, &t);
     return nextKidsCountdown(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, kidsBirthdays, KIDS_MAX_BIRTHDAYS,
-                             kidsHolidays, kidsCountdownDays);
+                             kidsHolidays, kidsCountdownDays, kidsJournaal);
 }
 
 /**
@@ -591,6 +594,14 @@ void renderKidsVillage() {
     renderKidsVillageView(display, col, count > 0, state.isNight, weather.condition,
                           weather.condition == WEATHER_RAIN ? 2 : weather.condition == WEATHER_SNOW ? 1 : 0,
                           (int)weather.windKmh, tempStr, weather.trend);
+}
+
+/**
+ * The device's address for the boot and loading screens: name.local, or just the name when that is too long
+ */
+static String deviceAddress() {
+    String address = deviceName + ".local";
+    return address.length() <= 21 ? address : deviceName;
 }
 
 /**
@@ -946,7 +957,7 @@ void render() {
         const char* line1;
         const char* line2;
         getInitStatus(line1, line2);
-        renderLoadingView(display, line1, line2, millis());
+        renderLoadingView(display, line1, line2, millis(), deviceAddress().c_str());
     } else {
         switch (screen) {
         case SCREEN_WEATHER:   renderKids(true); break;
@@ -1289,8 +1300,17 @@ void setup() {
     Wire.begin(OLED_SDA, OLED_SCL);
     Wire.setClock(400000);
 
+    // Every device needs its own network name (with several on one network, a shared dayspeck.local would
+    // reach a random one): without one in config.json it gets dayspeck-xxxx, random and kept from then on
+    if (deviceName.length() == 0) {
+        char name[16];
+        snprintf(name, sizeof(name), "dayspeck-%04x", (unsigned int)((ESP.random() ^ micros()) & 0xFFFF));
+        deviceName = name;
+        saveHostname(deviceName);
+    }
+
     initDisplay();
-    renderLoadingView(display, "Dayspeck", "Booting...", 0);
+    renderLoadingView(display, "Dayspeck", "Booting...", 0, deviceAddress().c_str());
     showFrame(display);
 
     if (displayTouchEnabled) touch_init();
@@ -1305,14 +1325,6 @@ void setup() {
     bool restarted = resetReason != REASON_DEFAULT_RST && resetReason != REASON_EXT_SYS_RST;
     if (restarted) WiFi.mode(WIFI_OFF);
     WiFi.setAutoReconnect(true);
-    // Every device needs its own network name (with several on one network, a shared dayspeck.local would
-    // reach a random one): without one in config.json it gets dayspeck-xxxx, random and kept from then on
-    if (deviceName.length() == 0) {
-        char name[16];
-        snprintf(name, sizeof(name), "dayspeck-%04x", (unsigned int)((ESP.random() ^ micros()) & 0xFFFF));
-        deviceName = name;
-        saveHostname(deviceName);
-    }
     WiFi.hostname(deviceName);       // the name the router lists
     WiFi.mode(WIFI_STA);
     if (wifiSsid.length() > 0) {

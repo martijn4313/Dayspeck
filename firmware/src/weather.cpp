@@ -60,6 +60,7 @@ bool kidsUmbrella = KIDS_UMBRELLA;
 KidsBirthday kidsBirthdays[KIDS_MAX_BIRTHDAYS] = {};
 unsigned kidsHolidays = KIDS_ALL_HOLIDAYS;
 int kidsCountdownDays = KIDS_COUNTDOWN_DAYS;
+KidsDate kidsJournaal = {};   // the first Sinterklaasjournaal; month 0 = not set
 
 // Ride windows (start hour, length in hours); overridden by config.json
 RideWindow weekdayAM = { 7, 2 };

@@ -27,7 +27,8 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `kids.umbrella` | an umbrella with the outfit on the picture screens for a shower, less than 70% of the hours wet (default false) |
 | `kids.nightColumn` | after dinner the picture screens show dinner, the night and tomorrow morning (default false) |
 | `kids.birthdays` | countdown: up to two `[{"date": "YYYY-MM-DD", "initial": "E"}]`, the date of birth and the letter on the cake (A-Z, may be empty) |
-| `kids.halloween`, `kids.sinterklaas`, `kids.christmas` | countdown: count down to 31 October, 5 December and 25 December (default `true`) |
+| `kids.journaal` | countdown: the date of the first Sinterklaasjournaal, `YYYY-MM-DD` (counts down once; `""` = none) |
+| `kids.halloween`, `kids.intocht`, `kids.sinterklaas`, `kids.christmas` | countdown: count down to 31 October, Sinterklaas' arrival (the Saturday of 12-18 November), 5 December and 25 December (default `true`) |
 | `kids.countdownDays` | countdown: shows from this many sleeps before the day, 1-60 (default 14) |
 | `wd_am`, `wd_pm` | weekday morning / evening ride window: `[start hour, hours]` |
 | `we_am`, `we_pm` | the same for Saturday and Sunday |

@@ -32,7 +32,7 @@ STATUS = {
     "kids": {"hotFromC": 25, "shortsFromC": 20, "sweaterBelowC": 15, "coatBelowC": 5, "freezeBelowC": 0,
              "windyGustKmh": 50, "birthdays": [{"date": "2021-11-02", "initial": "E"},
                                                {"date": "2019-12-20", "initial": "S"}],
-             "halloween": True, "sinterklaas": True, "christmas": True, "countdownDays": 14},
+             "journaal": "2026-11-07", "halloween": True, "intocht": True, "sinterklaas": True, "christmas": True, "countdownDays": 14},
     "lat": 52.37, "lon": 4.89, "locationSource": "Manual Selection",
     "locationName": "Amsterdam, Noord-Holland, Nederland",
     "thresholds": {"maxRainMm": 2.0, "maxWindKmh": 60, "minTempC": 5, "warnWindKmh": 40, "rainProbPct": 50},

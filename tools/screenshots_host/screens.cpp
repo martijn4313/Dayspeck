@@ -198,13 +198,15 @@ static void kidsScreens() {
 
 static void countdowns() {
     hostMillis = 1500;   // confetti on the day itself
-    const KidsCountdown c[4] = {
+    const KidsCountdown c[6] = {
         { true, KIDS_EVENT_BIRTHDAY, 6, 5, 'E' },
         { true, KIDS_EVENT_HALLOWEEN, 12, 0, 0 },
+        { true, KIDS_EVENT_JOURNAAL, 4, 0, 0 },
+        { true, KIDS_EVENT_INTOCHT, 9, 0, 0 },
         { true, KIDS_EVENT_SINTERKLAAS, 3, 0, 0 },
         { true, KIDS_EVENT_CHRISTMAS, 0, 0, 0 },
     };
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
         renderKidsCountdown(d, c[i], hostMillis);
         frame("kids-countdown", i);
     }
