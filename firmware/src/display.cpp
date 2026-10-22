@@ -896,6 +896,29 @@ void renderApInfoView(Adafruit_SSD1306 &display, const char* ssid, const char* p
     display.print(ip);
 }
 
+// Eight text rows: allow two for the address and three for a maximum-length password.
+void renderConnectedInfoView(Adafruit_SSD1306 &display, const char* address, const char* password,
+                             const char* location) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextWrap(true);
+    display.setCursor(0, 0);
+    display.print("WiFi connected");
+    display.setCursor(0, 8);
+    display.print(address);
+    display.setCursor(0, 24);
+    display.print("Setup / admin PW:");
+    display.setCursor(0, 32);
+    display.print(password);
+    display.setCursor(0, 56);
+    char line[22];
+    snprintf(line, sizeof(line), "Loc: %s", location);
+    if (strlen(location) > 16) memcpy(line + 18, "...", 3);
+    display.print(line);
+    display.setTextWrap(false);   // other views draw into fixed columns
+}
+
 // Centre a short number in a column of width w starting at x
 static void printCentered(Adafruit_SSD1306 &display, int x, int w, int y, const char* text) {
     int textW = (int)strlen(text) * 6 - 1;

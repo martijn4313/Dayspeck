@@ -10,6 +10,8 @@ A small weather display for a bedside table, a hallway or a kitchen wall: an ESP
 
 ![Four Dayspeck screens: the ride rating with its village, the picture screen with a sweater and the village, the weather of the day in pictures, and the weather report in words](images/hero.png)
 
+![Dayspeck weather display in its clear acrylic enclosure](images/weather-station.png){ .center }
+
 You put it together yourself, like building blocks. There are ten screens; you pick the ones you want,
 put them in the order you like and choose what a tap and a long press show. It is all one firmware and it
 is all set in the web page of the device, so changing your mind needs no new build.

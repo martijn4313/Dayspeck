@@ -1,5 +1,7 @@
 # Dayspeck
 
+<p align="center"><img src="docs/images/weather-station.png" alt="Dayspeck weather display in its clear acrylic enclosure" width="640"></p>
+
 <p align="center"><img src="docs/images/hero.png" alt="Four Dayspeck screens: the ride rating with its animated village, the outfit for now next to the village, the weather of the day in pictures, and the weather report in words" width="640"></p>
 
 An open-source weather display for a bedside table, a hallway or a kitchen wall, built for an ESP8266 (ESP-01)

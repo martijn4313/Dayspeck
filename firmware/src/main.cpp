@@ -63,6 +63,12 @@ String deviceName;   // set in setup(): from config.json, or a new dayspeck-xxxx
 String wifiSsid = WIFI_SSID;  // Default to compile-time values
 String wifiPassword = WIFI_PASS;
 
+// Show connection details once per boot, after the first successful connection.
+static bool bootInfoPending = true;
+static bool bootInfoVisible = false;
+static unsigned long bootInfoStartMs = 0;
+static constexpr unsigned long BOOT_INFO_DURATION_MS = 5000UL;
+
 // Weather API configuration (loaded from config.json)
 String weatherApiUrl = DEFAULT_WEATHER_API_URL;
 String weatherUnits = DEFAULT_WEATHER_UNITS;
@@ -928,6 +934,16 @@ static void demoLoop() {
  * Flush the right view to the display
  */
 void render() {
+    if (bootInfoVisible) {
+        String address = deviceName + ".local";
+        String location = !ssidBasedLocation && locationName.length() > 0
+                        ? locationName : String(configLat, 3) + "," + String(configLon, 3);
+        renderConnectedInfoView(display, address.c_str(), effectivePassword().c_str(), location.c_str());
+        showFrame(display);
+        state.displayDirty = false;
+        return;
+    }
+
     int screen = currentScreen();
     KidsCountdown countdown = {};
     if (screen == SCREEN_COUNTDOWN) {
@@ -1126,6 +1142,18 @@ void onWifiConnected() {
             }
         }
 
+    }
+
+    if (bootInfoPending) {
+        bootInfoPending = false;
+        bootInfoVisible = true;
+        bootInfoStartMs = millis();
+        state.lastActivityMs = bootInfoStartMs;   // keep the panel awake and bright for the details
+        if (state.displayOff) {
+            display.ssd1306_command(SSD1306_DISPLAYON);
+            state.displayOff = false;
+        }
+        state.displayDirty = true;
     }
 
     state.fetchNow = true;   // location may have changed
@@ -1380,6 +1408,11 @@ void loop() {
     demoLoop();
 
     manageWifi();
+    if (bootInfoVisible && (!state.wifiConnected || intervalPassed(bootInfoStartMs, BOOT_INFO_DURATION_MS))) {
+        bootInfoVisible = false;
+        state.displayDirty = true;
+        if (!state.displayOff) render();   // replace the details before a blocking weather fetch
+    }
     handleWebServer();
     if (state.mdnsStarted) {
         MDNS.update();
@@ -1387,8 +1420,11 @@ void loop() {
 
     updateDayNight();
     managePower();
-    handleWeatherFetch();
-    otaLoop(intervalPassed(state.lastActivityMs, 60000UL));   // a check pauses the display: not while in use
+    // Weather and update checks can block: give the connection details their full display time first.
+    if (!bootInfoVisible) {
+        handleWeatherFetch();
+        otaLoop(intervalPassed(state.lastActivityMs, 60000UL));   // a check pauses the display: not while in use
+    }
 
     if (state.weatherValid) {
         unsigned long sinceSuccess = millis() - state.lastSuccessMs;
