@@ -105,6 +105,18 @@ def test_existing_form_contracts_and_inline_feedback(ui_page, form_id, path, key
     assert key in parse_qs(posts[-1].post_data, keep_blank_values=True)
 
 
+def test_weather_model_is_posted(ui_page):
+    page, posts = ui_page
+    form = page.locator("#weatherApiForm")
+    reveal(form)
+    assert page.locator("#f47").input_value() == "best_match"
+    page.select_option("#f47", "knmi_seamless")
+    form.locator('button[type="submit"]').click()
+    expect(form.locator(".form-feedback")).to_have_text("Saved")
+    assert posts[-1].url.endswith("/api/weatherconfig")
+    assert parse_qs(posts[-1].post_data)["weatherModel"] == ["knmi_seamless"]
+
+
 def test_screen_order_home_label_limit_and_payload(ui_page):
     page, posts = ui_page
     page.select_option("#screenPreset", "rider")

@@ -71,7 +71,7 @@ static constexpr unsigned long BOOT_INFO_DURATION_MS = 5000UL;
 
 // Weather API configuration (loaded from config.json)
 String weatherApiUrl = DEFAULT_WEATHER_API_URL;
-String weatherModel = "best_match";
+String weatherModel = DEFAULT_WEATHER_MODEL;
 String weatherUnits = DEFAULT_WEATHER_UNITS;
 bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 

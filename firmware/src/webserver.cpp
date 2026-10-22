@@ -293,10 +293,10 @@ They are rounded to 2 decimals (about 1 km).</small><br></details>
 <div id="otaUploadFeedback"></div>
 </details></div><details class="card advanced" id="weatherApiCard"><summary>Advanced weather settings</summary>
 <form id="weatherApiForm">
-<div class="field"><label for="weatherModel">Forecast model</label><div class="control"><select id="weatherModel" name="weatherModel">
+<div class="field"><label for="f47">Forecast model</label><div class="control"><select id="f47" aria-describedby="f47-help" name="weatherModel">
 <option value="best_match">Automatic (Open-Meteo best match)</option>
 <option value="knmi_seamless">Netherlands (KNMI + ECMWF)</option>
-</select><small>KNMI for the first 2.5 days, then ECMWF for the rest of the week. Use Automatic outside the Netherlands and surrounding region.</small></div></div>
+</select><small id="f47-help">KNMI for the first 2.5 days, then ECMWF for the rest of the week. Use Automatic outside the Netherlands and surrounding region.</small></div></div>
 <div class="field"><label for="f43">API URL</label><div class="control"><input id="f43" name="apiUrl" type="url" maxlength="128" value="http://api.open-meteo.com/v1/forecast"></div></div>
 <div class="field"><label for="f44">Units</label><div class="control"><select id="f44" name="units">
 <option value="metric">Metric</option>
