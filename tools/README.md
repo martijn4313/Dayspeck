@@ -85,3 +85,18 @@ tools/tests/                pytest (conversion, header round trip, simulator vs 
 pip install -r tools/requirements-dev.txt
 cd tools && python -m pytest tests
 ```
+
+### Web configuration browser checks
+
+The optional browser regression checks exercise the real embedded HTML against demo API responses:
+
+```sh
+pip install playwright
+python -m playwright install chromium
+python -m pytest tools/tests/test_webui.py
+```
+
+To use an existing browser, set `DAYSPECK_CHROMIUM` to its Chrome/Chromium executable instead of installing
+Playwright's browser. The checks cover responsive layouts, labels, screen ordering, API payloads, save
+feedback, preserving unsaved edits and offline manual location entry. Without Playwright or a browser,
+these optional checks are skipped. The regular Python tests still run.

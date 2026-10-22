@@ -30,7 +30,8 @@ def extract(name, source):
 STATUS = {
     "firmware": "0.2.0 (3f9c1ab)",
     "kids": {"hotFromC": 25, "shortsFromC": 20, "sweaterBelowC": 15, "coatBelowC": 5, "freezeBelowC": 0,
-             "windyGustKmh": 50, "birthdays": [{"date": "2021-11-02", "initial": "E"},
+             "windyGustKmh": 50, "evening": "dinner", "dinnerHour": 18, "nightColumn": False, "umbrella": False,
+             "birthdays": [{"date": "2021-11-02", "initial": "E"},
                                                {"date": "2019-12-20", "initial": "S"}],
              "journaal": "2026-11-07", "halloween": True, "intocht": True, "sinterklaas": True, "christmas": True, "countdownDays": 14},
     "lat": 52.37, "lon": 4.89, "locationSource": "Manual Selection",
@@ -100,29 +101,28 @@ def make_handler(page, default_password):
     return Handler
 
 
-def shoot(browser, url, out, name, first, last, setup=None):
-    """Screenshot from the top of card `first` to the bottom of card `last` (0-based card indexes)."""
-    page = browser.new_page(viewport={"width": 640, "height": 900}, device_scale_factor=2)
+def shoot(browser, url, out, name, first, last=None, setup=None, width=640, height=900):
+    """Capture a stable card/section selector; keep sticky navigation out of cropped card pictures."""
+    page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=2)
     page.goto(url)
     page.wait_for_function("document.getElementById('lat').textContent !== ''")
     page.wait_for_function("document.getElementById('otaCurrent').textContent !== ''")
     if setup:
         setup(page)
-    # page coordinates (bounding_box() is relative to the viewport, which the setup may have scrolled)
-    top, bottom = page.evaluate(
-        """([first, last]) => {
-            const cards = document.querySelectorAll('.card');
-            const banner = document.getElementById('pwBanner');
-            const shown = banner.style.display !== 'none';
-            const rect = el => el.getBoundingClientRect();
-            const start = first === 0 && shown ? rect(banner).top : rect(cards[first]).top;
-            return [start + scrollY - 8, rect(cards[last]).bottom + scrollY + 8];
-        }""",
-        [first, last],
-    )
-    top = max(top, 0)
-    clip = {"x": 0, "y": top, "width": 640, "height": bottom - top}
-    page.screenshot(path=str(out / name), clip=clip, full_page=True)
+    if first is None:
+        page.screenshot(path=str(out / name))
+    elif last is None:
+        page.add_style_tag(content=".jump-nav { visibility: hidden; }")
+        page.locator(first).screenshot(path=str(out / name))
+    else:
+        page.add_style_tag(content=".jump-nav { visibility: hidden; }")
+        top, bottom = page.evaluate(
+            """([first, last]) => {
+                const rect = selector => document.querySelector(selector).getBoundingClientRect();
+                return [rect(first).top + scrollY - 8, rect(last).bottom + scrollY + 8];
+            }""", [first, last])
+        page.screenshot(path=str(out / name), clip={"x": 0, "y": max(0, top), "width": width,
+                                                  "height": bottom - max(0, top)}, full_page=True)
     page.close()
     print("wrote", out / name)
 
@@ -133,15 +133,14 @@ def main():
     ap.add_argument("--chromium", help="path to a Chromium/Chrome binary (default: Playwright's own)")
     args = ap.parse_args()
     out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
 
     from playwright.sync_api import sync_playwright
 
     source = SOURCE.read_text(encoding="utf-8")
     html = extract("index_html", source)
 
-    # Cards in page order: 0 location, 1 set location, 2 WiFi status, 3 WiFi config, 4 SSID locations,
-    # 5 thresholds, 6 screens, 7 display, 8 clothing, 9 countdowns (both only while a kids screen is used),
-    # 10 weather API, 11 password, 12 debug, 13 firmware update
+    # Stable selectors let the page be reorganized without changing screenshot card indexes.
     def search_place(p):
         p.route("https://geocoding-api.open-meteo.com/**",
                 lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(GEOCODING)))
@@ -150,10 +149,12 @@ def main():
         p.wait_for_selector("#placeResults button")
 
     def scan(p):
+        p.locator("#ssidCard").evaluate("el => el.open = true")
         p.click("#scanBtn")
         p.wait_for_selector("#networksList button")
 
     def logs(p):
+        p.locator("#debugCard").evaluate("el => el.open = true")
         p.click("#toggleLogs")
         p.wait_for_function("document.getElementById('verboseLogs').textContent !== ''")
 
@@ -167,11 +168,13 @@ def main():
     with sync_playwright() as pw:
         kwargs = {"executable_path": args.chromium} if args.chromium else {}
         browser = pw.chromium.launch(**kwargs)
-        shoot(browser, base[0], out, "webui-location.png", 0, 1, search_place)
-        shoot(browser, base[1], out, "webui-wifi.png", 2, 4, scan)
-        shoot(browser, base[1], out, "webui-settings.png", 5, 9)
-        shoot(browser, base[1], out, "webui-screens.png", 6, 6)
-        shoot(browser, base[1], out, "webui-update.png", 12, 13, logs)
+        shoot(browser, base[1], out, "webui-overview.png", None)
+        shoot(browser, base[1], out, "webui-mobile.png", None, width=390, height=844)
+        shoot(browser, base[0], out, "webui-location.png", "#locationCard", setup=search_place)
+        shoot(browser, base[1], out, "webui-wifi.png", "#wifiCard", "#ssidCard", scan)
+        shoot(browser, base[1], out, "webui-settings.png", "#displayCard", "#thresholdsCard")
+        shoot(browser, base[1], out, "webui-screens.png", "#screensCard")
+        shoot(browser, base[1], out, "webui-update.png", "#updateCard", "#debugCard", logs)
         browser.close()
     for s in servers:
         s.shutdown()

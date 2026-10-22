@@ -6,30 +6,37 @@ description: "The Dayspeck web UI: location, WiFi, screens, display, ride limits
 
 Everything about the device is set in its web page: location, WiFi, which screens it shows, the display
 options, the limits behind the ride rating and the outfits, and firmware updates. Open
-`http://dayspeck-xxxx.local` (the device's own name, see *WiFi Status* below) or its IP address in a browser
+`http://dayspeck-xxxx.local` (the device's own name, see *WiFi connection* below) or its IP address in a browser
 on the same network.
 
 The page asks for a login: user **`admin`** and your admin password. Until you set your own, the
 password is the default one shown on the display during WiFi setup (see [first boot](first-boot.md)).
 After 10 failed attempts the page locks for a minute.
 
-Each card has its own **Save** button, and a green or red bar at the top of the page tells you whether
-it worked. The settings are stored in [`config.json`](configuration.md) on the device.
+Use the sticky links to jump to **Overview**, **Display**, **Location & WiFi** or **Device**.
+The overview shows the device address, connected network, location, weather freshness and firmware.
+Display starts with the screen editor; location search and WiFi setup each share a card with their status.
+
+Each form has its own named **Save** button and feedback beside it: *Unsaved changes*, *Saving...*, then
+success or an error. Saving one form preserves edits in other forms. The settings are stored in
+[`config.json`](configuration.md) on the device. An error keeps your edits so you can try again.
 
 !!! note
     The screenshots below are renders of the real page with demo data, made with
     `tools/webui_screenshots.py`, not photos of a device.
 
+![Overview with section navigation and device status](images/webui-overview.png){ .center }
+
 ## Location and the default-password banner
 
-![The location card and the place search with three results for Amsterdam, below a banner that asks for a new password](images/webui-location.png){ .center }
+![Location status and place search with three results for Amsterdam](images/webui-location.png){ .center }
 
 - **Location** shows the place, the coordinates the forecast uses and where they came from: *Manual
   Selection*, *SSID-based*, *Configuration file* or *Default Fallback*. *Show on the map* opens the
   spot on OpenStreetMap, so you can check it.
-- **Set Location**: type a town or village and press *Search*. Pick the right one from the list (it shows
+- **Change location**, in the *Location* card: type a town or village and press *Search*. Pick the right one from the list (it shows
   the municipality, province and country, to tell places with the same name apart); that fills in the
-  name and coordinates. Press *Set Location* to use it. The device then ignores any
+  name and coordinates and opens *Selected place / manual coordinates*. Press *Set Location* to use it. The device then ignores any
   [per-network location](#per-network-locations).
     - The search runs in your browser, against [Open-Meteo's geocoding](https://open-meteo.com/en/docs/geocoding-api)
       service (free, no account), and covers places worldwide down to villages. Only the place you pick
@@ -39,19 +46,19 @@ it worked. The settings are stored in [`config.json`](configuration.md) on the d
     - Coordinates are rounded to 2 decimals, about 1 km. That is finer than the forecast grid (a few km)
       and does not pinpoint your house.
 - The yellow banner only shows while the device still has its default password. Set your own in the
-  [Admin Password](#admin-password) card.
+  [Admin Password](#admin-password) card under *Device*. The banner links straight to it.
 
 ## WiFi
 
 ![WiFi status with a scanned network list, the WiFi configuration form and the SSID location settings](images/webui-wifi.png){ .center }
 
-- **WiFi Status** shows whether the device is connected and the signal strength in dBm (closer to 0 is
+- **WiFi connection**, under *Location & WiFi*, shows whether the device is connected and the signal strength in dBm (closer to 0 is
   better; around -70 or lower is weak), and its address on your network, `http://<device name>.local`.
   Every device has its own name, so several can share one network: `dayspeck-` and four random characters
   (made once and kept), or a name of your own (*Rename*: 1-24 lower-case letters, digits or hyphens, such
-  as `kitchen`; the device restarts to announce it). The router's device list shows the same name.
+  as `kitchen`; expand *Rename this device*, and the device restarts to announce it). The router's device list shows the same name.
   *Scan Networks* lists the networks in range. Pressing one fills in the network name below.
-- **WiFi Configuration**: the network name (1-32 characters) and its password (8-63 characters, or empty
+- The **WiFi connection** form: the network name (1-32 characters) and its password (8-63 characters, or empty
   for an open network). The saved password is never sent back to the browser, so the field shows
   `(unchanged)`; leave it empty to keep the current one. *Save WiFi Settings* makes the device connect
   to the network right away.
@@ -61,7 +68,7 @@ minutes without a connection (see [first boot](first-boot.md)).
 
 ### Per-network locations
 
-*SSID Location Settings* ties a location to a WiFi network, so a device that moves between home and the
+Expand *Per-network locations* under *Location & WiFi*. This ties a location to a WiFi network, so a device that moves between home and the
 office shows the local forecast at each. Pick a scanned network (press *Scan Networks* first), enter its
 latitude and longitude and press *Add Location*. Up to 10 can be stored; *Delete* removes one. A location
 set with *Set Location* takes precedence.
@@ -140,7 +147,7 @@ countdown screen is in one of the screen lists.
 Each limit must be equal to or below the one above it; the page refuses an order that does not go from warm
 to cold. A child who feels the cold sooner can get the winter coat from 8 °C instead of 5 °C, for example.
 
-**Weather API Config**: the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
+**Advanced weather settings** (expand under *Device*): the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
 imperial only changes the temperature on the display) and *Verbose Debug*, which logs extra detail.
 The address must start with `http://`, as the device cannot do TLS.
 
@@ -172,13 +179,14 @@ you sign in again with the new password.
 
 ## Debug info and firmware updates
 
-![Debug info with the verbose log open, and the firmware update card offering version 0.3.0](images/webui-update.png){ .center }
+![Firmware update settings and diagnostics with the verbose log open](images/webui-update.png){ .center }
 
-- **Debug Info** shows the firmware version, whether the weather data is valid, how old it is and
+- **Diagnostics and logs** (expand under *Device*) shows the firmware version, whether the weather data is valid, how old it is and
   whether mDNS (the `.local` name) started. *Show Verbose Logs* prints the device log in
   the page. The device has no serial output because the touch sensor uses the RX pin, so this is
   where to look when something does not work.
 - **Firmware Update**: *Check now* asks the update server for the latest release. When a newer one is
   out, *Install X.Y.Z* appears; nothing installs by itself. The install takes about a minute and
-  settings are kept. The *Update server* address and *Check daily* are described under
+  settings are kept. Expand *Update server settings* to change the server or daily checks, or
+  *Manual firmware upload* to upload a signed image. The *Update server* address and *Check daily* are described under
   [over-the-air updates](ota.md), which also covers the *Manual upload* form.

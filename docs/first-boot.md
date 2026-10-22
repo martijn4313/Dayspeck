@@ -11,15 +11,15 @@ description: "First boot of the Dayspeck ESP8266 weather display: the setup WiFi
    The OLED shows the network name (**Dayspeck**), its password and `192.168.4.1`.
 2. Join that network and open `http://192.168.4.1`. Sign in with user **`admin`** and the password
    from the display. The default password is `moto` plus six hex digits derived from the chip ID.
-3. Enter your WiFi network under *WiFi Configuration* and **set your own admin password**. The device
+3. Enter your WiFi network in the *WiFi connection* card and **set your own admin password**. The device
    restarts after a password change.
 4. Once the device is on your WiFi, open its page again and search for your town or village under
-   *Set Location*. (The search needs internet; in the setup network you can type the coordinates
+   *Change location*. (The search needs internet; in the setup network you can type the coordinates
    instead.)
 5. Afterwards the page is at `http://dayspeck-xxxx.local`: every device has its own name. After the first
    successful WiFi connection on each boot, the display shows its `.local` address, the setup/admin password
    and the configured location for five seconds. Locations without a name, including network-based
-   locations, show their coordinates. The name is also under *WiFi Status*, where you can rename it (to
+   locations, show their coordinates. The name is also under *WiFi connection*, where you can rename it (to
    `kitchen`, say). See the [web UI](web-ui.md) for what each card does.
 
 ![Connected boot screen with a named location, long credentials, coordinates and a long location name](images/boot-info.png){ .center }
