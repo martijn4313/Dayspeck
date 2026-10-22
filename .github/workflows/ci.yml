@@ -2,8 +2,16 @@ name: CI
 
 on:
   push:
+    # Docs-only commits are checked by the Docs workflow instead
+    paths-ignore: ["docs/**", "plans/**", "overrides/**", "mkdocs.yml", "requirements-docs.txt", "**/*.md", "LICENSE"]
   pull_request:
+    paths-ignore: ["docs/**", "plans/**", "overrides/**", "mkdocs.yml", "requirements-docs.txt", "**/*.md", "LICENSE"]
   workflow_dispatch:   # "Run workflow" in the Actions tab: OTA test images of any branch
+
+# A new push to a branch cancels the still-running check of the previous push (main always finishes)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   firmware:

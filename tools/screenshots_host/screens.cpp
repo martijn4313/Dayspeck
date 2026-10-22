@@ -5,6 +5,7 @@
 // Output: for every frame a line "=== <picture> <index>", then 64 lines of 128 '#' (on) or '.' (off).
 
 #include <stdio.h>
+#include <assert.h>
 #include "Arduino.h"
 #include "config.h"
 #include "display.h"
@@ -338,7 +339,51 @@ static void luckyCat() {
     for (int f = 0; f < 16; f++) { renderLuckyCatView(d, f, 11, true); frame("lucky-cat", f); }
 }
 
+// Connection details: check the full address/password at their supported limits and the location row.
+static void assertTextRow(const char* text, int y) {
+    Adafruit_SSD1306 expected;
+    expected.setTextWrap(false);
+    expected.setTextSize(1);
+    expected.setTextColor(SSD1306_WHITE);
+    expected.setCursor(0, y);
+    expected.print(text);
+    for (int row = y; row < y + 8; row++) {
+        for (int x = 0; x < 128; x++) assert(d.px[row][x] == expected.px[row][x]);
+    }
+}
+
+static void bootInfo() {
+    renderConnectedInfoView(d, "dayspeck-a1b2.local", "moto1a2b3c", "Utrecht");
+    assertTextRow("dayspeck-a1b2.local", 8);
+    assertTextRow("Loc: Utrecht", 56);
+    frame("boot-info", 0);
+
+    renderConnectedInfoView(d, "abcdefghijklmnopqrstuvwx.local",
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!", "Amsterdam");
+    assertTextRow("abcdefghijklmnopqrstu", 8);
+    assertTextRow("vwx.local", 16);
+    assertTextRow("ABCDEFGHIJKLMNOPQRSTU", 32);
+    assertTextRow("VWXYZabcdefghijklmnop", 40);
+    assertTextRow("qrstuvwxyz0123456789!", 48);
+    assertTextRow("Loc: Amsterdam", 56);
+    frame("boot-info", 1);
+
+    renderConnectedInfoView(d, "kitchen.local", "example-password", "-90.000,-180.000");
+    assertTextRow("Loc: -90.000,-180.000", 56);
+    frame("boot-info", 2);
+
+    renderConnectedInfoView(d, "bedroom.local", "example-password", "Amsterdam Zuidoost");
+    assertTextRow("Loc: Amsterdam Zui...", 56);
+    frame("boot-info", 3);
+
+    // The following views expect text to stay on its row even at the right edge.
+    d.setCursor(126, 0);
+    d.print("AB");
+    assert(d.getCursorY() == 0);
+}
+
 int main() {
+    bootInfo();
     rideHours();
     luckyCat();
     kidsScreens();

@@ -22,5 +22,7 @@ description: "First boot of the Dayspeck ESP8266 weather display: the setup WiFi
    locations, show their coordinates. The name is also under *WiFi Status*, where you can rename it (to
    `kitchen`, say). See the [web UI](web-ui.md) for what each card does.
 
+![Connected boot screen with a named location, long credentials, coordinates and a long location name](images/boot-info.png){ .center }
+
 If the WiFi connection is lost later, the device keeps retrying on its own and only opens the setup
 network again after 5 minutes without a connection.

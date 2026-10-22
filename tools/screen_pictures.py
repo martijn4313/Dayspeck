@@ -75,7 +75,7 @@ def main():
     pictures = build_and_run(args.cxx)
     screens = {name: [device_image(f) for f in frames] for name, frames in pictures.items()
                if not name.endswith("-wind")}
-    layout = {"kids-clothes": 3, "kids-weather": 2, "kids-dinner": 3, "kids-night": 2, "kids-sunset": 2,
+    layout = {"boot-info": 2, "kids-clothes": 3, "kids-weather": 2, "kids-dinner": 3, "kids-night": 2, "kids-sunset": 2,
               "kids-umbrella": 1,
               "kids-countdown": 3,
               "kids-village": 3, "report": 2, "ride-hours": 3}
