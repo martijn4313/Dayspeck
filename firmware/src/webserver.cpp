@@ -293,6 +293,10 @@ They are rounded to 2 decimals (about 1 km).</small><br></details>
 <div id="otaUploadFeedback"></div>
 </details></div><details class="card advanced" id="weatherApiCard"><summary>Advanced weather settings</summary>
 <form id="weatherApiForm">
+<div class="field"><label for="weatherModel">Forecast model</label><div class="control"><select id="weatherModel" name="weatherModel">
+<option value="best_match">Automatic (Open-Meteo best match)</option>
+<option value="knmi_seamless">Netherlands (KNMI + ECMWF)</option>
+</select><small>KNMI for the first 2.5 days, then ECMWF for the rest of the week. Use Automatic outside the Netherlands and surrounding region.</small></div></div>
 <div class="field"><label for="f43">API URL</label><div class="control"><input id="f43" name="apiUrl" type="url" maxlength="128" value="http://api.open-meteo.com/v1/forecast"></div></div>
 <div class="field"><label for="f44">Units</label><div class="control"><select id="f44" name="units">
 <option value="metric">Metric</option>
@@ -506,7 +510,7 @@ function loadStatus(full) {
       birthday2: (birthdays[1] || {}).date, initial2: (birthdays[1] || {}).initial,
       halloween: k.halloween, sinterklaas: k.sinterklaas, intocht: k.intocht,
       journaal: k.journaal, christmas: k.christmas, countdownDays: k.countdownDays});
-    fillForm('weatherApiForm', {apiUrl: s.weatherApi.url, units: s.weatherApi.units, weatherDebug: s.weatherApi.debug});
+    fillForm('weatherApiForm', {apiUrl: s.weatherApi.url, weatherModel: s.weatherApi.model, units: s.weatherApi.units, weatherDebug: s.weatherApi.debug});
     fillForm('hostnameForm', {hostname: s.wifi.hostname}); fillForm('wifiForm', {ssid: s.wifi.ssid});
     document.forms.wifiForm.password.placeholder = s.wifi.passwordSet ? '(unchanged)' : '(none)';
   }).catch(() => toast('Could not load the device status', false));
@@ -999,6 +1003,7 @@ static void handleApiStatus() {
     doc["wifi"]["hostname"] = deviceName;
 
     doc["weatherApi"]["url"] = weatherApiUrl;
+    doc["weatherApi"]["model"] = weatherModel;
     doc["weatherApi"]["units"] = weatherUnits;
     doc["weatherApi"]["debug"] = weatherDebug;
 
@@ -1403,6 +1408,11 @@ static void handleApiWifiConfig() {
 
 static void handleApiWeatherConfig() {
     String apiUrl = server.arg("apiUrl");
+    String model = server.hasArg("weatherModel") ? server.arg("weatherModel") : weatherModel;
+    if (model != "best_match" && model != "knmi_seamless") {
+        sendMessage(400, "Choose Automatic or Netherlands for the forecast model");
+        return;
+    }
     String units = server.arg("units");
     bool debug = server.hasArg("weatherDebug");
 
@@ -1418,6 +1428,7 @@ static void handleApiWeatherConfig() {
 
     bool saved = updateConfig([&](JsonDocument& doc) {
         doc["weatherApiUrl"] = apiUrl;
+        doc["weatherModel"] = model;
         doc["weatherUnits"] = units;
         doc["weatherDebug"] = debug;
     });
@@ -1427,6 +1438,7 @@ static void handleApiWeatherConfig() {
     }
 
     weatherApiUrl = apiUrl;
+    weatherModel = model;
     weatherUnits = units;
     weatherDebug = debug;
     state.fetchNow = true;

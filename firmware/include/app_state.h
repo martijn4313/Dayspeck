@@ -103,6 +103,7 @@ extern String wifiPassword;
 
 // Weather API configuration (config.json / web UI). Plain HTTP only: the ESP8266 is too slow for TLS.
 extern String weatherApiUrl;
+extern String weatherModel;   // "best_match" or "knmi_seamless"
 extern String weatherUnits;   // "metric" or "imperial" (display only; API data is always metric)
 extern bool   weatherDebug;
 
