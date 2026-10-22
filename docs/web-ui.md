@@ -148,7 +148,7 @@ Each limit must be equal to or below the one above it; the page refuses an order
 to cold. A child who feels the cold sooner can get the winter coat from 8 °C instead of 5 °C, for example.
 
 **Advanced weather settings** (expand under *Device*): the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
-imperial only changes the temperature on the display) and *Verbose Debug*, which logs extra detail.
+imperial only changes the temperature on the display), the forecast model (*Automatic*, or *Netherlands*: KNMI for the first 2.5 days, then ECMWF; use Automatic outside the Netherlands and surrounding region) and *Verbose Debug*, which logs extra detail.
 The address must start with `http://`, as the device cannot do TLS.
 
 ## Screen power
