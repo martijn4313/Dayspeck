@@ -23,7 +23,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - uses: actions/cache@v4
+      # Only main saves the cache: every branch would otherwise store its own copy of the toolchains
+      # (Actions storage is limited). Branches restore main's cache.
+      - uses: actions/cache/restore@v4
         with:
           path: |
             ~/.platformio
@@ -88,15 +90,26 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ota-test-images
+          retention-days: 7
           path: ota-test/
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: firmware
+          retention-days: 7
           path: |
             .pio/build/esp01_1m/firmware.bin
             .pio/build/esp01_1m/littlefs.bin
+
+      - name: Save PlatformIO cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
 
   python:
     runs-on: ubuntu-latest
