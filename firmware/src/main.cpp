@@ -71,6 +71,7 @@ static constexpr unsigned long BOOT_INFO_DURATION_MS = 5000UL;
 
 // Weather API configuration (loaded from config.json)
 String weatherApiUrl = DEFAULT_WEATHER_API_URL;
+String weatherModel = DEFAULT_WEATHER_MODEL;
 String weatherUnits = DEFAULT_WEATHER_UNITS;
 bool weatherDebug = DEFAULT_WEATHER_DEBUG;
 
@@ -274,6 +275,10 @@ void loadConfig() {
     }
 
     // Weather API config
+    if (doc["weatherModel"].is<String>()) {
+        String model = doc["weatherModel"].as<String>();
+        if (model == "best_match" || model == "knmi_seamless") weatherModel = model;
+    }
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
     if (doc["weatherDebug"].is<bool>()) weatherDebug = doc["weatherDebug"].as<bool>();

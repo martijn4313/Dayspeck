@@ -35,6 +35,7 @@ The web UI edits this file; you can also edit it before `uploadfs`. Unknown keys
 | `ssidLocations` | `[{"ssid", "lat", "lon"}]` — use this location when connected to that network |
 | `weatherApiUrl` | forecast endpoint, `http://` only (default Open-Meteo) |
 | `weatherUnits` | `metric` or `imperial`; imperial only changes the temperature shown on the display |
+| `weatherModel` | Advanced weather settings dropdown: `best_match` (default, automatic) or `knmi_seamless` (KNMI for the first 2.5 days, then ECMWF for the rest of the week); use automatic outside the Netherlands and surrounding region; sent as `models=` to whatever `weatherApiUrl` points at |
 | `weatherDebug` | log extra detail to the web UI log |
 | `previewHr` | from this local hour on, the `ride` screen shows tomorrow (and `rideOther` today); 24 = never |
 | `display.dimAtNight` | dim the panel at night |

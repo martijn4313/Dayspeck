@@ -231,6 +231,7 @@ unsigned long fetchWeather(float lat, float lon) {
     url += "&hourly=temperature_2m,precipitation,precipitation_probability,wind_gusts_10m,weather_code";
     url += "&daily=sunrise,sunset";
     url += "&forecast_days=7&timezone=auto&timeformat=unixtime";
+    if (weatherModel == "knmi_seamless") url += "&models=knmi_seamless";
     // Data is always requested in metric units (thresholds are metric); the display converts
 
     if (weatherDebug) {

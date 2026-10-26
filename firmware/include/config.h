@@ -24,6 +24,7 @@
 // Weather API configuration (defaults; overridden by config.json)
 #define DEFAULT_WEATHER_API_URL API_BASE_URL
 #define DEFAULT_WEATHER_UNITS    "metric"
+#define DEFAULT_WEATHER_MODEL    "best_match"
 #define DEFAULT_WEATHER_DEBUG    false
 
 // Display (SSD1306 I2C)

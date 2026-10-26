@@ -7,6 +7,7 @@
       "password": ""
    },
    "weatherDebug": false,
+   "weatherModel": "best_match",
    "wd_am": [7, 2],
    "wd_pm": [17, 2],
    "we_am": [10, 3],
