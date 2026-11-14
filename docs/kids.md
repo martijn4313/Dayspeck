@@ -82,7 +82,8 @@ fog, rain, thunderstorm, snow, wind) and its temperature: a number to read, with
 
 ![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
 
-Fog is a cloud with bands of mist under it:
+Fog is a cloud with bands of mist under it. In the time-lapse the mist glides along with its cloud, and under a
+cloud that stays it spreads out when the fog comes up and draws back in when it lifts:
 
 ![A foggy morning of 6 that clears up: sun and a cloud 13 this afternoon, the setting sun 9 at dinner](images/kids-fog.png){ .center }
 

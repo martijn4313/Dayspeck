@@ -1290,13 +1290,18 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
     }
 }
 
-// Fog: three bands of mist under the big cloud at cx, where the rain would fall, cut off outside xmin..xmax
-static void drawSmallFog(Adafruit_SSD1306 &d, int cx, int xmin = 0, int xmax = 127) {
-    for (int i = 0; i < 3; i++) {
-        int x0 = cx - 12 + (i == 1 ? 5 : 0), x1 = x0 + 19;
+// Fog: three bands of mist under the big cloud at cx, where the rain would fall, cut off outside xmin..xmax.
+// The mist hides what is behind it (the lower edge of the sun or moon). `pct` is how far the bands have spread
+// out from their middle (100: all the way), for mist that comes up or lifts.
+static void drawSmallFog(Adafruit_SSD1306 &d, int cx, int xmin = 0, int xmax = 127, int pct = 100) {
+    for (int i = -1; i < 3; i++) {                       // -1: the black behind the bands
+        int mid = cx + (i == 1 ? 3 : -2), half = i < 0 ? 14 : (10 * pct + 50) / 100;
+        int x0 = (i < 0 ? cx : mid) - half, x1 = (i < 0 ? cx : mid) + half;
         if (x0 < xmin) x0 = xmin;
         if (x1 > xmax) x1 = xmax;
-        if (x1 >= x0) d.drawFastHLine(x0, 36 + i * 3, x1 - x0 + 1, SSD1306_WHITE);
+        if (x1 < x0) continue;
+        if (i < 0) d.fillRect(x0, 34, x1 - x0 + 1, 10, SSD1306_BLACK);
+        else d.drawFastHLine(x0, 36 + i * 3, x1 - x0 + 1, SSD1306_WHITE);
     }
 }
 
@@ -1468,7 +1473,6 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     if (owner < 0) return;
     int w = c.hourSky[owner];
     cloud(bigX, y - 1);
-    if (w == KIDS_WEATHER_FOG) drawSmallFog(d, bigX, xmin, xmax);   // the mist glides along with its cloud
     if (w == KIDS_WEATHER_STORM && bigX == cx) {
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
         d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);
@@ -1481,6 +1485,13 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     bool wet = w == KIDS_WEATHER_RAIN || w == KIDS_WEATHER_STORM || w == KIDS_WEATHER_SNOW;
     bool prevWet = prev == KIDS_WEATHER_RAIN || prev == KIDS_WEATHER_STORM || prev == KIDS_WEATHER_SNOW;
     bool stayed = owner == (int)idx && (isBigCloud(prev) || prev == KIDS_WEATHER_PARTLY);   // the cloud was here
+    // Mist glides along with its cloud; under a cloud that stays it spreads out at the hour, or draws back in
+    int spread = within >= glideMs ? 100 : (int)(within * 100 / glideMs);
+    if (w == KIDS_WEATHER_FOG) {
+        drawSmallFog(d, bigX, xmin, xmax, stayed && prev != KIDS_WEATHER_FOG ? spread : 100);
+    } else if (stayed && prev == KIDS_WEATHER_FOG && spread < 100) {
+        drawSmallFog(d, bigX, xmin, xmax, 100 - spread);
+    }
     if (wet) {
         bool fresh = stayed && (!prevWet || (prev == KIDS_WEATHER_SNOW) != (w == KIDS_WEATHER_SNOW));
         drawSmallPrecip(d, bigX, w == KIDS_WEATHER_SNOW, c.hourPrecip[owner], frame, numLeft, numRight, xmin, xmax,
