@@ -79,6 +79,7 @@ int bestStartHour(const HourSlice* hours, size_t count, size_t windowLen, size_t
 #define KIDS_WEATHER_STORM   4
 #define KIDS_WEATHER_SNOW    5
 #define KIDS_WEATHER_WIND    6
+#define KIDS_WEATHER_FOG     7
 
 // From an Open-Meteo WMO weather code. Strong wind (above `warnWindKmh`) only replaces dry weather.
 int kidsWeatherFor(int code, float windKmh, float warnWindKmh);
@@ -225,7 +226,7 @@ KidsOutlook kidsNowOutlook(const KidsHour* hours, size_t count, const KidsLimits
 // The weather screen plays the hours of a part as a time-lapse: the picture of every hour, in order
 // (KIDS_WEATHER_*: rain or snow only from 0.2 mm, less is a cloud) and how hard it rains or snows
 // (KIDS_PRECIP_*). Hours without a forecast are left out. Returns how many (at most max). sky (optional) gets
-// the picture under the wind: for a windy hour its sky (clear, partly cloudy or cloudy), else the same as weather.
+// the picture under the wind: for a windy hour its sky (clear, partly cloudy, cloudy or fog), else the same as weather.
 #define KIDS_MAX_PART_HOURS 12
 int kidsHourPicture(const KidsHour& h, const KidsLimits& l);
 size_t kidsPartTimeline(const KidsHour* hours, const KidsPart& part, const KidsLimits& l, uint8_t* weather,
@@ -386,7 +387,7 @@ bool isAutumn(int month, bool southern);
 bool leavesBlowing(bool autumn, int condition, float windKmh);
 
 // Kids variant: leaves blow in autumn in dry weather (a KIDS_WEATHER_* picture of clear, partly cloudy,
-// cloudy or windy sky: not rain, thunderstorm or snow) from a gust speed of LEAF_MIN_WIND_KMH on.
+// cloudy, foggy or windy sky: not rain, thunderstorm or snow) from a gust speed of LEAF_MIN_WIND_KMH on.
 bool kidsLeavesBlowing(bool autumn, int kidsWeather, float windKmh);
 
 // True when `now` is before sunrise or after sunset. Sunrise/sunset are for some earlier or

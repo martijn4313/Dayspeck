@@ -96,7 +96,8 @@ int kidsWeatherFor(int code, float windKmh, float warnWindKmh) {
     if ((code >= 71 && code <= 77) || code == 85 || code == 86) return KIDS_WEATHER_SNOW;
     if (windKmh > warnWindKmh) return KIDS_WEATHER_WIND;
     if (code == 2) return KIDS_WEATHER_PARTLY;
-    if (code == 3 || code == 45 || code == 48) return KIDS_WEATHER_CLOUDY;   // overcast, fog
+    if (code == 3) return KIDS_WEATHER_CLOUDY;
+    if (code == 45 || code == 48) return KIDS_WEATHER_FOG;
     return KIDS_WEATHER_CLEAR;
 }
 
@@ -157,7 +158,7 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
                       KIDS_PRECIP_DRIZZLE, false, 0, 0, KIDS_WEATHER_CLEAR };
     float tempSum = 0, tempMax = -1000, wetMm = 0;
     int n = 0, nights = 0, wettest = KIDS_WEATHER_CLEAR;
-    int skyCount[7] = { 0, 0, 0, 0, 0, 0, 0 };
+    int skyCount[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     for (size_t i = from; i < to; i++) {
         const KidsHour& h = hours[i];
         if (!h.valid) continue;
@@ -182,7 +183,8 @@ KidsOutlook kidsWindowOutlook(const KidsHour* hours, size_t from, size_t to, con
     o.hours = n;
     o.night = nights * 2 > n;
     o.light = o.night ? KIDS_LIGHT_DARK : KIDS_LIGHT_DAY;
-    static const int sky[4] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_WIND };
+    static const int sky[5] = { KIDS_WEATHER_CLEAR, KIDS_WEATHER_PARTLY, KIDS_WEATHER_CLOUDY, KIDS_WEATHER_FOG,
+                                KIDS_WEATHER_WIND };
     for (int w : sky) {
         if (skyCount[w] > skyCount[o.sky] || (w == KIDS_WEATHER_WIND && skyCount[w] > 0)) o.sky = w;
     }
@@ -746,7 +748,8 @@ bool leavesBlowing(bool autumn, int condition, float windKmh) {
 bool kidsLeavesBlowing(bool autumn, int kidsWeather, float windKmh) {
     if (!autumn || isnan(windKmh)) return false;
     bool dry = kidsWeather == KIDS_WEATHER_CLEAR || kidsWeather == KIDS_WEATHER_PARTLY ||
-               kidsWeather == KIDS_WEATHER_CLOUDY || kidsWeather == KIDS_WEATHER_WIND;
+               kidsWeather == KIDS_WEATHER_CLOUDY || kidsWeather == KIDS_WEATHER_FOG ||
+               kidsWeather == KIDS_WEATHER_WIND;
     return dry && windKmh >= LEAF_MIN_WIND_KMH;
 }
 

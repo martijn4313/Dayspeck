@@ -78,9 +78,13 @@ defaults, see [Settings](#settings)):
 | below 0 °C, or snow | winter coat, scarf, hat and mittens |
 
 **Weather screen:** the same three parts, each with a weather picture (sun or moon, partly cloudy, cloud,
-rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
+fog, rain, thunderstorm, snow, wind) and its temperature: a number to read, without a unit.
 
 ![Weather screens: 10:00 sun 12, partly cloudy 19, rain 16; a winter day with snow -3, cloud 1, moon -2; a summer afternoon sun 28, thunderstorm 22, sun 28 tomorrow; the evening (dinner is over) at sunset 15, rain 9 and wind 17 tomorrow](images/kids-weather.png){ .center }
+
+Fog is a cloud with bands of mist under it:
+
+![A foggy morning of 6 that clears up: sun and a cloud 13 this afternoon, the setting sun 9 at dinner](images/kids-fog.png){ .center }
 
 **A time-lapse of every part.** The weather screen plays the hours of each column one after the other, in the
 time the screen is shown: with the screens cycling every 12 s, a 6-hour afternoon gives each hour 2 s, so a

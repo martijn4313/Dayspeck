@@ -1290,6 +1290,16 @@ static void drawSmallPrecip(Adafruit_SSD1306 &d, int cx, bool snow, int level, u
     }
 }
 
+// Fog: three bands of mist under the big cloud at cx, where the rain would fall, cut off outside xmin..xmax
+static void drawSmallFog(Adafruit_SSD1306 &d, int cx, int xmin = 0, int xmax = 127) {
+    for (int i = 0; i < 3; i++) {
+        int x0 = cx - 12 + (i == 1 ? 5 : 0), x1 = x0 + 19;
+        if (x0 < xmin) x0 = xmin;
+        if (x1 > xmax) x1 = xmax;
+        if (x1 >= x0) d.drawFastHLine(x0, 36 + i * 3, x1 - x0 + 1, SSD1306_WHITE);
+    }
+}
+
 static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light, int precip, unsigned long frame,
                              int numLeft, int numRight) {
     const int y = 17;
@@ -1299,9 +1309,13 @@ static void drawSmallWeather(Adafruit_SSD1306 &d, int cx, int weather, int light
         drawSmallCloud(d, cx + 3, y + 8, 1, SSD1306_BLACK);
         drawSmallCloud(d, cx + 3, y + 8, 0, SSD1306_WHITE);
         break;
-    // Clouds, rain, a storm and snow: all the same cloud, high enough for the rain and snow to fall
+    // Clouds, fog, rain, a storm and snow: all the same cloud, high enough for the rain and snow to fall
     case KIDS_WEATHER_CLOUDY:
         drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
+        break;
+    case KIDS_WEATHER_FOG:
+        drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
+        drawSmallFog(d, cx);
         break;
     case KIDS_WEATHER_RAIN:
         drawSmallCloud(d, cx, y - 1, 0, SSD1306_WHITE);
@@ -1363,8 +1377,8 @@ static bool cloudCovers(int cx, int oy, int px, int py) {
 }
 
 static bool isBigCloud(int weather) {
-    return weather == KIDS_WEATHER_CLOUDY || weather == KIDS_WEATHER_RAIN || weather == KIDS_WEATHER_STORM ||
-           weather == KIDS_WEATHER_SNOW;
+    return weather == KIDS_WEATHER_CLOUDY || weather == KIDS_WEATHER_FOG || weather == KIDS_WEATHER_RAIN ||
+           weather == KIDS_WEATHER_STORM || weather == KIDS_WEATHER_SNOW;
 }
 
 // One column of the weather screen at a moment of its time-lapse, drawn in layers so the weather can change
@@ -1454,6 +1468,7 @@ static void drawTimelapse(Adafruit_SSD1306 &d, int cx, const KidsColumn &c, unsi
     if (owner < 0) return;
     int w = c.hourSky[owner];
     cloud(bigX, y - 1);
+    if (w == KIDS_WEATHER_FOG) drawSmallFog(d, bigX, xmin, xmax);   // the mist glides along with its cloud
     if (w == KIDS_WEATHER_STORM && bigX == cx) {
         d.fillTriangle(cx - 1, y + 15, cx + 5, y + 15, cx - 3, y + 21, SSD1306_WHITE);   // lightning bolt
         d.fillTriangle(cx - 4, y + 20, cx + 3, y + 20, cx - 4, y + 27, SSD1306_WHITE);
