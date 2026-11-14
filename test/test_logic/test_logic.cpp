@@ -369,6 +369,12 @@ void test_kids_window() {
     h[2] = hr(18, 0.1f, 61);                             // a trace is only a cloud
     TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWindowOutlook(h, 0, 4, K).weather);
 
+    KidsHour fog[4] = { hr(6, 0, 45), hr(6, 0, 48), hr(7, 0, 45), hr(9, 0, 2) };   // a foggy morning
+    o = kidsWindowOutlook(fog, 0, 4, K);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_FOG, o.weather);
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_FOG, o.sky);
+    TEST_ASSERT_EQUAL(0, o.wetHours);
+
     KidsHour none[2] = { hr(1, 0, 0), hr(1, 0, 0) };
     none[0].valid = none[1].valid = false;
     TEST_ASSERT_FALSE(kidsWindowOutlook(none, 0, 2, K).valid);
@@ -761,7 +767,9 @@ void test_kids_weather() {
     TEST_ASSERT_EQUAL(KIDS_WEATHER_CLEAR, kidsWeatherFor(1, 5, 40));
     TEST_ASSERT_EQUAL(KIDS_WEATHER_PARTLY, kidsWeatherFor(2, 5, 40));
     TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, kidsWeatherFor(3, 5, 40));
-    TEST_ASSERT_EQUAL(KIDS_WEATHER_CLOUDY, kidsWeatherFor(45, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_FOG, kidsWeatherFor(45, 5, 40));
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_FOG, kidsWeatherFor(48, 5, 40));     // rime fog
+    TEST_ASSERT_EQUAL(KIDS_WEATHER_WIND, kidsWeatherFor(45, 50, 40));   // wind replaces fog too
     TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(61, 5, 40));
     TEST_ASSERT_EQUAL(KIDS_WEATHER_RAIN, kidsWeatherFor(81, 5, 40));
     TEST_ASSERT_EQUAL(KIDS_WEATHER_SNOW, kidsWeatherFor(73, 5, 40));

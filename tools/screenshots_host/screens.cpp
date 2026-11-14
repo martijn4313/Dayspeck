@@ -119,6 +119,10 @@ static Hour winterMorning(int h) {
     if (h < 12) x.rainMm = 0.5f;
     return x;
 }
+// 08:00 on a foggy day: fog until noon, then the sun comes through; clear by dinner
+static Hour foggyMorning(int h) {
+    return Hour{ h < 12 ? 6.0f : (h < 18 ? 13.0f : 9.0f), 0, 5, h < 12 ? 45 : (h < 18 ? 2 : 0) };
+}
 // 10:00 on a wet day: drizzle this morning, heavy rain this afternoon, a downpour with thunder at dinner
 static Hour wetDay(int h) {
     if (h < 12) return Hour{ 13, 0.3f, 15, 51 };
@@ -158,6 +162,8 @@ static void kidsScreens() {
     dayStrip(makeDay(8, 8, 17, winterMorning), true);      frame("kids-weather", 1);
     dayStrip(makeDay(13, 6, 21, summerAfternoon), true);   frame("kids-weather", 2);
     dayStrip(makeDay(19, 7, 19, autumnEvening), true);     frame("kids-weather", 3);
+    // A foggy morning that clears up
+    dayStrip(makeDay(8, 7, 19, foggyMorning), true);       frame("kids-fog", 0);
     // Dinner at 18:00 seen at noon: in summer, at sunset in autumn, in the dark in winter
     dayStrip(makeDay(13, 6, 21, summerAfternoon), true);   frame("kids-dinner", 0);
     dayStrip(makeDay(12, 7, 18, autumnMorning), true);     frame("kids-dinner", 1);
