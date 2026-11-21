@@ -162,7 +162,7 @@ report blowing away) with made-up weather. A touch on the sensor stops it.</smal
 </form></div><div class="card" id="energyCard" style="display:none">        <h3>Energy monitor</h3>
 <p><small>The heat pump, solar and energy screens read one JSON document on your network, for example from a Raspberry Pi that reads the heat pump and the inverter. They read it every 15 seconds while one of them is shown.</small></p>
 <form id="energyForm">
-<div class="field"><label for="f48">Address</label><div class="control"><input id="f48" aria-describedby="f48-help" name="energyUrl" type="url" maxlength="128" placeholder="http://192.168.1.20/energy.json"><small id="f48-help">plain http:// and the IP address (a .local name does not work); empty = off</small></div></div>
+<div class="field"><label for="f48">Address</label><div class="control"><input id="f48" aria-describedby="f48-help" name="energyUrl" type="url" maxlength="128" placeholder="http://192.168.1.20/energy.json"><small id="f48-help">plain http://; an IP address is the most reliable; empty = off</small></div></div>
 <p><small>Last read: <span id="energyStatus">-</span></small></p>
 <button type="submit">Save energy monitor</button>
 </form></div><div class="card" id="thresholdsCard">        <h3>Ride Thresholds</h3>

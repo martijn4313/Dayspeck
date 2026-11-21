@@ -149,7 +149,7 @@ to cold. A child who feels the cold sooner can get the winter coat from 8 °C in
 
 **Energy monitor**: the address of the JSON document that the [heat pump, solar and energy
 screens](energy.md) read, for example `http://192.168.1.20/energy.json` on a Raspberry Pi. It must start with
-`http://` and use the IP address (a `.local` name does not work); empty switches it off. *Last read* says how long ago the display read it, or what went wrong. The card
+`http://`; the IP address is the most reliable, a `.local` name should work too. Empty switches it off. *Last read* says how long ago the display read it, or what went wrong. The card
 shows while one of those screens is in a screen list.
 
 **Advanced weather settings** (expand under *Device*): the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;

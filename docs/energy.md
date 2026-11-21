@@ -27,8 +27,10 @@ Pi, serves one small JSON document, and the display reads it over plain HTTP.
 ## Setting it up
 
 1. Make the JSON document below available at an address on your network, for example
-   `http://192.168.1.20/energy.json`. Plain `http://`: the display cannot do https. Use the Pi's IP address
-   (give it a fixed one in your router): the display cannot look up a `.local` name.
+   `http://192.168.1.20/energy.json`. Plain `http://`: the display cannot do https. The Pi's IP address is the
+   most reliable (give it a fixed one in your router). A `.local` name such as
+   `http://raspberrypi.local/energy.json` should work too: the display asks for it with one multicast query,
+   which the Pi answers, but if that answer gets lost the read fails until the next try.
 2. In the web UI, under *Energy monitor*, fill in that address and save.
 3. Add `heatpump`, `solar` or `energy` to a [screen list](screens.md).
 
