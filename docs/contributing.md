@@ -41,4 +41,5 @@ python tools/webui_screenshots.py     # the web UI (needs Playwright and a Chrom
 host (with the stand-ins in `tools/screenshots_host/mock` for the Arduino core and the display driver) and runs
 the scenes in `tools/screenshots_host/screens.cpp`, so those pictures are exactly what the device draws. It
 needs a C++17 compiler and the libraries PlatformIO downloads; CI checks that it still builds and runs.
-`webui_screenshots.py` loads the page from `webserver.cpp` with a mock server.
+`webui_screenshots.py` loads the page, `firmware/web/index.html`, with a mock server. The firmware embeds that
+page gzipped: `tools/pio_webui.py` packs it at every build.
