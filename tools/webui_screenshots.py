@@ -1,30 +1,21 @@
 #!/usr/bin/env python3
 """Render screenshots of the device's web UI for the manual (docs/images/webui-*.png).
 
-The page is read from firmware/src/webserver.cpp, so the screenshots always show the real UI. A small
-mock server answers the /api/* routes with demo data, and the place search (Open-Meteo geocoding) is
-answered with canned results, so no device and no internet are needed.
+The page is read from firmware/web/index.html (the firmware embeds it gzipped), so the screenshots always
+show the real UI. A small mock server answers the /api/* routes with demo data, and the place search
+(Open-Meteo geocoding) is answered with canned results, so no device and no internet are needed.
 
     pip install playwright pillow       # a Chromium is needed too, see --chromium
     python tools/webui_screenshots.py [--out docs/images] [--chromium /path/to/chrome]
 """
 import argparse
 import json
-import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "firmware" / "src" / "webserver.cpp"
-
-
-def extract(name, source):
-    """Return the contents of a `static const char <name>[] PROGMEM = R"TAG( ... )TAG";` literal."""
-    m = re.search(name + r'\[\] PROGMEM = R"(\w+)\((.*?)\)\1";', source, re.S)
-    if not m:
-        raise SystemExit(f"{name} not found in {SOURCE}")
-    return m.group(2)
+SOURCE = ROOT / "firmware" / "web" / "index.html"
 
 
 STATUS = {
@@ -137,8 +128,7 @@ def main():
 
     from playwright.sync_api import sync_playwright
 
-    source = SOURCE.read_text(encoding="utf-8")
-    html = extract("index_html", source)
+    html = SOURCE.read_text(encoding="utf-8")
 
     # Stable selectors let the page be reorganized without changing screenshot card indexes.
     def search_place(p):

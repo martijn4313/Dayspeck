@@ -10,7 +10,7 @@ from urllib.parse import parse_qs
 
 import pytest
 
-from webui_screenshots import GEOCODING, SOURCE, extract, make_handler
+from webui_screenshots import GEOCODING, SOURCE, make_handler
 
 playwright = pytest.importorskip("playwright.sync_api")
 expect = playwright.expect
@@ -30,7 +30,7 @@ def browser():
 
 @pytest.fixture(scope="module")
 def url():
-    html = extract("index_html", SOURCE.read_text(encoding="utf-8"))
+    html = SOURCE.read_text(encoding="utf-8")
     server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(html, True))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
