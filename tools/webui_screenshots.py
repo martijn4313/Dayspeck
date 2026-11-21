@@ -37,6 +37,7 @@ STATUS = {
     "current": {"tempC": 14.2, "windKmh": 18.0, "precipMm": 0.0},
     "wifi": {"connected": True, "signalStrength": -58, "ssid": "HomeNet", "passwordSet": True,
              "hostname": "dayspeck-3f2a"},
+    "energy": {"url": "http://192.168.1.20/energy.json", "ok": True, "ageS": 12, "error": ""},
     "weatherApi": {"url": "http://api.open-meteo.com/v1/forecast", "model": "best_match", "units": "metric", "debug": False},
     "ssidLocations": [{"ssid": "OfficeWiFi", "lat": 51.9244, "lon": 4.4777}],
     "debug": {"weatherValid": True, "weatherAge": 12, "mdnsStarted": True},

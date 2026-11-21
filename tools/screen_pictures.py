@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Draw the manual's pictures of the picture screens, the village, the countdown and the weather report with the
 firmware's own code: docs/images/kids-clothes.png, kids-weather.png, kids-countdown.png, kids-village.png,
-report.png, kids-wind.gif, report-wind.gif, and hero.png (four screens, one from rider-today.png, so run
-tools/docs_screenshots.py first when the ride screens change).
+report.png, kids-wind.gif, report-wind.gif, the energy screens (energy-*.png, energy-flow-anim.gif), and
+hero.png (four screens, one from rider-today.png, so run tools/docs_screenshots.py first when the ride screens
+change).
 
 It compiles firmware/src/display.cpp, firmware/lib/motologic and the Adafruit GFX library for the host, with the
 small stand-ins in tools/screenshots_host/mock for the Arduino core and the SSD1306 driver, and runs the scenes in
@@ -74,15 +75,17 @@ def main():
 
     pictures = build_and_run(args.cxx)
     screens = {name: [device_image(f) for f in frames] for name, frames in pictures.items()
-               if not name.endswith("-wind")}
+               if not name.endswith(("-wind", "-anim"))}
     layout = {"boot-info": 2, "kids-clothes": 3, "kids-weather": 2, "kids-dinner": 3, "kids-night": 2, "kids-sunset": 2,
               "kids-umbrella": 1, "kids-fog": 1,
+              "energy-heatpump": 2, "energy-solar": 3, "energy-flow": 2, "energy-missing": 2,
               "kids-countdown": 3,
               "kids-village": 3, "report": 2, "ride-hours": 3}
     for name, columns in layout.items():
         grid(screens[name], columns).save(out / f"{name}.png", optimize=True)
         print("wrote", out / f"{name}.png")
-    for name in ("kids-wind", "report-wind", "kids-rain", "kids-snow", "kids-timelapse", "lucky-cat"):
+    for name in ("kids-wind", "report-wind", "kids-rain", "kids-snow", "kids-timelapse", "lucky-cat",
+                 "energy-flow-anim"):
         save_gif([device_image(f, scale=3) for f in pictures[name]], out / f"{name}.gif")
         print("wrote", out / f"{name}.gif")
 

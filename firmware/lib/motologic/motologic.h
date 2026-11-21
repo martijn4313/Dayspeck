@@ -349,7 +349,10 @@ size_t fitReport(const WeatherReport& r, char (*lines)[REPORT_COLS + 1], size_t 
 #define SCREEN_VILLAGE     9   // kids home screen: what to wear now, next to the animated village
 #define SCREEN_RIDE_HOURS 10   // ride rating of the next hours, and when to go
 #define SCREEN_CAT        11   // the lucky cat beckoning, with the temperature
-#define SCREEN_COUNT      12
+#define SCREEN_HEATPUMP   12   // the heat pump, from the energy monitor on the local network
+#define SCREEN_SOLAR      13   // the solar panels and the grid, from the energy monitor
+#define SCREEN_ENERGY     14   // the flow: sun, house and grid, and the heat pump
+#define SCREEN_COUNT      15
 #define MAX_SCREEN_SLOTS   6
 
 const char* screenName(int id);            // "ride", "rideOther", "week", ...; "" for an unknown id
@@ -374,6 +377,42 @@ struct ScreenNav {
 int       screenAt(ScreenNav nav, const ScreenList& tap, const ScreenList& hold);
 ScreenNav screenNextTap(ScreenNav nav, const ScreenList& tap, uint16_t available);    // also the auto cycle
 ScreenNav screenNextHold(ScreenNav nav, const ScreenList& tap, const ScreenList& hold, uint16_t available);
+
+// ---- Energy monitor ----
+// One JSON document on the local network (docs/energy.md) with the heat pump, the solar panels, the grid and
+// the house. Every field is optional: ENERGY_NONE marks one that was not sent.
+#define ENERGY_NONE            INT32_MIN
+#define ENERGY_MODE_NONE       0   // no mode sent
+#define ENERGY_MODE_HEATING    1
+#define ENERGY_MODE_HOT_WATER  2
+#define ENERGY_MODE_COOLING    3
+#define ENERGY_MODE_DEFROST    4
+#define ENERGY_MODE_STANDBY    5
+#define ENERGY_MODE_OFF        6
+#define ENERGY_MODE_OTHER      7   // a word of its own, shown as sent (modeText)
+#define ENERGY_MODE_TEXT_LEN  12
+
+struct EnergyData {
+    uint8_t  mode;                          // ENERGY_MODE_*
+    char     modeText[ENERGY_MODE_TEXT_LEN];   // the mode as sent (for ENERGY_MODE_OTHER)
+    int32_t  hpPowerW, hpCop10;             // COP in tenths
+    int32_t  flowC10, returnC10, outsideC10, hotWaterC10;   // tenths of a degree
+    int32_t  pvPowerW, pvTodayWh, gridW, houseW;            // grid: + from the grid, - to it
+    bool     hasHours;                      // pvHourWh was sent
+    uint16_t pvHourWh[24];                  // Wh per local hour of today, [0] = 00:00-01:00
+};
+
+void energyClear(EnergyData& e);                     // all fields ENERGY_NONE, no mode, no hours
+int  energyModeFromName(const char* name);           // ENERGY_MODE_*; NONE for null or "", OTHER for another word
+// The mode in words ("Heating", "Verwarmen"); for OTHER the text as sent, for NONE ""
+const char* energyModeLabel(const EnergyData& e, bool nl);
+bool energyRunning(const EnergyData& e);              // the fan turns: a mode but standby or off, or power used
+// What the house uses: as sent, else solar plus grid, else ENERGY_NONE
+int32_t energyHouseW(const EnergyData& e);
+// Power without its sign: "850W", "1.62kW" (compact: "1.6kW"); "-" for ENERGY_NONE
+void formatWatts(char* out, size_t size, int32_t w, bool compact);
+// To a value in tenths (a degree, a COP) from a float; ENERGY_NONE for NAN
+int32_t energyTenths(float v);
 
 // Autumn in the hemisphere of the location: September-November in the north, March-May in the south.
 // month is 1-12.

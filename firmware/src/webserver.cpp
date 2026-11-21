@@ -21,6 +21,7 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
+#include "energy.h"
 #include <functional>
 #include <stdlib.h>
 #include <vector>
@@ -270,6 +271,10 @@ static void handleApiStatus() {
     doc["wifi"]["passwordSet"] = wifiPassword.length() > 0;   // the password itself is never sent
     doc["wifi"]["hostname"] = deviceName;
 
+    doc["energy"]["url"] = energyUrl;
+    doc["energy"]["ok"] = energyFresh();
+    if (energyFresh()) doc["energy"]["ageS"] = energyAgeMs() / 1000;
+    doc["energy"]["error"] = energyLastError();
     doc["weatherApi"]["url"] = weatherApiUrl;
     doc["weatherApi"]["model"] = weatherModel;
     doc["weatherApi"]["units"] = weatherUnits;
@@ -674,6 +679,23 @@ static void handleApiWifiConfig() {
     sendMessage(200, ("WiFi settings saved, connecting... Then open http://" + deviceName + ".local").c_str());
 }
 
+static void handleApiEnergy() {
+    String url = server.arg("energyUrl");
+    url.trim();
+    if (url.length() > 0 && !validUrl(url)) {
+        sendMessage(400, "The energy monitor address must start with http:// (max 128 characters; https is not supported)");
+        return;
+    }
+    if (!updateConfig([&](JsonDocument& doc) { doc["energyUrl"] = url; })) {
+        sendMessage(500, "Could not save configuration");
+        return;
+    }
+    if (url != energyUrl) energyForget();
+    energyUrl = url;
+    state.displayDirty = true;
+    sendMessage(200, url.length() ? "Energy monitor saved" : "Energy monitor switched off");
+}
+
 static void handleApiWeatherConfig() {
     String apiUrl = server.arg("apiUrl");
     String model = server.hasArg("weatherModel") ? server.arg("weatherModel") : weatherModel;
@@ -931,6 +953,7 @@ void initWebServer() {
     server.on("/api/location", guardedPost(handleApiLocation));
     server.on("/api/wifi/config", guardedPost(handleApiWifiConfig));
     server.on("/api/weatherconfig", guardedPost(handleApiWeatherConfig));
+    server.on("/api/energy", guardedPost(handleApiEnergy));
     server.on("/api/ssidlocation", guardedPost(handleApiSsidLocation));
     server.on("/api/ssidlocation/delete", guardedPost(handleApiSsidLocationDelete));
     server.on("/api/password", guardedPost(handleApiPassword));

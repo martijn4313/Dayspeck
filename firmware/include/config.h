@@ -78,6 +78,12 @@
 // Fetch interval (milliseconds)
 #define FETCH_INTERVAL_MS     900000  // 15 minutes
 
+// Energy monitor (docs/energy.md): read only while one of its screens is shown
+#define ENERGY_REFRESH_MS      15000   // every 15 s
+#define ENERGY_RETRY_MS        30000   // after a failed read (each one can wait ENERGY_TIMEOUT_MS)
+#define ENERGY_TIMEOUT_MS       2000   // it is on the local network: answer quickly or not at all
+#define ENERGY_STALE_MS       180000   // older than 3 minutes: the screens say there is no data
+
 // Pull updates: base URL of the release relay (tools/ota-relay), plain http:// only.
 // "" = not configured; it can also be set in the web UI (config.json "ota.url").
 #ifndef OTA_DEFAULT_URL

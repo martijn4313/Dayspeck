@@ -20,6 +20,7 @@
 #include "webserver.h"
 #include "security.h"
 #include "ota.h"
+#include "energy.h"
 
 // Display object
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT);
@@ -280,6 +281,7 @@ void loadConfig() {
         if (model == "best_match" || model == "knmi_seamless") weatherModel = model;
     }
     if (doc["weatherApiUrl"].is<String>()) weatherApiUrl = doc["weatherApiUrl"].as<String>();
+    if (doc["energyUrl"].is<String>()) energyUrl = doc["energyUrl"].as<String>();
     if (doc["weatherUnits"].is<String>()) weatherUnits = doc["weatherUnits"].as<String>();
     if (doc["weatherDebug"].is<bool>()) weatherDebug = doc["weatherDebug"].as<bool>();
 
@@ -701,6 +703,44 @@ void renderLuckyCat() {
     renderLuckyCatView(display, millis() / RAIN_FRAME_INTERVAL, kidsShownTemp(w.tempC), !isnan(w.tempC));
 }
 
+static bool isEnergyScreen(int screen) {
+    return screen == SCREEN_HEATPUMP || screen == SCREEN_SOLAR || screen == SCREEN_ENERGY;
+}
+
+// The host (and port) of an address, for the "no data from" line: http://192.168.1.20:8080/energy.json
+static String urlHost(const String& url) {
+    int start = url.indexOf("://");
+    start = start < 0 ? 0 : start + 3;
+    int end = url.indexOf('/', start);
+    return url.substring(start, end < 0 ? url.length() : end);
+}
+
+/**
+ * The heat pump, solar and energy flow screens, from the energy monitor (docs/energy.md)
+ */
+void renderEnergy(int screen) {
+    bool nl = displayLanguage == "nl";
+    if (energyUrl.length() == 0) {
+        renderEnergyMissingView(display, screen, nl ? "Energiemonitor" : "Energy monitor",
+                                nl ? "niet ingesteld" : "not set up");
+        return;
+    }
+    if (!energyFresh()) {
+        renderEnergyMissingView(display, screen, nl ? "Geen gegevens van" : "No data from", urlHost(energyUrl).c_str());
+        return;
+    }
+    const EnergyData& e = energyData();
+    unsigned long frame = millis() / RAIN_FRAME_INTERVAL;
+    if (screen == SCREEN_HEATPUMP) {
+        renderHeatpumpView(display, e, frame, nl, weatherUnits == "imperial");
+    } else if (screen == SCREEN_SOLAR) {
+        int hourNow = state.timeSynced && timezoneKnown() ? localHourOf(time(nullptr)) : 23;
+        renderSolarView(display, e, hourNow, state.isNight, nl);
+    } else {
+        renderEnergyFlowView(display, e, frame, nl);
+    }
+}
+
 /**
  * Draw the hourly view from the stored forecast
  */
@@ -974,6 +1014,8 @@ void render() {
         renderApInfoView(display, AP_SSID, effectivePassword().c_str(), "192.168.4.1");
     } else if (screen == SCREEN_CLOCK) {
         renderClock();
+    } else if (isEnergyScreen(screen) && !demo.active) {
+        renderEnergy(screen);   // its own data: it does not wait for the forecast
     } else if (!state.weatherValid && !demo.active) {
         const char* line1;
         const char* line2;
@@ -1428,6 +1470,10 @@ void loop() {
     // Weather and update checks can block: give the connection details their full display time first.
     if (!bootInfoVisible) {
         handleWeatherFetch();
+        // The energy monitor is read only while one of its screens is on
+        if (energyFetchIfDue(isEnergyScreen(currentScreen()) && !state.displayOff && !demo.active)) {
+            state.displayDirty = true;
+        }
         otaLoop(intervalPassed(state.lastActivityMs, 60000UL));   // a check pauses the display: not while in use
     }
 
@@ -1508,8 +1554,8 @@ void loop() {
                 stopWindAnimation();
             }
             if (screen == SCREEN_WEATHER && kidsWeatherMoving) state.displayDirty = true;   // the time-lapse plays
-        } else if (screen == SCREEN_CAT) {
-            state.displayDirty = true;   // the paw beckons
+        } else if (screen == SCREEN_CAT || isEnergyScreen(screen)) {
+            state.displayDirty = true;   // the paw beckons, the fan turns, the power flows
         } else if (screen == SCREEN_COUNTDOWN) {
             KidsCountdown countdown = kidsCountdownNow();
             if (countdown.active && countdown.sleeps == 0) state.displayDirty = true;   // confetti on the day itself

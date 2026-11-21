@@ -1,5 +1,6 @@
 // Native unit tests for the pure logic: pio test -e native
 #include <unity.h>
+#include <stdio.h>
 #include <initializer_list>
 #include <math.h>
 #include "motologic.h"
@@ -1141,6 +1142,61 @@ void test_wrap_report() {
     TEST_ASSERT_EQUAL_STRING("Vandaag zonnig, 22", lines[0]);
 }
 
+static void test_energy() {
+    EnergyData e;
+    energyClear(e);
+    TEST_ASSERT_EQUAL(ENERGY_MODE_NONE, e.mode);
+    TEST_ASSERT_EQUAL(ENERGY_NONE, e.hpPowerW);
+    TEST_ASSERT_FALSE(e.hasHours);
+    TEST_ASSERT_FALSE(energyRunning(e));                      // nothing sent: no fan
+    TEST_ASSERT_EQUAL_STRING("", energyModeLabel(e, false));
+
+    TEST_ASSERT_EQUAL(ENERGY_MODE_HEATING, energyModeFromName("heating"));
+    TEST_ASSERT_EQUAL(ENERGY_MODE_HOT_WATER, energyModeFromName("hotwater"));
+    TEST_ASSERT_EQUAL(ENERGY_MODE_OFF, energyModeFromName("off"));
+    TEST_ASSERT_EQUAL(ENERGY_MODE_OTHER, energyModeFromName("legionella"));
+    TEST_ASSERT_EQUAL(ENERGY_MODE_NONE, energyModeFromName(""));
+    TEST_ASSERT_EQUAL(ENERGY_MODE_NONE, energyModeFromName(nullptr));
+
+    e.mode = ENERGY_MODE_HOT_WATER;
+    TEST_ASSERT_EQUAL_STRING("Hot water", energyModeLabel(e, false));
+    TEST_ASSERT_EQUAL_STRING("Warm water", energyModeLabel(e, true));
+    TEST_ASSERT_TRUE(energyRunning(e));
+    e.mode = ENERGY_MODE_STANDBY;
+    TEST_ASSERT_FALSE(energyRunning(e));
+    e.mode = ENERGY_MODE_OTHER;
+    snprintf(e.modeText, sizeof(e.modeText), "Legionella");
+    TEST_ASSERT_EQUAL_STRING("Legionella", energyModeLabel(e, true));
+    e.mode = ENERGY_MODE_NONE;
+    e.hpPowerW = 300;                                         // no mode, but it uses power: it runs
+    TEST_ASSERT_TRUE(energyRunning(e));
+
+    // The house: as sent, else solar plus grid
+    TEST_ASSERT_EQUAL(ENERGY_NONE, energyHouseW(e));
+    e.pvPowerW = 3240;
+    e.gridW = -2410;                                          // sending to the grid
+    TEST_ASSERT_EQUAL(830, energyHouseW(e));
+    e.houseW = 900;
+    TEST_ASSERT_EQUAL(900, energyHouseW(e));
+
+    char b[12];
+    formatWatts(b, sizeof(b), 850, false);     TEST_ASSERT_EQUAL_STRING("850W", b);
+    formatWatts(b, sizeof(b), -2410, false);   TEST_ASSERT_EQUAL_STRING("2.41kW", b);   // no sign
+    formatWatts(b, sizeof(b), 1625, true);     TEST_ASSERT_EQUAL_STRING("1.6kW", b);
+    formatWatts(b, sizeof(b), 999, true);      TEST_ASSERT_EQUAL_STRING("999W", b);
+    formatWatts(b, sizeof(b), 1000, false);    TEST_ASSERT_EQUAL_STRING("1.00kW", b);
+    formatWatts(b, sizeof(b), 9996, false);    TEST_ASSERT_EQUAL_STRING("10.00kW", b);
+    formatWatts(b, sizeof(b), 123456, false);  TEST_ASSERT_EQUAL_STRING("123.5kW", b);
+    formatWatts(b, sizeof(b), ENERGY_NONE, false);  TEST_ASSERT_EQUAL_STRING("-", b);
+
+    TEST_ASSERT_EQUAL(352, energyTenths(35.2f));
+    TEST_ASSERT_EQUAL(-18, energyTenths(-1.8f));
+    TEST_ASSERT_EQUAL(ENERGY_NONE, energyTenths(NAN));
+
+    TEST_ASSERT_EQUAL(SCREEN_ENERGY, screenFromName("energy"));
+    TEST_ASSERT_TRUE(screenAlwaysAvailable(SCREEN_HEATPUMP));   // without an address it says so: it can be home
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_rate_ride_good);
@@ -1206,5 +1262,6 @@ int main(int, char**) {
     RUN_TEST(test_weather_report);
     RUN_TEST(test_weather_report_needs_the_day);
     RUN_TEST(test_wrap_report);
+    RUN_TEST(test_energy);
     return UNITY_END();
 }

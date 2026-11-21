@@ -147,6 +147,11 @@ countdown screen is in one of the screen lists.
 Each limit must be equal to or below the one above it; the page refuses an order that does not go from warm
 to cold. A child who feels the cold sooner can get the winter coat from 8 °C instead of 5 °C, for example.
 
+**Energy monitor**: the address of the JSON document that the [heat pump, solar and energy
+screens](energy.md) read, for example `http://192.168.1.20/energy.json` on a Raspberry Pi. It must start with
+`http://` and use the IP address (a `.local` name does not work); empty switches it off. *Last read* says how long ago the display read it, or what went wrong. The card
+shows while one of those screens is in a screen list.
+
 **Advanced weather settings** (expand under *Device*): the forecast address (default Open-Meteo), the units (*Metric* or *Imperial*;
 imperial only changes the temperature on the display), the forecast model (*Automatic*, or *Netherlands*: KNMI for the first 2.5 days, then ECMWF; use Automatic outside the Netherlands and surrounding region) and *Verbose Debug*, which logs extra detail.
 The address must start with `http://`, as the device cannot do TLS.

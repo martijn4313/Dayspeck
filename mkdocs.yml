@@ -43,6 +43,7 @@ nav:
       - How the ride rating works: ride-rating.md
       - Picture screens: kids.md
       - Weather report: report.md
+      - Heat pump and solar: energy.md
   - Reference:
       - Web UI: web-ui.md
       - Configuration: configuration.md

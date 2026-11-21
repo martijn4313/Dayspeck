@@ -208,6 +208,20 @@ void renderConnectedInfoView(Adafruit_SSD1306 &display, const char* address, con
 // footer (optional): a line across the bottom, such as the device's address
 void renderLoadingView(Adafruit_SSD1306 &display, const char* line1, const char* line2, unsigned long timeMs,
                        const char* footer = nullptr);
+// ---- Energy monitor (docs/energy.md); frame: 15 per second, nl: Dutch words, fahrenheit: degrees in F ----
+// The heat pump: the outdoor unit (its fan turns while it runs), the mode, power and COP; flow > return,
+// outside and the hot water along the bottom
+void renderHeatpumpView(Adafruit_SSD1306 &display, const EnergyData &e, unsigned long frame, bool nl,
+                        bool fahrenheit);
+// The solar panels: power now, today so far and the grid (an arrow out or in), a bar per hour 05-21 (hourNow:
+// the open bar, still counting); night: the moon instead of the sun
+void renderSolarView(Adafruit_SSD1306 &display, const EnergyData &e, int hourNow, bool night, bool nl);
+// The flow: sun, house and grid with dots running the way the power goes; the heat pump underneath (without
+// one, the solar panels' total of today)
+void renderEnergyFlowView(Adafruit_SSD1306 &display, const EnergyData &e, unsigned long frame, bool nl);
+// No data to show: the screen's picture (SCREEN_HEATPUMP, SCREEN_SOLAR, SCREEN_ENERGY) and two lines
+void renderEnergyMissingView(Adafruit_SSD1306 &display, int screen, const char* line1, const char* line2);
+
 // Sends the frame buffer to the panel, unless the panel already shows exactly this frame: an animation tick that
 // changes nothing visible then costs no I2C transfer (on an ESP-01S the blue LED sits on GPIO2 = SCL and flickers
 // with every transfer). Use it instead of display.display().

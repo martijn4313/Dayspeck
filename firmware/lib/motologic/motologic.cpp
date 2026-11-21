@@ -683,7 +683,7 @@ size_t fitReport(const WeatherReport& r, char (*lines)[REPORT_COLS + 1], size_t 
 
 static const char* const SCREEN_NAMES[SCREEN_COUNT] = {
     "ride", "rideOther", "week", "hours", "clock", "weather", "clothes", "countdown", "report", "village",
-    "rideHours", "cat"
+    "rideHours", "cat", "heatpump", "solar", "energy"
 };
 
 const char* screenName(int id) {
@@ -925,4 +925,67 @@ bool hexToBytes(const char* hex, uint8_t* out, size_t len) {
         out[i] = (uint8_t)(hi << 4 | lo);
     }
     return hex[2 * len] == '\0';
+}
+
+// ---- Energy monitor ----
+
+void energyClear(EnergyData& e) {
+    e.mode = ENERGY_MODE_NONE;
+    e.modeText[0] = '\0';
+    e.hpPowerW = e.hpCop10 = e.flowC10 = e.returnC10 = e.outsideC10 = e.hotWaterC10 = ENERGY_NONE;
+    e.pvPowerW = e.pvTodayWh = e.gridW = e.houseW = ENERGY_NONE;
+    e.hasHours = false;
+    for (int i = 0; i < 24; i++) e.pvHourWh[i] = 0;
+}
+
+static const char* const ENERGY_MODES[] = { "heating", "hotwater", "cooling", "defrost", "standby", "off" };
+
+int energyModeFromName(const char* name) {
+    if (!name || !name[0]) return ENERGY_MODE_NONE;
+    for (int i = 0; i < 6; i++) {
+        if (strcmp(name, ENERGY_MODES[i]) == 0) return ENERGY_MODE_HEATING + i;
+    }
+    return ENERGY_MODE_OTHER;
+}
+
+const char* energyModeLabel(const EnergyData& e, bool nl) {
+    static const char* const LABELS[2][6] = {
+        { "Heating", "Hot water", "Cooling", "Defrost", "Standby", "Off" },
+        { "Verwarmen", "Warm water", "Koelen", "Ontdooien", "Stand-by", "Uit" },
+    };
+    if (e.mode >= ENERGY_MODE_HEATING && e.mode <= ENERGY_MODE_OFF) return LABELS[nl ? 1 : 0][e.mode - 1];
+    return e.mode == ENERGY_MODE_OTHER ? e.modeText : "";
+}
+
+bool energyRunning(const EnergyData& e) {
+    if (e.mode == ENERGY_MODE_STANDBY || e.mode == ENERGY_MODE_OFF) return false;
+    if (e.mode != ENERGY_MODE_NONE) return true;
+    return e.hpPowerW != ENERGY_NONE && e.hpPowerW > 0;
+}
+
+int32_t energyHouseW(const EnergyData& e) {
+    if (e.houseW != ENERGY_NONE) return e.houseW;
+    if (e.pvPowerW != ENERGY_NONE && e.gridW != ENERGY_NONE) return e.pvPowerW + e.gridW;
+    return ENERGY_NONE;
+}
+
+void formatWatts(char* out, size_t size, int32_t w, bool compact) {
+    if (w == ENERGY_NONE) {
+        snprintf(out, size, "-");
+        return;
+    }
+    long a = w < 0 ? -(long)w : (long)w;
+    if (a < 1000) snprintf(out, size, "%ldW", a);
+    else if (compact || a >= 100000) {
+        long tenths = (a + 50) / 100;                  // 1.6kW, 12.3kW
+        snprintf(out, size, "%ld.%ldkW", tenths / 10, tenths % 10);
+    } else {
+        long hundredths = (a + 5) / 10;                // 1.62kW
+        snprintf(out, size, "%ld.%02ldkW", hundredths / 100, hundredths % 100);
+    }
+}
+
+int32_t energyTenths(float v) {
+    if (isnan(v)) return ENERGY_NONE;
+    return (int32_t)lroundf(v * 10.0f);
 }
