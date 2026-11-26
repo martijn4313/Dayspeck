@@ -12,6 +12,7 @@ downloads (any firmware build fetches them, or `pio pkg install -e esp01_1m`).
     python tools/screen_pictures.py [--out docs/images] [--cxx g++]
 """
 import argparse
+import re
 import subprocess
 import sys
 import tempfile
@@ -31,10 +32,22 @@ SOURCES = [HOST / "screens.cpp", ROOT / "firmware" / "src" / "display.cpp",
 
 
 def gfx_library() -> Path:
-    found = sorted((ROOT / ".pio" / "libdeps").glob("*/Adafruit GFX Library/Adafruit_GFX.cpp"))
-    if not found:
-        raise SystemExit("Adafruit GFX not found in .pio/libdeps: run `pio pkg install -e esp01_1m` (or any build) first")
-    return found[0].parent
+    """The Adafruit GFX the firmware builds with: platformio.ini pins 1.x (`^1.11`).
+
+    The SSD1306 library asks for GFX without a version, so PlatformIO may also install a newer major version
+    next to it, in `Adafruit GFX Library` (2.x keeps its sources in src/), and the pinned one in
+    `Adafruit GFX Library@1.13.0`. Take the newest copy with the 1.x layout (Adafruit_GFX.cpp at the top).
+    """
+    def version(lib: Path) -> tuple:
+        props = lib / "library.properties"
+        text = props.read_text(encoding="utf-8", errors="replace") if props.exists() else ""
+        found = re.search(r"^version=(\d+)\.(\d+)\.(\d+)", text, re.M)
+        return tuple(int(n) for n in found.groups()) if found else (0, 0, 0)
+
+    libs = [cpp.parent for cpp in (ROOT / ".pio" / "libdeps").glob("*/Adafruit GFX Library*/Adafruit_GFX.cpp")]
+    if not libs:
+        raise SystemExit("Adafruit GFX 1.x not found in .pio/libdeps: run `pio pkg install -e esp01_1m` (or any build) first")
+    return max(libs, key=version)
 
 
 def build_and_run(cxx: str) -> dict:
