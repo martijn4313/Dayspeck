@@ -159,6 +159,12 @@ report blowing away) with made-up weather. A touch on the sensor stops it.</smal
 <div class="field check"><label for="f6"><input id="f6" name="christmas" type="checkbox"><span>Christmas (25 Dec)</span></label></div>
 <div class="field"><label for="f7">Show from (sleeps before)</label><div class="control"><input id="f7" name="countdownDays" type="number" step="1" min="1" max="60"></div></div>
 <button type="submit">Save countdowns</button>
+</form></div><div class="card" id="energyCard" style="display:none">        <h3>Energy monitor</h3>
+<p><small>The heat pump, solar and energy screens read one JSON document on your network, for example from a Raspberry Pi that reads the heat pump and the inverter. They read it every 15 seconds while one of them is shown.</small></p>
+<form id="energyForm">
+<div class="field"><label for="f48">Address</label><div class="control"><input id="f48" aria-describedby="f48-help" name="energyUrl" type="url" maxlength="128" placeholder="http://192.168.1.20/energy.json"><small id="f48-help">plain http://; an IP address is the most reliable; empty = off</small></div></div>
+<p><small>Last read: <span id="energyStatus">-</span></small></p>
+<button type="submit">Save energy monitor</button>
 </form></div><div class="card" id="thresholdsCard">        <h3>Ride Thresholds</h3>
 <form id="thresholdsForm">
 <div class="field"><label for="f38">Max Rain (mm)</label><div class="control"><input id="f38" name="maxRain" type="number" step="0.1" min="0" max="100"></div></div>
@@ -425,6 +431,8 @@ function updateScreenCards() {
   document.getElementById('kidsCard').style.display =
     ['weather', 'clothes', 'village', 'report'].some(n => used.includes(n)) ? '' : 'none';
   document.getElementById('countdownCard').style.display = used.includes('countdown') ? '' : 'none';
+  document.getElementById('energyCard').style.display =
+    ['heatpump', 'solar', 'energy'].some(n => used.includes(n)) ? '' : 'none';
 }
 
 function loadStatus(full) {
@@ -446,6 +454,9 @@ function loadStatus(full) {
     text('weatherValid', s.debug.weatherValid ? 'Yes' : 'No'); text('weatherAge', s.debug.weatherAge);
     text('mdnsStarted', s.debug.mdnsStarted ? 'Yes' : 'No');
     renderSsidLocations(s.ssidLocations || []);
+    const en = s.energy || {};
+    text('energyStatus', !en.url ? 'not set up' : en.ok ? 'OK, ' + en.ageS + ' s ago'
+      : en.error ? en.error : 'not yet (it reads only while an energy screen is shown)');
     if (!full) return;
     const d = s.display, k = s.kids;
     fillForm('thresholdsForm', {maxRain: s.thresholds.maxRainMm, maxWind: s.thresholds.maxWindKmh,
@@ -466,6 +477,7 @@ function loadStatus(full) {
       birthday2: (birthdays[1] || {}).date, initial2: (birthdays[1] || {}).initial,
       halloween: k.halloween, sinterklaas: k.sinterklaas, intocht: k.intocht,
       journaal: k.journaal, christmas: k.christmas, countdownDays: k.countdownDays});
+    fillForm('energyForm', {energyUrl: en.url});
     fillForm('weatherApiForm', {apiUrl: s.weatherApi.url, weatherModel: s.weatherApi.model, units: s.weatherApi.units, weatherDebug: s.weatherApi.debug});
     fillForm('hostnameForm', {hostname: s.wifi.hostname}); fillForm('wifiForm', {ssid: s.wifi.ssid});
     document.forms.wifiForm.password.placeholder = s.wifi.passwordSet ? '(unchanged)' : '(none)';
@@ -506,7 +518,7 @@ const SCREENS = [
   ['ride', 'Ride rating'], ['rideOther', 'Ride rating, other day'], ['week', 'Week grid'],
   ['hours', 'Next hours'], ['rideHours', 'Ride hours'], ['clock', 'Clock'], ['village', 'Village with outfit'],
   ['weather', 'Weather in pictures'], ['clothes', 'Clothes'], ['countdown', 'Countdown'], ['report', 'Weather report'],
-  ['cat', 'Lucky cat']
+  ['cat', 'Lucky cat'], ['heatpump', 'Heat pump'], ['solar', 'Solar'], ['energy', 'Energy flow']
 ];
 const PRESETS = {
   rider: { tap: ['ride', 'rideOther'], hold: ['week', 'hours', 'clock'] },
@@ -577,6 +589,7 @@ document.getElementById('demoStart').addEventListener('click', () => demo('start
 document.getElementById('demoStop').addEventListener('click', () => demo('stop'));
 submitForm('kidsForm', '/api/kids', 'Clothing settings saved');
 submitForm('countdownForm', '/api/countdown', 'Countdowns saved');
+submitForm('energyForm', '/api/energy', 'Energy monitor saved', () => loadStatus(true));
 submitForm('weatherApiForm', '/api/weatherconfig', 'Weather API configuration saved', () => loadStatus(true));
 submitForm('wifiForm', '/api/wifi/config', 'WiFi settings saved');
 submitForm('hostnameForm', '/api/hostname', 'Renamed');

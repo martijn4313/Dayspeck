@@ -26,6 +26,9 @@ rebuilt or reflashed.
 | `report` | [The weather report](report.md): the day in a few short sentences |
 | `clock` | [The clock](clock-and-cat.md#the-clock-clock) (skipped until the time is known) |
 | `cat` | [The lucky cat](clock-and-cat.md#the-lucky-cat-cat), beckoning, with the temperature |
+| `heatpump` | [The heat pump](energy.md): what it does, its power and COP, and its temperatures |
+| `solar` | [The solar panels](energy.md): power now, today, the grid, and a bar per hour |
+| `energy` | [The energy flow](energy.md): sun, house and grid, and the heat pump |
 
 The screens with the village (`ride`, `rideOther` and `village`) have the rain, snow, gusts and autumn
 leaves; the leaves also blow across `weather` and `clothes`.

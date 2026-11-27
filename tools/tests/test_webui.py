@@ -117,6 +117,23 @@ def test_weather_model_is_posted(ui_page):
     assert parse_qs(posts[-1].post_data)["weatherModel"] == ["knmi_seamless"]
 
 
+def test_energy_card_shows_with_its_screens(ui_page):
+    page, posts = ui_page
+    card = page.locator("#energyCard")
+    page.select_option("#screenPreset", "kids")
+    assert card.is_hidden()
+    page.click("#addHold")
+    page.locator("#holdSlots select").last.select_option("solar")
+    expect(card).to_be_visible()
+    expect(page.locator("#energyStatus")).to_have_text("OK, 12 s ago")
+    assert page.locator("#f48").input_value() == "http://192.168.1.20/energy.json"
+    page.locator("#f48").fill("http://192.168.1.21:8080/energy.json")
+    card.locator('button[type="submit"]').click()
+    expect(card.locator(".form-feedback")).to_have_text("Saved")
+    assert posts[-1].url.endswith("/api/energy")
+    assert parse_qs(posts[-1].post_data)["energyUrl"] == ["http://192.168.1.21:8080/energy.json"]
+
+
 def test_screen_order_home_label_limit_and_payload(ui_page):
     page, posts = ui_page
     page.select_option("#screenPreset", "rider")

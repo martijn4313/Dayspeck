@@ -25,6 +25,7 @@ or reflashing.
 | **Picture screens** | Weather and what to wear for the day, shown in pictures and temperatures—no reading needed. Includes an animated village, a time-lapse of the day's weather, and countdowns to birthdays and holidays |
 | **Weather report** | A few concise sentences in English or Dutch, composed on the device from forecast rules, with warnings for frost, strong gusts and heavy rain |
 | **Clock and lucky cat** | The time and date, or a beckoning cat with the temperature |
+| **Heat pump and solar** | What the heat pump is doing, the solar panels' output today, and the power flowing between sun, house and grid, read from a JSON document on your network (for example a Raspberry Pi) |
 
 Mix screens for the people and place:
 

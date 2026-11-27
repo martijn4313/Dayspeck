@@ -1974,3 +1974,238 @@ bool renderReportBlowFrame(Adafruit_SSD1306 &d, const char (*lines)[REPORT_COLS 
     d.cp437(false);
     return visible;
 }
+
+// ---- Energy monitor: the heat pump, the solar panels and the flow ---------------------------------------
+
+static int energyTextWidth(const char* s, int size) { return (int)strlen(s) * 6 * size - size; }
+
+// Text at (x, y) (align 0), right-aligned on x (align 1) or centred on x (align 2, kept on the panel)
+static void energyText(Adafruit_SSD1306 &d, int x, int y, int size, const char* s, int align = 0) {
+    int w = energyTextWidth(s, size);
+    if (align == 1) x -= w;
+    else if (align == 2) x = constrain(x - w / 2, 0, 127 - w);
+    d.setTextSize(size);
+    d.setCursor(x, y);
+    d.print(s);
+}
+
+// Whole degrees from tenths, with the code page 437 degree sign; "-" when not sent
+static void energyDegrees(char* out, size_t size, int32_t c10, bool fahrenheit) {
+    if (c10 == ENERGY_NONE) { snprintf(out, size, "-"); return; }
+    float c = c10 / 10.0f;
+    snprintf(out, size, "%d\xF8", (int)lroundf(fahrenheit ? c * 9.0f / 5.0f + 32.0f : c));
+}
+
+// A fan of three blades turning around (cx, cy); angle in steps of 1/18 turn
+static void energyFan(Adafruit_SSD1306 &d, int cx, int cy, int r, int step, bool filled) {
+    for (int k = 0; k < 3; k++) {
+        float a = (step % 18) * 0.349f + k * 2.094f;
+        int x1 = cx + (int)lroundf(cosf(a) * r), y1 = cy + (int)lroundf(sinf(a) * r);
+        if (filled) {
+            int x2 = cx + (int)lroundf(cosf(a + 0.5f) * (r - 1)), y2 = cy + (int)lroundf(sinf(a + 0.5f) * (r - 1));
+            d.fillTriangle(cx, cy, x1, y1, x2, y2, SSD1306_WHITE);
+        } else {
+            d.drawLine(cx, cy, x1, y1, SSD1306_WHITE);
+        }
+    }
+}
+
+// The outdoor unit, 36x29 from (x, y): a fan (turning while it runs), a grille, and ice while it defrosts
+static void drawOutdoorUnit(Adafruit_SSD1306 &d, int x, int y, int step, bool frost) {
+    d.drawRoundRect(x, y, 36, 28, 3, SSD1306_WHITE);
+    d.drawFastHLine(x + 4, y + 28, 4, SSD1306_WHITE);            // feet
+    d.drawFastHLine(x + 28, y + 28, 4, SSD1306_WHITE);
+    d.drawCircle(x + 13, y + 14, 10, SSD1306_WHITE);
+    d.fillCircle(x + 13, y + 14, 2, SSD1306_WHITE);
+    energyFan(d, x + 13, y + 14, 8, step, true);
+    for (int i = 0; i < 5; i++) d.drawFastHLine(x + 27, y + 5 + i * 4, 6, SSD1306_WHITE);
+    if (frost) {                                                  // a snowflake over the grille
+        int sx = x + 30, sy = y + 14;
+        d.fillRect(sx - 5, sy - 5, 11, 11, SSD1306_BLACK);
+        d.drawFastHLine(sx - 4, sy, 9, SSD1306_WHITE);
+        d.drawFastVLine(sx, sy - 4, 9, SSD1306_WHITE);
+        d.drawLine(sx - 3, sy - 3, sx + 3, sy + 3, SSD1306_WHITE);
+        d.drawLine(sx - 3, sy + 3, sx + 3, sy - 3, SSD1306_WHITE);
+    }
+}
+
+// The small outdoor unit of the flow screen, 20x17 from (x, y)
+static void drawSmallOutdoorUnit(Adafruit_SSD1306 &d, int x, int y, int step) {
+    d.drawRoundRect(x, y, 20, 17, 2, SSD1306_WHITE);
+    d.drawCircle(x + 8, y + 8, 5, SSD1306_WHITE);
+    energyFan(d, x + 8, y + 8, 4, step, false);
+    for (int i = 0; i < 3; i++) d.drawFastHLine(x + 15, y + 3 + i * 4, 3, SSD1306_WHITE);
+}
+
+static void drawRadiator(Adafruit_SSD1306 &d, int cx, int y) {
+    for (int i = 0; i < 4; i++) d.drawRoundRect(cx - 7 + i * 4, y, 3, 9, 1, SSD1306_WHITE);
+    d.drawFastHLine(cx - 8, y + 2, 17, SSD1306_WHITE);
+}
+
+static void drawFir(Adafruit_SSD1306 &d, int cx, int y) {          // outside: a fir tree on the ground
+    d.fillTriangle(cx, y, cx - 3, y + 4, cx + 3, y + 4, SSD1306_WHITE);
+    d.fillTriangle(cx, y + 2, cx - 4, y + 7, cx + 4, y + 7, SSD1306_WHITE);
+    d.drawFastVLine(cx, y + 7, 2, SSD1306_WHITE);
+    d.drawFastHLine(cx - 6, y + 9, 13, SSD1306_WHITE);
+}
+
+static void drawTap(Adafruit_SSD1306 &d, int cx, int y) {          // the hot water: a tap with a drop
+    d.fillRect(cx - 6, y + 1, 9, 3, SSD1306_WHITE);
+    d.fillRect(cx - 3, y - 1, 3, 2, SSD1306_WHITE);
+    d.fillRect(cx + 1, y + 1, 3, 5, SSD1306_WHITE);
+    d.drawPixel(cx + 2, y + 8, SSD1306_WHITE);
+    d.drawFastHLine(cx + 1, y + 9, 3, SSD1306_WHITE);
+}
+
+// The grid: a pylon, 10 high (big: 18, with its cross braces)
+static void drawPylon(Adafruit_SSD1306 &d, int cx, int y, bool big) {
+    int h = big ? 18 : 10, w = big ? 7 : 4;
+    d.drawLine(cx, y, cx - w, y + h, SSD1306_WHITE);
+    d.drawLine(cx, y, cx + w, y + h, SSD1306_WHITE);
+    d.drawFastHLine(cx - w, y + (big ? 4 : 3), 2 * w + 1, SSD1306_WHITE);
+    int inner = big ? 5 : 3;
+    d.drawFastHLine(cx - inner, y + (big ? 9 : 6), 2 * inner + 1, SSD1306_WHITE);
+    if (big) {
+        d.drawLine(cx - 4, y + 9, cx + 6, y + 18, SSD1306_WHITE);
+        d.drawLine(cx + 4, y + 9, cx - 6, y + 18, SSD1306_WHITE);
+    }
+}
+
+static void drawHouse(Adafruit_SSD1306 &d, int cx, int y) {        // 23x18
+    d.drawLine(cx - 11, y + 8, cx, y, SSD1306_WHITE);
+    d.drawLine(cx, y, cx + 11, y + 8, SSD1306_WHITE);
+    d.drawRect(cx - 8, y + 7, 17, 11, SSD1306_WHITE);
+    d.fillRect(cx - 2, y + 11, 5, 7, SSD1306_WHITE);
+}
+
+void renderHeatpumpView(Adafruit_SSD1306 &d, const EnergyData &e, unsigned long frame, bool nl, bool fahrenheit) {
+    d.clearDisplay();
+    d.setTextWrap(false);
+    d.setTextColor(SSD1306_WHITE);
+    d.cp437(true);
+    bool running = energyRunning(e);
+    drawOutdoorUnit(d, 0, 2, running ? (int)(frame % 18) : 1, e.mode == ENERGY_MODE_DEFROST);
+    char b[24];
+    energyText(d, 127, 0, 1, energyModeLabel(e, nl), 1);
+    formatWatts(b, sizeof(b), running ? e.hpPowerW : ENERGY_NONE, false);
+    energyText(d, 127, 12, 2, b, 1);
+    if (running && e.hpCop10 != ENERGY_NONE && e.hpCop10 > 0) {
+        snprintf(b, sizeof(b), "COP %ld.%ld", (long)(e.hpCop10 / 10), (long)(e.hpCop10 % 10));
+        energyText(d, 127, 30, 1, b, 1);
+    }
+    d.drawFastHLine(0, 40, 128, SSD1306_WHITE);
+    char flow[8], ret[8];
+    energyDegrees(flow, sizeof(flow), e.flowC10, fahrenheit);
+    energyDegrees(ret, sizeof(ret), e.returnC10, fahrenheit);
+    snprintf(b, sizeof(b), "%s>%s", flow, ret);
+    drawRadiator(d, 21, 44);
+    energyText(d, 21, 56, 1, b, 2);
+    drawFir(d, 70, 44);
+    energyDegrees(b, sizeof(b), e.outsideC10, fahrenheit);
+    energyText(d, 70, 56, 1, b, 2);
+    drawTap(d, 108, 44);
+    energyDegrees(b, sizeof(b), e.hotWaterC10, fahrenheit);
+    energyText(d, 108, 56, 1, b, 2);
+    d.cp437(false);
+    d.setTextSize(1);
+}
+
+void renderSolarView(Adafruit_SSD1306 &d, const EnergyData &e, int hourNow, bool night, bool nl) {
+    d.clearDisplay();
+    d.setTextWrap(false);
+    d.setTextColor(SSD1306_WHITE);
+    d.cp437(true);
+    if (night) drawSmallMoon(d, 9, 9, 6);
+    else drawSmallSun(d, 9, 9, 5);
+    // Now: a big number, its unit small after it
+    char b[24];
+    int32_t w = e.pvPowerW;
+    if (w == ENERGY_NONE) snprintf(b, sizeof(b), "-");
+    else if (w >= 1000) snprintf(b, sizeof(b), "%ld.%02ld", (long)(w / 1000), (long)((w % 1000) / 10));
+    else snprintf(b, sizeof(b), "%ld", (long)(w < 0 ? 0 : w));
+    energyText(d, 24, 2, 2, b);
+    if (w != ENERGY_NONE) energyText(d, 24 + energyTextWidth(b, 2) + 3, 9, 1, w >= 1000 ? "kW" : "W");
+    // Today so far, and the grid: an arrow to the pylon (going out) or from it (coming in)
+    if (e.pvTodayWh != ENERGY_NONE) {
+        snprintf(b, sizeof(b), "%ld.%ld kWh", (long)(e.pvTodayWh / 1000), (long)((e.pvTodayWh % 1000) / 100));
+        energyText(d, 24, 20, 1, b);
+    }
+    if (e.gridW != ENERGY_NONE) {
+        drawPylon(d, 122, 17, false);
+        if (e.gridW != 0) {
+            char watts[12];
+            formatWatts(watts, sizeof(watts), e.gridW, true);
+            snprintf(b, sizeof(b), "%c%s", e.gridW < 0 ? 0x1A : 0x1B, watts);   // code page 437 -> and <-
+            energyText(d, 115, 20, 1, b, 1);
+        }
+    }
+    d.cp437(false);
+    d.setTextSize(1);
+    if (!e.hasHours) return;
+    // Today per hour, 05:00 to 21:00: the hours past filled, the hour now open (still counting), to come a dot
+    int peak = 1;
+    for (int i = 0; i < 24; i++) if (e.pvHourWh[i] > peak) peak = e.pvHourWh[i];
+    const int base = 63, height = 31;
+    for (int hr = 5; hr <= 21; hr++) {
+        int x = 4 + (hr - 5) * 7, bh = (int)((long)e.pvHourWh[hr] * height / peak);
+        if (hr > hourNow) d.drawPixel(x + 2, base, SSD1306_WHITE);
+        else if (bh <= 1) d.drawFastHLine(x, base, 5, SSD1306_WHITE);
+        else if (hr == hourNow) d.drawRect(x, base - bh + 1, 5, bh, SSD1306_WHITE);
+        else d.fillRect(x, base - bh + 1, 5, bh, SSD1306_WHITE);
+    }
+}
+
+// Dots running from x0 to x1 (either way) at y: the way the power goes
+static void energyFlowDots(Adafruit_SSD1306 &d, int x0, int x1, int y, unsigned long frame) {
+    int dir = x1 > x0 ? 1 : -1, len = abs(x1 - x0);
+    for (int p = (int)(frame * 2 % 6); p < len; p += 6) d.fillRect(x0 + dir * p, y - 1, 2, 2, SSD1306_WHITE);
+}
+
+void renderEnergyFlowView(Adafruit_SSD1306 &d, const EnergyData &e, unsigned long frame, bool nl) {
+    d.clearDisplay();
+    d.setTextWrap(false);
+    d.setTextColor(SSD1306_WHITE);
+    char b[24];
+    drawSmallSun(d, 14, 12, 6);
+    drawHouse(d, 64, 2);
+    drawPylon(d, 113, 2, true);
+    if (e.pvPowerW != ENERGY_NONE && e.pvPowerW > 0) energyFlowDots(d, 28, 50, 12, frame);
+    if (e.gridW != ENERGY_NONE && e.gridW < 0) energyFlowDots(d, 78, 103, 12, frame);
+    else if (e.gridW != ENERGY_NONE && e.gridW > 0) energyFlowDots(d, 103, 78, 12, frame);
+    formatWatts(b, sizeof(b), e.pvPowerW, true);
+    energyText(d, 14, 27, 1, b, 2);
+    formatWatts(b, sizeof(b), energyHouseW(e), true);
+    energyText(d, 64, 27, 1, b, 2);
+    formatWatts(b, sizeof(b), e.gridW, true);
+    energyText(d, 113, 27, 1, b, 2);
+    d.drawFastHLine(0, 37, 128, SSD1306_WHITE);
+    if (e.mode != ENERGY_MODE_NONE || e.hpPowerW != ENERGY_NONE) {
+        // The heat pump's share of the house
+        bool running = energyRunning(e);
+        drawSmallOutdoorUnit(d, 2, 44, running ? (int)(frame % 18) : 1);
+        if (running) {
+            formatWatts(b, sizeof(b), e.hpPowerW, true);
+            energyText(d, 30, 46, 2, b);
+        } else {
+            energyText(d, 30, 49, 1, nl ? "warmtepomp uit" : "heat pump off");
+        }
+    } else if (e.pvTodayWh != ENERGY_NONE) {
+        // No heat pump: what the panels made today
+        drawSmallSun(d, 11, 52, 4);
+        snprintf(b, sizeof(b), "%ld.%ld", (long)(e.pvTodayWh / 1000), (long)((e.pvTodayWh % 1000) / 100));
+        energyText(d, 30, 46, 2, b);
+        energyText(d, 30 + energyTextWidth(b, 2) + 3, 53, 1, nl ? "kWh vandaag" : "kWh today");
+    }
+    d.setTextSize(1);
+}
+
+void renderEnergyMissingView(Adafruit_SSD1306 &d, int screen, const char* line1, const char* line2) {
+    d.clearDisplay();
+    d.setTextWrap(false);
+    d.setTextColor(SSD1306_WHITE);
+    if (screen == SCREEN_HEATPUMP) drawOutdoorUnit(d, 46, 2, 1, false);
+    else if (screen == SCREEN_SOLAR) drawSmallSun(d, 64, 14, 8);
+    else drawHouse(d, 64, 6);
+    energyText(d, 64, 40, 1, line1, 2);
+    energyText(d, 64, 52, 1, line2, 2);
+}

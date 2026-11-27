@@ -388,6 +388,71 @@ static void bootInfo() {
     assert(d.getCursorY() == 0);
 }
 
+// ---- The energy monitor: heat pump, solar, flow -------------------------------------------------------------
+
+static EnergyData heatPump(int mode, int powerW, float cop, float flow, float ret, float outside, float hotWater) {
+    EnergyData e;
+    energyClear(e);
+    e.mode = (uint8_t)mode;
+    e.hpPowerW = powerW;
+    e.hpCop10 = energyTenths(cop);
+    e.flowC10 = energyTenths(flow);
+    e.returnC10 = energyTenths(ret);
+    e.outsideC10 = energyTenths(outside);
+    e.hotWaterC10 = energyTenths(hotWater);
+    return e;
+}
+
+// A sunny day: Wh per hour until `hour` (its own hour so far), and the power now
+static EnergyData solarDay(int hour, int powerW, int gridW) {
+    static const uint16_t DAY[24] = { 0, 0, 0, 0, 0, 0, 80, 420, 1100, 1900, 2600, 3100, 3350, 3420, 3000, 2350,
+                                      1600, 880, 520, 90, 0, 0, 0, 0 };
+    EnergyData e;
+    energyClear(e);
+    e.pvPowerW = powerW;
+    e.gridW = gridW;
+    e.hasHours = true;
+    long today = 0;
+    for (int i = 0; i < 24; i++) {
+        e.pvHourWh[i] = i < hour ? DAY[i] : i == hour ? DAY[i] / 3 : 0;
+        today += e.pvHourWh[i];
+    }
+    e.pvTodayWh = (int32_t)today;
+    return e;
+}
+
+static void energyScreens() {
+    renderHeatpumpView(d, heatPump(ENERGY_MODE_HEATING, 850, 3.8f, 35.2f, 30.1f, 4.5f, 48.2f), 0, false, false);
+    frame("energy-heatpump", 0);
+    renderHeatpumpView(d, heatPump(ENERGY_MODE_HOT_WATER, 1620, 2.6f, 55.1f, 47.2f, 4.5f, 43.0f), 0, false, false);
+    frame("energy-heatpump", 1);
+    renderHeatpumpView(d, heatPump(ENERGY_MODE_DEFROST, 420, NAN, 21.0f, 26.8f, -1.8f, 47.6f), 0, true, false);
+    frame("energy-heatpump", 2);
+    renderHeatpumpView(d, heatPump(ENERGY_MODE_STANDBY, 0, NAN, 28.7f, 28.3f, 11.2f, 49.8f), 0, true, false);
+    frame("energy-heatpump", 3);
+
+    renderSolarView(d, solarDay(13, 3240, -2410), 13, false, false);  frame("energy-solar", 0);
+    renderSolarView(d, solarDay(18, 310, 890), 18, false, false);     frame("energy-solar", 1);
+    renderSolarView(d, solarDay(23, 0, 640), 23, true, true);         frame("energy-solar", 2);
+
+    EnergyData sunny = solarDay(13, 3240, -2410);
+    sunny.mode = ENERGY_MODE_STANDBY;
+    sunny.hpPowerW = 0;
+    renderEnergyFlowView(d, sunny, 0, false);                          frame("energy-flow", 0);
+    EnergyData evening = solarDay(18, 310, 890);
+    evening.mode = ENERGY_MODE_HEATING;
+    evening.hpPowerW = 850;
+    renderEnergyFlowView(d, evening, 0, false);                        frame("energy-flow", 1);
+    // The flow, moving: sunny, the heat pump running on the sun, the rest to the grid
+    EnergyData moving = solarDay(13, 3240, -1560);
+    moving.mode = ENERGY_MODE_HEATING;
+    moving.hpPowerW = 850;
+    for (int f = 0; f < 18; f++) { renderEnergyFlowView(d, moving, f, false); frame("energy-flow-anim", f); }
+    // Nothing to show: no address yet, or no answer
+    renderEnergyMissingView(d, SCREEN_HEATPUMP, "Energy monitor", "not set up");      frame("energy-missing", 0);
+    renderEnergyMissingView(d, SCREEN_SOLAR, "No data from", "192.168.1.20:8080");    frame("energy-missing", 1);
+}
+
 int main() {
     bootInfo();
     rideHours();
@@ -396,5 +461,6 @@ int main() {
     countdowns();
     villages();
     reports();
+    energyScreens();
     return 0;
 }
