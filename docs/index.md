@@ -23,6 +23,7 @@ is all set in the web page of the device, so changing your mind needs no new bui
 | [Ride rating](rider.md) | *Can I ride today?* A big check mark, exclamation mark or cross next to an animated village, with the other day, a week grid, the next hours and when to go |
 | [Picture screens](kids.md) | *What do I wear today?* Outfits, weather pictures and numbers for the morning, afternoon and dinner time, and a countdown in sleeps to birthdays and holidays. No words, so children who cannot read yet can use them |
 | [Weather report](report.md) | The day in a few short sentences, in English or Dutch |
+| [Heat pump and solar](energy.md) | What the heat pump is doing, what the solar panels made today, and the power flowing between sun, house and grid, read from a small JSON document on your network |
 | [Clock](clock-and-cat.md#the-clock-clock) | The time and the date |
 | [Lucky cat](clock-and-cat.md#the-lucky-cat-cat) | A beckoning maneki-neko for good fortune, with the temperature |
 
